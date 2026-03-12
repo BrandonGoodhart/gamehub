@@ -8,6 +8,12 @@ const games = [
     path: '/tic-tac-toe',
     emoji: '#',
   },
+  {
+    title: 'Texas Hold\'em',
+    description: 'Poker with up to 3 players and colored chips',
+    path: '/poker',
+    emoji: '$',
+  },
 ]
 
 export default function Home() {
