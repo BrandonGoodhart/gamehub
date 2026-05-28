@@ -10,68 +10,76 @@ interface Props {
 }
 
 export default function HostLobby({ state, isHost, onKick, onStart }: Props) {
-  const host = state.players.find((p) => p.isHost)
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-        <div className="text-emerald-500 font-mono text-sm mb-2">// room_active</div>
-        <h1 className="text-4xl md:text-6xl font-mono font-bold text-emerald-300 tracking-widest drop-shadow-[0_0_15px_rgba(50,220,120,0.7)]">
-          CRACKED<span className="text-emerald-500">-</span>HEIST
-        </h1>
-      </motion.div>
+    <div className="max-w-3xl mx-auto w-full space-y-5">
+      <div className="text-center">
+        <div className="fg-lbl mb-2">// room active</div>
+        <h1 className="fg-display text-[clamp(2rem,6vw,3rem)]">Cracked-Heist</h1>
+      </div>
 
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-black/80 border-2 border-emerald-500 rounded-2xl p-6 text-center shadow-[0_0_30px_rgba(50,220,120,0.3)]"
+        className="fg-panel fg-panel-lg text-center"
       >
-        <div className="text-emerald-400 font-mono text-xs mb-2">/* JOIN CODE */</div>
-        <div className="text-5xl md:text-7xl font-mono font-bold text-emerald-200 tracking-[0.4em] select-all mb-2">
+        <div className="fg-lbl mb-2">/ join code</div>
+        <div
+          className="select-all fg-code"
+          style={{ fontSize: 'clamp(2.5rem, 9vw, 4rem)' }}
+        >
           {state.code}
         </div>
-        <div className="text-emerald-700 font-mono text-xs">
-          # students enter this code on their device
+        <div className="fg-sub text-xs mt-3">
+          students enter this on their device →{' '}
+          <span className="text-[var(--green-l)] font-bold">cracked-heist</span>
         </div>
-        {host && (
-          <div className="text-emerald-500 font-mono text-xs mt-3">
-            host: <span className="text-emerald-300">{host.handle}</span>
-          </div>
-        )}
       </motion.div>
 
-      <div className="bg-black/60 border border-emerald-800 rounded-2xl p-5">
-        <div className="text-emerald-400 font-mono text-xs mb-3">
-          CONNECTED [{state.players.length}]:
+      <div className="fg-panel p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="fg-lbl">connected ({state.players.length})</div>
+          {isHost && (
+            <div className="fg-sub text-xs">tap × to kick</div>
+          )}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           <AnimatePresence>
-            {state.players.map((p) => (
+            {state.players.map((p, i) => (
               <motion.div
                 key={p.id}
                 layout
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className={`relative rounded-xl p-3 bg-emerald-950/40 border ${
-                  p.isHost ? 'border-amber-500' : 'border-emerald-700'
-                } flex flex-col items-center gap-1`}
+                exit={{ opacity: 0, scale: 0.6 }}
+                transition={{ delay: i * 0.04 }}
+                className="relative rounded-2xl p-3 flex flex-col items-center gap-1 fg-mode-card"
+                style={{ cursor: 'default' }}
               >
-                <AvatarSvg avatar={p.avatar} size={72} />
-                <div className="font-mono text-sm text-emerald-200 truncate max-w-full">{p.handle}</div>
-                <div className="text-[10px] font-mono">
+                <AvatarSvg avatar={p.avatar} size={64} />
+                <div className="font-bold text-sm truncate max-w-full text-white">{p.handle}</div>
+                <div className="text-[10px]">
                   {p.isHost ? (
-                    <span className="text-amber-400">HOST</span>
+                    <span
+                      className="px-2 py-0.5 rounded-full font-extrabold tracking-wider"
+                      style={{ background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', color: '#451a03' }}
+                    >
+                      HOST
+                    </span>
                   ) : p.id === state.meId ? (
-                    <span className="text-cyan-400">you</span>
+                    <span className="text-[var(--teal)] font-bold">you</span>
                   ) : (
-                    <span className="text-emerald-700">player</span>
+                    <span className="fg-sub">player</span>
                   )}
                 </div>
                 {isHost && !p.isHost && (
                   <button
                     onClick={() => onKick(p.id)}
-                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold"
                     title={`kick ${p.handle}`}
+                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-white text-xs font-extrabold flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
+                    style={{
+                      background: 'linear-gradient(135deg,#fb7185,#e11d48)',
+                      boxShadow: '0 4px 12px rgba(251,113,133,.5)',
+                    }}
                   >
                     ×
                   </button>
@@ -84,15 +92,15 @@ export default function HostLobby({ state, isHost, onKick, onStart }: Props) {
 
       {isHost ? (
         <motion.button
-          whileHover={{ scale: 1.03 }}
+          whileHover={{ y: -2 }}
           whileTap={{ scale: 0.97 }}
           onClick={onStart}
-          className="w-full py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-mono font-bold text-xl tracking-wider shadow-[0_0_25px_rgba(50,220,120,0.6)]"
+          className="fg-btn fg-btn-grad"
         >
-          &gt; START GAME_
+          Start Game →
         </motion.button>
       ) : (
-        <div className="text-center font-mono text-emerald-400 py-4 animate-pulse">
+        <div className="text-center fg-sub py-4 animate-pulse">
           waiting for host to start...
         </div>
       )}

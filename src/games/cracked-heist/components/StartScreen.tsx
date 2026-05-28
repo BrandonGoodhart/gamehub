@@ -7,31 +7,41 @@ interface Props {
 
 export default function StartScreen({ onHost, onJoin }: Props) {
   return (
-    <div className="max-w-3xl mx-auto space-y-12">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-        <div className="text-emerald-500 font-mono text-sm mb-2">// welcome_to_the_grid</div>
-        <h1 className="text-5xl md:text-7xl font-mono font-bold text-emerald-300 tracking-widest drop-shadow-[0_0_20px_rgba(50,220,120,0.7)]">
-          CRACKED<span className="text-emerald-500">-</span>HEIST
+    <div className="max-w-md mx-auto w-full text-center pt-6">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="fg-lbl mb-3">// class hacking trivia</div>
+        <h1 className="fg-display text-[clamp(2.5rem,9vw,4.5rem)]">
+          Cracked-Heist
         </h1>
-        <p className="text-emerald-400/80 font-mono text-sm mt-3">
-          a class hacking trivia game
+        <p className="fg-sub text-sm mt-3">
+          Answer fast. Steal coins. Don't get caught.
         </p>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 gap-3 mt-8">
         <motion.button
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          whileHover={{ scale: 1.04, y: -4 }}
+          transition={{ delay: 0.12 }}
+          whileHover={{ y: -3 }}
           whileTap={{ scale: 0.97 }}
           onClick={onHost}
-          className="p-8 rounded-2xl bg-black/70 border-2 border-emerald-500 hover:border-emerald-300 text-left shadow-[0_0_25px_rgba(50,220,120,0.3)] hover:shadow-[0_0_35px_rgba(50,220,120,0.6)] transition-all"
+          className="fg-mode-card text-left p-7"
         >
-          <div className="text-emerald-500 font-mono text-xs mb-2">/* TEACHER */</div>
-          <div className="text-emerald-200 font-mono text-3xl font-bold mb-2">&gt; HOST_</div>
-          <div className="text-emerald-300/80 font-mono text-sm">
-            Create a room, share the code, control the game.
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-extrabold"
+                 style={{ background: 'linear-gradient(135deg, #22c55e, #4ade80, #a3e635)', color: '#052e16', boxShadow: '0 6px 20px rgba(74,222,128,.35)' }}>
+              H
+            </div>
+            <div className="flex-1">
+              <div className="fg-lbl mb-1">teacher</div>
+              <div className="text-xl font-extrabold tracking-tight">Host a game</div>
+              <div className="fg-sub text-xs mt-1">Create a room, share the code, pick the category.</div>
+            </div>
           </div>
         </motion.button>
 
@@ -39,15 +49,21 @@ export default function StartScreen({ onHost, onJoin }: Props) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          whileHover={{ scale: 1.04, y: -4 }}
+          whileHover={{ y: -3 }}
           whileTap={{ scale: 0.97 }}
           onClick={onJoin}
-          className="p-8 rounded-2xl bg-black/70 border-2 border-cyan-500 hover:border-cyan-300 text-left shadow-[0_0_25px_rgba(103,232,249,0.25)] hover:shadow-[0_0_35px_rgba(103,232,249,0.5)] transition-all"
+          className="fg-mode-card text-left p-7"
         >
-          <div className="text-cyan-500 font-mono text-xs mb-2">/* STUDENT */</div>
-          <div className="text-cyan-200 font-mono text-3xl font-bold mb-2">&gt; JOIN_</div>
-          <div className="text-cyan-300/80 font-mono text-sm">
-            Got a 6-digit code? Hop in and start hacking.
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-extrabold"
+                 style={{ background: 'linear-gradient(135deg, #34d399, #5eead4)', color: '#042f2e', boxShadow: '0 6px 20px rgba(94,234,212,.35)' }}>
+              J
+            </div>
+            <div className="flex-1">
+              <div className="fg-lbl mb-1">student</div>
+              <div className="text-xl font-extrabold tracking-tight">Join with code</div>
+              <div className="fg-sub text-xs mt-1">Got a 6-character code? Hop in.</div>
+            </div>
           </div>
         </motion.button>
       </div>

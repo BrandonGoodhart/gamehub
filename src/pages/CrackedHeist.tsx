@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useGame } from '../games/cracked-heist/gameState'
-import MatrixBg from '../games/cracked-heist/components/MatrixBg'
+import AmbientBg from '../games/cracked-heist/components/AmbientBg'
 import StartScreen from '../games/cracked-heist/components/StartScreen'
 import JoinPrompt from '../games/cracked-heist/components/JoinPrompt'
 import AvatarPicker from '../games/cracked-heist/components/AvatarPicker'
@@ -18,6 +18,7 @@ import PasswordPicker from '../games/cracked-heist/components/PasswordPicker'
 import RoundEnd from '../games/cracked-heist/components/RoundEnd'
 import GameOver from '../games/cracked-heist/components/GameOver'
 import { defaultAvatar } from '../games/cracked-heist/avatar'
+import '../games/cracked-heist/forbidden-green.css'
 
 type ActionFlow =
   | { kind: 'none' }
@@ -49,15 +50,21 @@ export default function CrackedHeist() {
     flow.kind === 'passwordPickGuess' ? state.players.find((p) => p.id === flow.targetId) : null
 
   return (
-    <div className="min-h-screen text-emerald-100 relative">
-      <MatrixBg intensity={state.phase === 'playing' ? 0.55 : 0.85} />
+    <div className="fg-root min-h-screen relative">
+      <AmbientBg />
 
-      <div className="relative z-10 px-4 py-6 md:py-8">
-        <div className="max-w-6xl mx-auto flex items-center justify-between mb-6">
-          <Link to="/" className="font-mono text-emerald-500 hover:text-emerald-300 text-sm transition-colors">
-            &lt; cd ../
+      <div className="relative z-10 px-4 py-5 md:py-7">
+        <div className="max-w-6xl mx-auto flex items-center justify-between mb-5">
+          <Link
+            to="/"
+            className="fg-btn fg-btn-outline fg-btn-sm"
+            style={{ width: 'auto', padding: '8px 14px' }}
+          >
+            ← Hub
           </Link>
-          <div className="font-mono text-emerald-700 text-xs">cracked-heist v0.2 // mainline</div>
+          <div className="fg-sub text-xs" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+            cracked-heist v0.3
+          </div>
         </div>
 
         {state.phase === 'start' && (
@@ -120,34 +127,30 @@ export default function CrackedHeist() {
           />
         )}
 
-        {state.phase === 'countdown' && (
-          <div className="max-w-6xl mx-auto">
-            <Countdown value={state.countdownValue} />
-          </div>
-        )}
+        {state.phase === 'countdown' && <Countdown value={state.countdownValue} />}
 
         {(state.phase === 'playing' || state.phase === 'roundEnd') && me && (
           <div className="max-w-6xl mx-auto space-y-4">
             <HUD state={state} me={me} />
 
             {state.phase === 'playing' && (
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
                 <div className="space-y-4">
-                  <div className="bg-black/70 border border-emerald-700 rounded-lg p-5 min-h-[280px]">
+                  <div className="fg-gcard min-h-[300px]">
                     <QuestionCard question={state.currentQuestion} onAnswer={answer} />
                   </div>
-                  <div className="bg-black/70 border border-emerald-700 rounded-lg p-5">
-                    <div className="text-emerald-500 font-mono text-xs mb-3">/* live feed */</div>
+                  <div className="fg-panel p-5">
+                    <div className="fg-lbl mb-3">live feed</div>
                     <EventFeed events={state.events} />
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <div className="bg-black/70 border border-emerald-700 rounded-lg p-4">
-                    <div className="text-emerald-500 font-mono text-xs mb-3">/* actions */</div>
+                  <div className="fg-panel p-5">
+                    <div className="fg-lbl mb-3">actions</div>
                     <ActionPanel state={state} me={me} onChoose={chooseAction} />
                   </div>
-                  <div className="bg-black/70 border border-emerald-700 rounded-lg p-4">
-                    <div className="text-emerald-500 font-mono text-xs mb-3">/* hackers */</div>
+                  <div className="fg-panel p-5">
+                    <div className="fg-lbl mb-3">hackers</div>
                     <PlayerList state={state} />
                   </div>
                 </div>
@@ -165,10 +168,8 @@ export default function CrackedHeist() {
         )}
       </div>
 
-      <Modal open={flow.kind === 'spyPick'} onClose={close} title="SPY :: pick target">
-        <p className="text-emerald-300 text-sm mb-3 font-mono">
-          Tail a hacker. Red outline = hacked in last 3 rounds.
-        </p>
+      <Modal open={flow.kind === 'spyPick'} onClose={close} title="Spy — pick target">
+        <p className="fg-sub text-sm mb-3">Tail a hacker. Red glow = hacked in last 3 rounds.</p>
         <PlayerList
           state={state}
           highlightHacked
@@ -180,22 +181,31 @@ export default function CrackedHeist() {
         />
       </Modal>
 
-      <Modal open={flow.kind === 'passwordPickTarget'} onClose={close} title="CRACK :: pick target">
-        <p className="text-emerald-300 text-sm mb-3 font-mono">Whose wallet do you want to crack?</p>
+      <Modal open={flow.kind === 'passwordPickTarget'} onClose={close} title="Crack — pick target">
+        <p className="fg-sub text-sm mb-3">Whose wallet do you want to crack?</p>
         <div className="space-y-2">
           {others.map((p) => (
             <button
               key={p.id}
               onClick={() => setFlow({ kind: 'passwordPickGuess', targetId: p.id })}
-              className="w-full text-left px-3 py-2 rounded border border-fuchsia-500 bg-black/40 hover:bg-fuchsia-900/30 text-fuchsia-200 font-mono transition-colors"
+              className="w-full text-left p-3 rounded-2xl border font-bold transition-all"
+              style={{
+                borderColor: 'rgba(163,230,53,0.3)',
+                background: 'rgba(163,230,53,0.05)',
+                color: '#d9f99d',
+              }}
             >
-              &gt; {p.handle}
+              → {p.handle}
             </button>
           ))}
         </div>
       </Modal>
 
-      <Modal open={flow.kind === 'passwordPickGuess' && !!pwTarget} onClose={close} title="CRACK :: pick password">
+      <Modal
+        open={flow.kind === 'passwordPickGuess' && !!pwTarget}
+        onClose={close}
+        title="Crack — pick password"
+      >
         {pwTarget && (
           <PasswordPicker
             target={pwTarget}

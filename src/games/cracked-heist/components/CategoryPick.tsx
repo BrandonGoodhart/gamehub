@@ -8,69 +8,107 @@ interface Props {
   onStart: (category: string) => void
 }
 
+const CATEGORY_GRADIENTS: Record<string, string> = {
+  'General Knowledge': 'linear-gradient(135deg, #22c55e, #4ade80)',
+  'Tech & Hacking': 'linear-gradient(135deg, #34d399, #5eead4)',
+  'Pop Culture': 'linear-gradient(135deg, #4ade80, #a3e635)',
+  'Math': 'linear-gradient(135deg, #10b981, #34d399)',
+  'Science': 'linear-gradient(135deg, #16a34a, #84cc16)',
+}
+
 export default function CategoryPick({ settings, onChange, onStart }: Props) {
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-3xl mx-auto w-full space-y-5">
       <div className="text-center">
-        <div className="text-emerald-500 font-mono text-sm mb-2">// configure_session</div>
-        <h2 className="text-3xl md:text-4xl font-mono font-bold text-emerald-300 tracking-wider">
-          CHOOSE A TARGET FEED
-        </h2>
+        <div className="fg-lbl mb-2">/ configure session</div>
+        <h2 className="fg-display text-[clamp(2rem,6vw,3rem)]">Pick a Category</h2>
       </div>
 
-      <div className="bg-black/60 border border-emerald-800 rounded-lg p-5 grid grid-cols-1 md:grid-cols-3 gap-4 font-mono">
-        <label className="text-sm">
-          <div className="text-emerald-400 mb-1">round_time (sec):</div>
-          <input
-            type="number"
+      <div className="fg-panel p-5">
+        <div className="fg-lbl mb-3">round settings</div>
+        <div className="grid grid-cols-3 gap-3">
+          <NumField
+            label="round (sec)"
+            value={settings.roundSeconds}
             min={20}
             max={300}
-            value={settings.roundSeconds}
-            onChange={(e) => onChange({ roundSeconds: Math.max(20, Math.min(300, +e.target.value || 60)) })}
-            className="w-full bg-black border border-emerald-700 text-emerald-200 px-3 py-2 rounded focus:outline-none focus:border-emerald-300"
+            onChange={(v) => onChange({ roundSeconds: v })}
           />
-        </label>
-        <label className="text-sm">
-          <div className="text-emerald-400 mb-1">total_rounds:</div>
-          <input
-            type="number"
+          <NumField
+            label="rounds"
+            value={settings.totalRounds}
             min={1}
             max={20}
-            value={settings.totalRounds}
-            onChange={(e) => onChange({ totalRounds: Math.max(1, Math.min(20, +e.target.value || 5)) })}
-            className="w-full bg-black border border-emerald-700 text-emerald-200 px-3 py-2 rounded focus:outline-none focus:border-emerald-300"
+            onChange={(v) => onChange({ totalRounds: v })}
           />
-        </label>
-        <label className="text-sm">
-          <div className="text-emerald-400 mb-1">start_coins:</div>
-          <input
-            type="number"
+          <NumField
+            label="start coins"
+            value={settings.startingCoins}
             min={0}
             max={1000}
-            value={settings.startingCoins}
-            onChange={(e) => onChange({ startingCoins: Math.max(0, Math.min(1000, +e.target.value || 100)) })}
-            className="w-full bg-black border border-emerald-700 text-emerald-200 px-3 py-2 rounded focus:outline-none focus:border-emerald-300"
+            onChange={(v) => onChange({ startingCoins: v })}
           />
-        </label>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {CATEGORIES.map((cat, i) => (
           <motion.button
             key={cat}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            whileHover={{ scale: 1.03 }}
+            whileHover={{ y: -3 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => onStart(cat)}
-            className="px-5 py-4 rounded-lg bg-black/60 border-2 border-emerald-700 hover:border-emerald-300 hover:bg-emerald-900/30 font-mono text-emerald-200 hover:text-emerald-100 transition-all text-left"
+            className="fg-mode-card p-5 text-left flex items-center gap-3"
           >
-            <div className="text-emerald-500 text-xs mb-1">&gt; ./category</div>
-            <div className="text-lg font-bold">{cat}</div>
+            <div
+              className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-xl font-extrabold"
+              style={{
+                background: CATEGORY_GRADIENTS[cat] ?? 'linear-gradient(135deg, #22c55e, #4ade80)',
+                color: '#052e16',
+                boxShadow: '0 4px 14px rgba(74,222,128,.3)',
+              }}
+            >
+              {cat.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="fg-lbl mb-0.5">category</div>
+              <div className="text-base font-extrabold tracking-tight truncate">{cat}</div>
+            </div>
+            <span className="text-[var(--green-l)] text-xl">→</span>
           </motion.button>
         ))}
       </div>
     </div>
+  )
+}
+
+function NumField({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  onChange: (v: number) => void
+}) {
+  return (
+    <label className="block">
+      <div className="fg-lbl mb-1.5">{label}</div>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(Math.max(min, Math.min(max, +e.target.value || min)))}
+        className="fg-inp text-center"
+      />
+    </label>
   )
 }

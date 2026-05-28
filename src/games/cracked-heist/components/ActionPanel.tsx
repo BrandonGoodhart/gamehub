@@ -9,24 +9,30 @@ interface Props {
 
 type Kind = 'spy' | 'hack' | 'password'
 
-const STYLES: Record<Kind, { border: string; bg: string; text: string; glow: string }> = {
+const STYLES: Record<
+  Kind,
+  { grad: string; bg: string; border: string; text: string; icon: string }
+> = {
   hack: {
-    border: 'border-amber-500',
-    bg: 'hover:bg-amber-900/30',
-    text: 'text-amber-200',
-    glow: 'shadow-[0_0_12px_rgba(252,211,77,0.25)]',
+    grad: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+    bg: 'rgba(251,191,36,0.06)',
+    border: 'rgba(251,191,36,0.3)',
+    text: '#fcd34d',
+    icon: '⚡',
   },
   spy: {
-    border: 'border-cyan-400',
-    bg: 'hover:bg-cyan-900/30',
-    text: 'text-cyan-200',
-    glow: 'shadow-[0_0_12px_rgba(103,232,249,0.25)]',
+    grad: 'linear-gradient(135deg, #34d399, #5eead4)',
+    bg: 'rgba(94,234,212,0.05)',
+    border: 'rgba(94,234,212,0.3)',
+    text: '#99f6e4',
+    icon: '👁',
   },
   password: {
-    border: 'border-fuchsia-400',
-    bg: 'hover:bg-fuchsia-900/30',
-    text: 'text-fuchsia-200',
-    glow: 'shadow-[0_0_12px_rgba(240,171,252,0.25)]',
+    grad: 'linear-gradient(135deg, #4ade80, #a3e635)',
+    bg: 'rgba(163,230,53,0.05)',
+    border: 'rgba(163,230,53,0.3)',
+    text: '#d9f99d',
+    icon: '🔓',
   },
 }
 
@@ -44,21 +50,35 @@ function Btn({ kind, label, cost, desc, meCoins, onChoose }: BtnProps) {
   const s = STYLES[kind]
   return (
     <motion.button
-      whileHover={ok ? { scale: 1.03 } : {}}
+      whileHover={ok ? { y: -2 } : {}}
       whileTap={ok ? { scale: 0.97 } : {}}
       disabled={!ok}
       onClick={() => onChoose(kind)}
-      className={`w-full text-left px-4 py-3 rounded border font-mono text-sm transition-all ${
-        ok
-          ? `${s.border} ${s.bg} ${s.text} ${s.glow} bg-black/60 cursor-pointer`
-          : 'border-emerald-900/40 bg-black/30 text-emerald-700/50 cursor-not-allowed'
-      }`}
+      className="w-full text-left p-4 rounded-2xl transition-all border backdrop-blur-md"
+      style={{
+        background: ok ? s.bg : 'rgba(255,255,255,0.02)',
+        borderColor: ok ? s.border : 'rgba(255,255,255,0.05)',
+        cursor: ok ? 'pointer' : 'not-allowed',
+        opacity: ok ? 1 : 0.45,
+      }}
     >
-      <div className="flex items-center justify-between mb-1">
-        <span className="font-bold">&gt; {label}</span>
-        <span className="text-xs">-{cost}c</span>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-2">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-lg font-extrabold"
+            style={{ background: s.grad, color: '#052e16', boxShadow: ok ? `0 4px 12px ${s.border}` : 'none' }}
+          >
+            {s.icon}
+          </div>
+          <div className="font-extrabold text-base" style={{ color: ok ? s.text : 'rgba(255,255,255,0.4)' }}>
+            {label}
+          </div>
+        </div>
+        <div className="text-xs font-extrabold tabular-nums" style={{ color: ok ? s.text : 'rgba(255,255,255,0.3)' }}>
+          -{cost}c
+        </div>
       </div>
-      <div className="text-xs opacity-80 leading-tight">{desc}</div>
+      <div className="fg-sub text-xs leading-tight">{desc}</div>
     </motion.button>
   )
 }
@@ -70,7 +90,7 @@ export default function ActionPanel({ state, me, onChoose }: Props) {
     <div className="space-y-3">
       <Btn
         kind="hack"
-        label="HACK"
+        label="Hack"
         cost={c.hack}
         desc={`Steal +${r.hack}c instantly. Leaves a trace for 3 rounds.`}
         meCoins={me.coins}
@@ -78,7 +98,7 @@ export default function ActionPanel({ state, me, onChoose }: Props) {
       />
       <Btn
         kind="spy"
-        label="SPY"
+        label="Spy"
         cost={c.spy}
         desc={`Tail a hacker. If they hacked recently, steal up to ${r.spyCatch}c.`}
         meCoins={me.coins}
@@ -86,9 +106,9 @@ export default function ActionPanel({ state, me, onChoose }: Props) {
       />
       <Btn
         kind="password"
-        label="CRACK PASSWORD"
+        label="Crack Password"
         cost={c.password}
-        desc={`Pick 1 of 3 passwords. Right = steal ${r.passwordCatch}c. Wrong = nothing.`}
+        desc={`Pick 1 of 3 passwords. Right = steal ${r.passwordCatch}c.`}
         meCoins={me.coins}
         onChoose={onChoose}
       />

@@ -17,9 +17,9 @@ function QuestionInner({ question, onAnswer }: { question: Question; onAnswer: (
   }
 
   return (
-    <div className="space-y-4">
-      <div className="font-mono text-emerald-200 text-lg md:text-xl border-l-4 border-emerald-500 pl-4 py-2 bg-emerald-950/30">
-        <span className="text-emerald-500">?&gt;</span> {question.q}
+    <div className="space-y-5">
+      <div className="text-lg md:text-2xl font-extrabold tracking-tight leading-snug text-white">
+        {question.q}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {question.choices.map((c, i) => {
@@ -29,21 +29,46 @@ function QuestionInner({ question, onAnswer }: { question: Question; onAnswer: (
           return (
             <motion.button
               key={i}
-              whileHover={picked === null ? { scale: 1.02 } : {}}
+              whileHover={picked === null ? { y: -2, scale: 1.01 } : {}}
               whileTap={{ scale: 0.97 }}
               onClick={() => handle(i)}
               disabled={picked !== null}
-              className={`text-left px-4 py-3 rounded border font-mono text-sm md:text-base transition-all ${
+              className="text-left px-4 py-3 rounded-2xl border font-bold text-sm md:text-base transition-all"
+              style={
                 isWrong
-                  ? 'border-red-500 bg-red-900/30 text-red-300'
+                  ? {
+                      borderColor: 'rgba(251,113,133,0.5)',
+                      background: 'rgba(251,113,133,0.12)',
+                      color: '#fda4af',
+                    }
                   : isCorrect
-                    ? 'border-emerald-400 bg-emerald-500/20 text-emerald-200 shadow-[0_0_20px_rgba(50,220,120,0.5)]'
+                    ? {
+                        borderColor: 'rgba(74,222,128,0.6)',
+                        background: 'rgba(74,222,128,0.18)',
+                        color: '#bbf7d0',
+                        boxShadow: '0 0 24px rgba(74,222,128,0.4)',
+                      }
                     : picked !== null && !isPicked
-                      ? 'border-emerald-900/40 bg-black/30 text-emerald-500/40'
-                      : 'border-emerald-700 bg-black/50 text-emerald-200 hover:bg-emerald-900/30 hover:border-emerald-400 cursor-pointer'
-              }`}
+                      ? {
+                          borderColor: 'rgba(255,255,255,0.06)',
+                          background: 'rgba(255,255,255,0.02)',
+                          color: 'rgba(255,255,255,0.3)',
+                        }
+                      : {
+                          borderColor: 'rgba(74,222,128,0.18)',
+                          background: 'rgba(255,255,255,0.03)',
+                          color: '#f0fdf4',
+                          backdropFilter: 'blur(10px)',
+                        }
+              }
             >
-              <span className="text-emerald-500 mr-2">{String.fromCharCode(65 + i)}.</span>
+              <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-extrabold mr-3"
+                    style={{
+                      background: 'rgba(74,222,128,0.12)',
+                      color: '#86efac',
+                    }}>
+                {String.fromCharCode(65 + i)}
+              </span>
               {c}
             </motion.button>
           )
@@ -56,18 +81,16 @@ function QuestionInner({ question, onAnswer }: { question: Question; onAnswer: (
 export default function QuestionCard({ question, onAnswer }: Props) {
   if (!question) {
     return (
-      <div className="text-emerald-500 font-mono text-sm animate-pulse">
-        &gt; loading_signal...
-      </div>
+      <div className="fg-sub text-sm animate-pulse">loading next question…</div>
     )
   }
   return (
     <AnimatePresence mode="wait">
       <motion.div
         key={question.q}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
+        initial={{ opacity: 0, x: 30 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -30 }}
         transition={{ duration: 0.25 }}
       >
         <QuestionInner key={question.q} question={question} onAnswer={onAnswer} />

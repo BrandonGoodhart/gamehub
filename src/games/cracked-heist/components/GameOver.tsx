@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import type { RoomState } from '../types'
+import AvatarSvg from './AvatarSvg'
 
 interface Props {
   state: RoomState
@@ -13,53 +14,62 @@ export default function GameOver({ state, onReset }: Props) {
   const youWon = winner.id === state.meId
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="max-w-2xl mx-auto bg-black/80 border-2 border-emerald-400 rounded-lg p-8 font-mono shadow-[0_0_40px_rgba(50,220,120,0.6)]"
+      className="max-w-xl mx-auto fg-panel fg-panel-lg relative overflow-hidden"
     >
       <div className="text-center mb-6">
-        <div className="text-emerald-500 text-sm mb-2">// session_terminated</div>
-        <h2 className={`text-5xl font-bold mb-3 ${youWon ? 'text-emerald-300' : 'text-red-400'}`}>
-          {youWon ? '> WINNER_' : '> CRACKED_'}
+        <div className="fg-lbl text-[#fbbf24] mb-1">game over</div>
+        <h2 className="fg-display text-5xl mb-3">
+          {youWon ? 'You Won!' : 'Cracked.'}
         </h2>
-        <div className="text-emerald-200 text-xl">
-          {winner.handle} <span className="text-emerald-500">::</span> {winner.coins}c
+        <div className="flex items-center justify-center gap-3 mt-3">
+          <AvatarSvg avatar={winner.avatar} size={56} />
+          <div className="text-left">
+            <div className="fg-lbl">winner</div>
+            <div className="text-xl font-extrabold text-white">{winner.handle}</div>
+            <div className="text-sm font-bold" style={{ color: '#fbbf24' }}>
+              {winner.coins}c
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="text-emerald-500 text-xs mb-2">/* your stats */</div>
-      <div className="grid grid-cols-2 gap-3 mb-6 text-sm">
-        <Stat label="balance" value={`${me.coins}c`} />
-        <Stat label="hacks_run" value={me.hacksDone} />
+      <div className="fg-lbl mb-2">your stats</div>
+      <div className="grid grid-cols-3 gap-2 mb-5">
+        <Stat label="coins" value={`${me.coins}c`} />
+        <Stat label="hacks" value={me.hacksDone} />
         <Stat label="caught" value={me.caughtCount} />
-        <Stat label="spies_run" value={me.spiesDone} />
-        <Stat label="cracks_tried" value={me.passwordsGuessed} />
+        <Stat label="spies" value={me.spiesDone} />
+        <Stat label="cracks" value={me.passwordsGuessed} />
         <Stat label="rank" value={`#${sorted.findIndex((p) => p.id === me.id) + 1}`} />
       </div>
 
-      <div className="text-emerald-500 text-xs mb-2">/* final standings */</div>
-      <div className="space-y-1 mb-6">
+      <div className="fg-lbl mb-2">final standings</div>
+      <div className="space-y-1.5 mb-5">
         {sorted.map((p, i) => (
           <div
             key={p.id}
-            className={`flex items-center justify-between px-3 py-2 rounded ${
-              p.id === state.meId ? 'bg-emerald-900/40 border border-emerald-700' : 'bg-black/40'
-            }`}
+            className="flex items-center justify-between px-3 py-1.5 rounded-xl"
+            style={{
+              background: p.id === state.meId ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(74,222,128,0.08)',
+            }}
           >
             <div className="flex items-center gap-2">
-              <span className="text-emerald-500 w-6">{i + 1}.</span>
-              <span className="text-emerald-200">{p.handle}</span>
+              <span className="fg-sub w-5 text-right">{i + 1}.</span>
+              <AvatarSvg avatar={p.avatar} size={24} />
+              <span className="font-bold text-white text-sm">{p.handle}</span>
             </div>
-            <span className="text-amber-300 tabular-nums">{p.coins}c</span>
+            <span className="font-extrabold text-sm tabular-nums" style={{ color: '#fbbf24' }}>
+              {p.coins}c
+            </span>
           </div>
         ))}
       </div>
 
-      <button
-        onClick={onReset}
-        className="w-full py-3 rounded bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-lg tracking-wider"
-      >
-        &gt; NEW HEIST_
+      <button onClick={onReset} className="fg-btn fg-btn-grad">
+        New Game →
       </button>
     </motion.div>
   )
@@ -67,9 +77,15 @@ export default function GameOver({ state, onReset }: Props) {
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-black/50 border border-emerald-800 rounded px-3 py-2">
-      <div className="text-emerald-500 text-[10px] uppercase">{label}</div>
-      <div className="text-emerald-200 text-lg">{value}</div>
+    <div
+      className="rounded-2xl p-3 text-center"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(74,222,128,0.12)',
+      }}
+    >
+      <div className="fg-lbl text-[10px]">{label}</div>
+      <div className="text-lg font-extrabold text-white tabular-nums">{value}</div>
     </div>
   )
 }

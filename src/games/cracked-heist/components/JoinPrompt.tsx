@@ -16,39 +16,42 @@ export default function JoinPrompt({ onJoin, onBack, error }: Props) {
   }
 
   return (
-    <div className="max-w-md mx-auto space-y-6">
-      <button
-        onClick={onBack}
-        className="text-emerald-500 hover:text-emerald-300 font-mono text-sm"
-      >
-        &lt; back
+    <div className="max-w-md mx-auto w-full">
+      <button onClick={onBack} className="fg-sub text-sm mb-4 hover:text-white transition-colors">
+        ← back
       </button>
+
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
+        initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-black/80 border-2 border-cyan-500 rounded-2xl p-8 shadow-[0_0_30px_rgba(103,232,249,0.4)] text-center"
+        transition={{ duration: 0.35 }}
+        className="fg-panel fg-panel-lg text-center"
       >
-        <div className="text-cyan-500 font-mono text-sm mb-2">// authenticate</div>
-        <h2 className="text-2xl md:text-3xl font-mono font-bold text-cyan-300 mb-6 tracking-wider">
-          ENTER ROOM CODE
+        <div className="fg-lbl mb-2">/ join game</div>
+        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-1 fg-display">
+          Enter Room Code
         </h2>
+        <p className="fg-sub text-xs mb-6">your teacher will share it on the board</p>
+
         <input
           autoFocus
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 6))}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
           placeholder="------"
-          className="w-full bg-black border-2 border-cyan-700 text-cyan-200 px-4 py-4 rounded-lg font-mono text-3xl text-center tracking-[0.6em] focus:outline-none focus:border-cyan-300"
+          className="fg-inp text-center text-3xl tracking-[0.6em]"
+          style={{ fontFamily: 'JetBrains Mono, SF Mono, ui-monospace, monospace' }}
         />
-        {error && <div className="text-red-400 font-mono text-xs mt-3">!! {error}</div>}
+        {error && <div className="text-[var(--red)] text-xs mt-3 font-semibold">!! {error}</div>}
+
         <motion.button
-          whileHover={{ scale: 1.03 }}
+          whileHover={{ y: -2 }}
           whileTap={{ scale: 0.97 }}
           disabled={code.length !== 6}
           onClick={submit}
-          className="w-full mt-5 py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:bg-cyan-900 disabled:text-cyan-700 text-black font-mono font-bold text-lg tracking-wider"
+          className="fg-btn fg-btn-grad mt-5"
         >
-          &gt; CONNECT_
+          Connect →
         </motion.button>
       </motion.div>
     </div>

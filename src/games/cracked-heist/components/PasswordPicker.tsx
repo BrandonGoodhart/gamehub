@@ -24,22 +24,33 @@ export default function PasswordPicker({ target, onGuess }: Props) {
   const [options] = useState(() => buildOptions(target.password))
 
   return (
-    <div className="space-y-3">
-      <div className="text-emerald-400 text-sm">
-        Target: <span className="text-emerald-200 font-bold">{target.handle}</span>
+    <div className="space-y-4">
+      <div className="text-sm">
+        <span className="fg-sub">Target:</span>{' '}
+        <span className="font-extrabold text-[var(--green-l)]">{target.handle}</span>
       </div>
-      <div className="text-emerald-200/70 text-xs">Pick the right password to crack their wallet:</div>
+      <div className="fg-sub text-xs">Pick the right password to crack their wallet:</div>
       <div className="space-y-2">
         {options.map((opt) => (
           <motion.button
             key={opt}
-            whileHover={{ scale: 1.02, x: 4 }}
+            whileHover={{ x: 4 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => onGuess(opt)}
-            className="w-full text-left px-4 py-3 rounded border border-fuchsia-500 bg-black/60 hover:bg-fuchsia-900/30 text-fuchsia-200 transition-colors"
+            className="w-full text-left p-4 rounded-2xl border font-bold transition-all backdrop-blur-md"
+            style={{
+              borderColor: 'rgba(163,230,53,0.3)',
+              background: 'rgba(163,230,53,0.05)',
+              color: '#d9f99d',
+            }}
           >
-            <span className="text-fuchsia-500 mr-2">$</span>
-            <span className="tracking-wider">{opt}</span>
+            <span className="mr-2 text-[var(--lime)]">$</span>
+            <span
+              className="tracking-wider"
+              style={{ fontFamily: 'JetBrains Mono, SF Mono, ui-monospace, monospace' }}
+            >
+              {opt}
+            </span>
           </motion.button>
         ))}
       </div>

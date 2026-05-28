@@ -24,46 +24,42 @@ export default function AvatarPicker({ initialHandle = '', initialAvatar, onConf
   const set = (patch: Partial<Avatar>) => setAvatar((a) => ({ ...a, ...patch }))
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto w-full space-y-5">
       <div className="text-center">
-        <div className="text-emerald-500 font-mono text-sm mb-1">// build_identity</div>
-        <h2 className="text-3xl md:text-4xl font-mono font-bold text-emerald-300 tracking-wider">
-          MAKE YOUR HACKER
-        </h2>
+        <div className="fg-lbl mb-2">/ build identity</div>
+        <h2 className="fg-display text-[clamp(2rem,6vw,3rem)]">Make Your Hacker</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-5">
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
+          initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-black/70 border-2 border-emerald-500 rounded-2xl p-5 shadow-[0_0_25px_rgba(50,220,120,0.3)] flex flex-col items-center gap-3"
+          className="fg-panel fg-panel-lg flex flex-col items-center gap-4"
         >
-          <div className="relative">
-            <AvatarSvg avatar={avatar} size={200} />
+          <div
+            className="rounded-3xl p-3"
+            style={{
+              background: 'radial-gradient(circle at 50% 30%, rgba(74,222,128,.15), transparent 70%)',
+            }}
+          >
+            <AvatarSvg avatar={avatar} size={180} />
           </div>
           <input
             value={handle}
             onChange={(e) => setHandle(e.target.value.slice(0, 12))}
-            placeholder="enter_name"
-            className="w-full bg-black border-2 border-emerald-700 text-emerald-200 px-3 py-2 rounded font-mono text-center text-lg tracking-wider focus:outline-none focus:border-emerald-300"
+            placeholder="your name"
+            className="fg-inp text-center text-lg font-bold"
           />
-          <button
-            onClick={() => setAvatar(randomAvatar())}
-            className="w-full py-2 rounded border border-emerald-600 hover:border-emerald-300 hover:bg-emerald-900/30 text-emerald-200 font-mono text-sm"
-          >
-            &gt; randomize
+          <button onClick={() => setAvatar(randomAvatar())} className="fg-btn fg-btn-outline fg-btn-sm">
+            🎲 Randomize
           </button>
         </motion.div>
 
-        <div className="space-y-4 bg-black/60 border border-emerald-800 rounded-2xl p-4 max-h-[60vh] overflow-y-auto">
-          <Section title="HAIR">
+        <div className="fg-panel p-5 space-y-5 max-h-[60vh] overflow-y-auto">
+          <Section title="Hair">
             <Row>
               {HAIR_STYLES.map((s) => (
-                <Pill
-                  key={s}
-                  active={avatar.hairStyle === s}
-                  onClick={() => set({ hairStyle: s })}
-                >
+                <Pill key={s} active={avatar.hairStyle === s} onClick={() => set({ hairStyle: s })}>
                   {s}
                 </Pill>
               ))}
@@ -75,7 +71,7 @@ export default function AvatarPicker({ initialHandle = '', initialAvatar, onConf
             </Row>
           </Section>
 
-          <Section title="SKIN">
+          <Section title="Skin">
             <Row>
               {SKIN_COLORS.map((c) => (
                 <Swatch key={c} color={c} active={avatar.skinColor === c} onClick={() => set({ skinColor: c })} />
@@ -83,7 +79,7 @@ export default function AvatarPicker({ initialHandle = '', initialAvatar, onConf
             </Row>
           </Section>
 
-          <Section title="FACE">
+          <Section title="Face">
             <Row>
               {EXPRESSIONS.map((e) => (
                 <Pill key={e} active={avatar.expression === e} onClick={() => set({ expression: e })}>
@@ -93,7 +89,7 @@ export default function AvatarPicker({ initialHandle = '', initialAvatar, onConf
             </Row>
           </Section>
 
-          <Section title="HAT">
+          <Section title="Hat">
             <Row>
               {HATS.map((h) => (
                 <Pill key={h} active={avatar.hat === h} onClick={() => set({ hat: h })}>
@@ -111,13 +107,13 @@ export default function AvatarPicker({ initialHandle = '', initialAvatar, onConf
       </div>
 
       <motion.button
-        whileHover={{ scale: 1.02 }}
+        whileHover={{ y: -2 }}
         whileTap={{ scale: 0.97 }}
         disabled={!handle.trim()}
-        onClick={() => onConfirm(handle.trim().toUpperCase(), avatar)}
-        className="w-full py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-900 disabled:text-emerald-700 text-black font-mono font-bold text-xl tracking-wider shadow-[0_0_25px_rgba(50,220,120,0.5)]"
+        onClick={() => onConfirm(handle.trim(), avatar)}
+        className="fg-btn fg-btn-grad"
       >
-        &gt; ENTER LOBBY_
+        Enter Lobby →
       </motion.button>
     </div>
   )
@@ -126,7 +122,7 @@ export default function AvatarPicker({ initialHandle = '', initialAvatar, onConf
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-emerald-500 font-mono text-xs mb-2">/* {title} */</div>
+      <div className="fg-lbl mb-2">{title}</div>
       <div className="space-y-2">{children}</div>
     </div>
   )
@@ -146,14 +142,7 @@ function Pill({
   children: React.ReactNode
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-1 rounded-full font-mono text-xs border transition-all ${
-        active
-          ? 'border-emerald-300 bg-emerald-500/30 text-emerald-100 shadow-[0_0_8px_rgba(50,220,120,0.6)]'
-          : 'border-emerald-800 text-emerald-300/70 hover:border-emerald-500 hover:text-emerald-200'
-      }`}
-    >
+    <button onClick={onClick} className={`fg-pill ${active ? 'fg-pill-sel' : ''}`}>
       {children}
     </button>
   )
@@ -171,11 +160,12 @@ function Swatch({
   return (
     <button
       onClick={onClick}
-      style={{ backgroundColor: color }}
+      style={{
+        backgroundColor: color,
+        boxShadow: active ? '0 0 0 3px rgba(74,222,128,.8), 0 0 18px rgba(74,222,128,.5)' : undefined,
+      }}
       className={`w-8 h-8 rounded-full border-2 transition-all ${
-        active
-          ? 'border-emerald-200 scale-110 shadow-[0_0_10px_rgba(50,220,120,0.8)]'
-          : 'border-emerald-800 hover:border-emerald-400 hover:scale-105'
+        active ? 'border-[var(--green-l)] scale-110' : 'border-[var(--glass-border)] hover:border-[var(--green)] hover:scale-105'
       }`}
     />
   )
