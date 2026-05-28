@@ -14,6 +14,12 @@ const games = [
     path: '/poker',
     emoji: '$',
   },
+  {
+    title: 'Cracked-Heist',
+    description: 'Hack, spy, and crack passwords to steal coins in a 6-digit room',
+    path: '/cracked-heist',
+    emoji: '>_',
+  },
 ]
 
 export default function Home() {
