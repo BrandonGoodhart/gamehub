@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
-import type { ActionKind, EventLog, Phase, Player, Question, RoomState, Settings } from './types'
+import type { ActionKind, Avatar, EventLog, Phase, Player, Question, RoomState, Settings } from './types'
 import { generatePassword, generateRoomCode, pickN, uid } from './utils'
-import { BOT_NAMES, HANDLES } from './words'
+import { BOT_NAMES } from './words'
 import { CATEGORIES, QUESTION_BANK } from './questions'
 import { botAnswer, botDecideAction, botSkill } from './bots'
+import { defaultAvatar, randomAvatar } from './avatar'
 
 const DEFAULT_SETTINGS: Settings = {
   roundSeconds: 60,
@@ -23,6 +24,8 @@ function makeBotPlayer(handle: string): Player {
     id: uid(),
     handle,
     isHuman: false,
+    isHost: false,
+    avatar: randomAvatar(),
     coins: DEFAULT_SETTINGS.startingCoins,
     hackedInRounds: [],
     caughtCount: 0,
@@ -34,37 +37,37 @@ function makeBotPlayer(handle: string): Player {
   }
 }
 
-function makeHumanPlayer(handle: string): Player {
-  return { ...makeBotPlayer(handle), isHuman: true }
-}
-
 function initialState(): RoomState {
   const meId = uid()
-  const handle = 'YOU'
-  const me: Player = { ...makeHumanPlayer(handle), id: meId }
-  const bots = pickN(BOT_NAMES, 4).map(makeBotPlayer)
   return {
     code: generateRoomCode(),
-    phase: 'lobby',
+    phase: 'start',
     round: 0,
     timeLeft: DEFAULT_SETTINGS.roundSeconds,
-    players: [me, ...bots],
+    players: [],
     meId,
+    hostId: '',
     category: null,
     questionQueue: [],
     currentQuestion: null,
     questionStartTs: 0,
-    events: [makeEvent('Room initialized. Awaiting hackers...', 'system')],
+    events: [],
     settings: { ...DEFAULT_SETTINGS },
     pendingAction: null,
+    countdownValue: 3,
   }
 }
 
 type Action =
   | { type: 'setPhase'; phase: Phase }
   | { type: 'setSettings'; patch: Partial<Settings> }
-  | { type: 'pickHandle'; handle: string }
+  | { type: 'createAsHost'; handle: string; avatar: Avatar }
+  | { type: 'joinAsPlayer'; handle: string; avatar: Avatar }
+  | { type: 'addBotsForDemo'; count: number }
+  | { type: 'kickPlayer'; id: string }
   | { type: 'pickCategory'; category: string }
+  | { type: 'beginCountdown' }
+  | { type: 'tickCountdown' }
   | { type: 'tickTimer' }
   | { type: 'nextQuestion' }
   | { type: 'answerQuestion'; playerId: string; choice: number }
@@ -97,27 +100,82 @@ function reducer(state: RoomState, action: Action): RoomState {
       return { ...state, phase: action.phase }
     case 'setSettings':
       return { ...state, settings: { ...state.settings, ...action.patch } }
-    case 'pickHandle': {
-      const next = updatePlayer(state, state.meId, { handle: action.handle })
-      const used = new Set(next.players.map((p) => p.handle))
-      const fresh = HANDLES.filter((h) => !used.has(h))
-      let i = 0
-      const withBots = next.players.map((p) => {
-        if (p.isHuman) return p
-        if (p.handle === action.handle || HANDLES.includes(p.handle)) return p
-        const newH = fresh[i++ % fresh.length] ?? p.handle
-        return { ...p, handle: newH }
-      })
-      return { ...next, players: withBots }
+    case 'createAsHost': {
+      const me: Player = {
+        id: state.meId,
+        handle: action.handle,
+        isHuman: true,
+        isHost: true,
+        avatar: action.avatar,
+        coins: state.settings.startingCoins,
+        hackedInRounds: [],
+        caughtCount: 0,
+        hacksDone: 0,
+        spiesDone: 0,
+        passwordsGuessed: 0,
+        password: generatePassword(),
+        alive: true,
+      }
+      return {
+        ...state,
+        players: [me],
+        hostId: state.meId,
+        phase: 'hostLobby',
+        events: [makeEvent(`>> room ${state.code} opened by ${action.handle}`, 'system')],
+      }
+    }
+    case 'joinAsPlayer': {
+      const me: Player = {
+        id: state.meId,
+        handle: action.handle,
+        isHuman: true,
+        isHost: false,
+        avatar: action.avatar,
+        coins: state.settings.startingCoins,
+        hackedInRounds: [],
+        caughtCount: 0,
+        hacksDone: 0,
+        spiesDone: 0,
+        passwordsGuessed: 0,
+        password: generatePassword(),
+        alive: true,
+      }
+      const exists = state.players.some((p) => p.id === state.meId)
+      return {
+        ...state,
+        players: exists ? state.players : [...state.players, me],
+        phase: 'hostLobby',
+      }
+    }
+    case 'addBotsForDemo': {
+      const used = new Set(state.players.map((p) => p.handle.toLowerCase()))
+      const fresh = BOT_NAMES.filter((b) => !used.has(b.toLowerCase()))
+      const newBots = pickN(fresh, action.count).map(makeBotPlayer)
+      return { ...state, players: [...state.players, ...newBots] }
+    }
+    case 'kickPlayer': {
+      if (action.id === state.hostId) return state
+      return {
+        ...state,
+        players: state.players.filter((p) => p.id !== action.id),
+        events: [
+          makeEvent(`>> ${state.players.find((p) => p.id === action.id)?.handle ?? '?'} was kicked`, 'system'),
+          ...state.events,
+        ],
+      }
     }
     case 'pickCategory':
       return { ...state, category: action.category, questionQueue: shuffledQs(action.category) }
+    case 'beginCountdown':
+      return { ...state, phase: 'countdown', countdownValue: 3 }
+    case 'tickCountdown':
+      return { ...state, countdownValue: state.countdownValue - 1 }
     case 'tickTimer':
       return { ...state, timeLeft: Math.max(0, state.timeLeft - 1) }
     case 'nextQuestion': {
-      const [next, ...rest] = state.questionQueue.length > 0 ? state.questionQueue : shuffledQs(state.category ?? CATEGORIES[0])
-      const queue = state.questionQueue.length > 0 ? rest : shuffledQs(state.category ?? CATEGORIES[0])
-      return { ...state, currentQuestion: next, questionStartTs: Date.now(), questionQueue: queue }
+      const queueSrc = state.questionQueue.length > 0 ? state.questionQueue : shuffledQs(state.category ?? CATEGORIES[0])
+      const [next, ...rest] = queueSrc
+      return { ...state, currentQuestion: next, questionStartTs: Date.now(), questionQueue: rest }
     }
     case 'answerQuestion': {
       const q = state.currentQuestion
@@ -128,12 +186,10 @@ function reducer(state: RoomState, action: Action): RoomState {
       const reward = state.settings.rewards.correctAnswer
       if (correct) {
         const next = updatePlayer(state, action.playerId, { coins: me.coins + reward })
-        if (me.isHuman) {
-          return addEvent(next, `+${reward}c // signal decoded`, 'good')
-        }
+        if (me.id === state.meId) return addEvent(next, `+${reward}c // signal decoded`, 'good')
         return next
       }
-      if (me.isHuman) return addEvent(state, `Wrong key. Signal lost.`, 'bad')
+      if (me.id === state.meId) return addEvent(state, `Wrong key. Signal lost.`, 'bad')
       return state
     }
     case 'event':
@@ -144,15 +200,16 @@ function reducer(state: RoomState, action: Action): RoomState {
       const c = state.settings.costs.hack
       const r = state.settings.rewards.hack
       if (p.coins < c) {
-        return p.isHuman ? addEvent(state, 'Not enough coins to hack.', 'bad') : state
+        return p.id === state.meId ? addEvent(state, 'Not enough coins to hack.', 'bad') : state
       }
       const next = updatePlayer(state, action.playerId, {
         coins: p.coins - c + r,
         hackedInRounds: [...p.hackedInRounds, state.round],
         hacksDone: p.hacksDone + 1,
       })
-      const tone: EventLog['tone'] = p.isHuman ? 'good' : 'neutral'
-      const msg = p.isHuman
+      const isMe = p.id === state.meId
+      const tone: EventLog['tone'] = isMe ? 'good' : 'neutral'
+      const msg = isMe
         ? `>> HACK successful. +${r - c}c net. You left fingerprints (3 rounds).`
         : `${p.handle} ran a hack in the shadows.`
       return addEvent(next, msg, tone)
@@ -163,25 +220,27 @@ function reducer(state: RoomState, action: Action): RoomState {
       if (!spy || !target) return state
       const c = state.settings.costs.spy
       if (spy.coins < c) {
-        return spy.isHuman ? addEvent(state, 'Not enough coins to spy.', 'bad') : state
+        return spy.id === state.meId ? addEvent(state, 'Not enough coins to spy.', 'bad') : state
       }
       const recentlyHacked = target.hackedInRounds.some((r) => r >= state.round - 2)
       let s1 = updatePlayer(state, spy.id, { coins: spy.coins - c, spiesDone: spy.spiesDone + 1 })
+      const spyIsMe = spy.id === state.meId
+      const targetIsMe = target.id === state.meId
       if (recentlyHacked) {
         const steal = Math.min(target.coins, state.settings.rewards.spyCatch)
         s1 = updatePlayer(s1, target.id, { coins: target.coins - steal, caughtCount: target.caughtCount + 1 })
         const spyNow = s1.players.find((p) => p.id === spy.id)!
         s1 = updatePlayer(s1, spy.id, { coins: spyNow.coins + steal })
-        const tone: EventLog['tone'] = spy.isHuman ? 'good' : 'bad'
-        const msg = spy.isHuman
+        const tone: EventLog['tone'] = spyIsMe ? 'good' : 'bad'
+        const msg = spyIsMe
           ? `>> CAUGHT ${target.handle} red-handed. +${steal}c stolen!`
-          : target.isHuman
+          : targetIsMe
             ? `${spy.handle} caught YOU hacking. -${steal}c.`
             : `${spy.handle} caught ${target.handle} hacking.`
         return addEvent(s1, msg, tone)
       }
-      const tone: EventLog['tone'] = spy.isHuman ? 'bad' : 'neutral'
-      const msg = spy.isHuman
+      const tone: EventLog['tone'] = spyIsMe ? 'bad' : 'neutral'
+      const msg = spyIsMe
         ? `Spied ${target.handle}. They're clean. -${c}c wasted.`
         : `${spy.handle} sniffed around ${target.handle}'s traffic.`
       return addEvent(s1, msg, tone)
@@ -192,24 +251,26 @@ function reducer(state: RoomState, action: Action): RoomState {
       if (!g || !t) return state
       const c = state.settings.costs.password
       if (g.coins < c) {
-        return g.isHuman ? addEvent(state, 'Not enough coins to crack password.', 'bad') : state
+        return g.id === state.meId ? addEvent(state, 'Not enough coins to crack password.', 'bad') : state
       }
       let s1 = updatePlayer(state, g.id, { coins: g.coins - c, passwordsGuessed: g.passwordsGuessed + 1 })
+      const gIsMe = g.id === state.meId
+      const tIsMe = t.id === state.meId
       if (action.guess === t.password) {
         const steal = Math.min(t.coins, state.settings.rewards.passwordCatch)
         s1 = updatePlayer(s1, t.id, { coins: t.coins - steal, password: generatePassword() })
         const gNow = s1.players.find((p) => p.id === g.id)!
         s1 = updatePlayer(s1, g.id, { coins: gNow.coins + steal })
-        const tone: EventLog['tone'] = g.isHuman ? 'good' : 'bad'
-        const msg = g.isHuman
+        const tone: EventLog['tone'] = gIsMe ? 'good' : 'bad'
+        const msg = gIsMe
           ? `>> CRACKED ${t.handle}'s password! +${steal}c.`
-          : t.isHuman
+          : tIsMe
             ? `${g.handle} cracked YOUR password. -${steal}c.`
             : `${g.handle} cracked ${t.handle}'s password.`
         return addEvent(s1, msg, tone)
       }
-      const tone: EventLog['tone'] = g.isHuman ? 'bad' : 'neutral'
-      const msg = g.isHuman
+      const tone: EventLog['tone'] = gIsMe ? 'bad' : 'neutral'
+      const msg = gIsMe
         ? `Wrong password for ${t.handle}. -${c}c.`
         : `${g.handle} tried to crack a password and failed.`
       return addEvent(s1, msg, tone)
@@ -256,6 +317,16 @@ export function useGame() {
       dispatch({ type: 'endRound' })
     }
   }, [state.timeLeft, state.phase])
+
+  useEffect(() => {
+    if (state.phase !== 'countdown') return
+    if (state.countdownValue < 0) {
+      dispatch({ type: 'startRound' })
+      return
+    }
+    const id = setTimeout(() => dispatch({ type: 'tickCountdown' }), 1000)
+    return () => clearTimeout(id)
+  }, [state.phase, state.countdownValue])
 
   useEffect(() => {
     if (state.phase !== 'playing') return
@@ -307,10 +378,6 @@ export function useGame() {
     return () => clearInterval(id)
   }, [state.phase])
 
-  const advanceQuestion = useCallback(() => {
-    dispatch({ type: 'nextQuestion' })
-  }, [])
-
   const answer = useCallback((choice: number) => {
     const cur = stateRef.current
     dispatch({ type: 'answerQuestion', playerId: cur.meId, choice })
@@ -329,5 +396,5 @@ export function useGame() {
     dispatch({ type: 'doPassword', guesserId: stateRef.current.meId, targetId, guess })
   }, [])
 
-  return { state, dispatch, advanceQuestion, answer, doHack, doSpy, doPassword }
+  return { state, dispatch, answer, doHack, doSpy, doPassword, defaultAvatarFor: defaultAvatar }
 }

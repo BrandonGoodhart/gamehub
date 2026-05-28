@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import type { Player, RoomState } from '../types'
+import AvatarSvg from './AvatarSvg'
 
 interface Props {
   state: RoomState
@@ -12,6 +13,7 @@ export default function HUD({ state, me }: Props) {
   return (
     <div className="bg-black/70 border border-emerald-700 rounded-lg px-4 py-3 font-mono flex items-center justify-between gap-4 backdrop-blur-sm">
       <div className="flex items-center gap-4">
+        <AvatarSvg avatar={me.avatar} size={48} />
         <div>
           <div className="text-emerald-500 text-[10px] uppercase">room</div>
           <div className="text-emerald-200 text-sm tracking-widest">{state.code}</div>

@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { useGame } from '../games/cracked-heist/gameState'
 import MatrixBg from '../games/cracked-heist/components/MatrixBg'
-import Lobby from '../games/cracked-heist/components/Lobby'
-import WordPick from '../games/cracked-heist/components/WordPick'
+import StartScreen from '../games/cracked-heist/components/StartScreen'
+import JoinPrompt from '../games/cracked-heist/components/JoinPrompt'
+import AvatarPicker from '../games/cracked-heist/components/AvatarPicker'
+import HostLobby from '../games/cracked-heist/components/HostLobby'
 import CategoryPick from '../games/cracked-heist/components/CategoryPick'
+import Countdown from '../games/cracked-heist/components/Countdown'
 import HUD from '../games/cracked-heist/components/HUD'
 import QuestionCard from '../games/cracked-heist/components/QuestionCard'
 import ActionPanel from '../games/cracked-heist/components/ActionPanel'
@@ -14,6 +17,7 @@ import Modal from '../games/cracked-heist/components/Modal'
 import PasswordPicker from '../games/cracked-heist/components/PasswordPicker'
 import RoundEnd from '../games/cracked-heist/components/RoundEnd'
 import GameOver from '../games/cracked-heist/components/GameOver'
+import { defaultAvatar } from '../games/cracked-heist/avatar'
 
 type ActionFlow =
   | { kind: 'none' }
@@ -21,10 +25,14 @@ type ActionFlow =
   | { kind: 'passwordPickTarget' }
   | { kind: 'passwordPickGuess'; targetId: string }
 
+type EntryRole = 'host' | 'player' | null
+
 export default function CrackedHeist() {
   const { state, dispatch, answer, doHack, doSpy, doPassword } = useGame()
   const [flow, setFlow] = useState<ActionFlow>({ kind: 'none' })
-  const me = state.players.find((p) => p.id === state.meId)!
+  const [role, setRole] = useState<EntryRole>(null)
+  const me = state.players.find((p) => p.id === state.meId)
+  const isHost = !!me?.isHost
   const others = state.players.filter((p) => p.id !== state.meId && p.alive)
 
   function chooseAction(kind: 'spy' | 'hack' | 'password') {
@@ -49,19 +57,55 @@ export default function CrackedHeist() {
           <Link to="/" className="font-mono text-emerald-500 hover:text-emerald-300 text-sm transition-colors">
             &lt; cd ../
           </Link>
-          <div className="font-mono text-emerald-700 text-xs">cracked-heist v0.1 // mainline</div>
+          <div className="font-mono text-emerald-700 text-xs">cracked-heist v0.2 // mainline</div>
         </div>
 
-        {state.phase === 'lobby' && (
-          <Lobby state={state} onContinue={() => dispatch({ type: 'setPhase', phase: 'pickWord' })} />
+        {state.phase === 'start' && (
+          <StartScreen
+            onHost={() => {
+              setRole('host')
+              dispatch({ type: 'setPhase', phase: 'pickAvatar' })
+            }}
+            onJoin={() => {
+              setRole('player')
+              dispatch({ type: 'setPhase', phase: 'joinPrompt' })
+            }}
+          />
         )}
 
-        {state.phase === 'pickWord' && (
-          <WordPick
-            onPick={(h) => {
-              dispatch({ type: 'pickHandle', handle: h })
-              dispatch({ type: 'setPhase', phase: 'pickCategory' })
+        {state.phase === 'joinPrompt' && (
+          <JoinPrompt
+            onJoin={() => {
+              dispatch({ type: 'setPhase', phase: 'pickAvatar' })
             }}
+            onBack={() => {
+              setRole(null)
+              dispatch({ type: 'setPhase', phase: 'start' })
+            }}
+          />
+        )}
+
+        {state.phase === 'pickAvatar' && (
+          <AvatarPicker
+            initialAvatar={defaultAvatar()}
+            onConfirm={(handle, avatar) => {
+              if (role === 'host') {
+                dispatch({ type: 'createAsHost', handle, avatar })
+                dispatch({ type: 'addBotsForDemo', count: 3 })
+              } else {
+                dispatch({ type: 'joinAsPlayer', handle, avatar })
+                dispatch({ type: 'addBotsForDemo', count: 3 })
+              }
+            }}
+          />
+        )}
+
+        {state.phase === 'hostLobby' && (
+          <HostLobby
+            state={state}
+            isHost={isHost}
+            onKick={(id) => dispatch({ type: 'kickPlayer', id })}
+            onStart={() => dispatch({ type: 'setPhase', phase: 'pickCategory' })}
           />
         )}
 
@@ -71,12 +115,18 @@ export default function CrackedHeist() {
             onChange={(patch) => dispatch({ type: 'setSettings', patch })}
             onStart={(cat) => {
               dispatch({ type: 'pickCategory', category: cat })
-              dispatch({ type: 'startRound' })
+              dispatch({ type: 'beginCountdown' })
             }}
           />
         )}
 
-        {(state.phase === 'playing' || state.phase === 'roundEnd') && (
+        {state.phase === 'countdown' && (
+          <div className="max-w-6xl mx-auto">
+            <Countdown value={state.countdownValue} />
+          </div>
+        )}
+
+        {(state.phase === 'playing' || state.phase === 'roundEnd') && me && (
           <div className="max-w-6xl mx-auto space-y-4">
             <HUD state={state} me={me} />
 
@@ -105,7 +155,7 @@ export default function CrackedHeist() {
             )}
 
             {state.phase === 'roundEnd' && (
-              <RoundEnd state={state} onNext={() => dispatch({ type: 'startRound' })} />
+              <RoundEnd state={state} onNext={() => dispatch({ type: 'beginCountdown' })} />
             )}
           </div>
         )}
