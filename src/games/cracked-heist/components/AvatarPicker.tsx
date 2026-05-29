@@ -53,12 +53,15 @@ export default function AvatarPicker({
         >
           <AvatarSvg avatar={avatar} size={140} initial={handle || '?'} />
         </div>
-        <input
-          value={handle}
-          onChange={(e) => setHandle(e.target.value.slice(0, 12))}
-          placeholder="your name"
-          className="fg-inp text-center text-lg font-bold"
-        />
+        <div className="w-full">
+          <div className="fg-lbl text-center mb-2">your name</div>
+          <input
+            value={handle}
+            onChange={(e) => setHandle(e.target.value.slice(0, 12))}
+            placeholder="Your name"
+            className="fg-name-input"
+          />
+        </div>
       </motion.div>
 
       <div className="fg-panel p-4">

@@ -206,28 +206,185 @@
 .fg-back {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
+  gap: 10px;
+  padding: 14px 26px;
   border-radius: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.85);
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
   font-family: inherit;
-  font-weight: 800;
-  font-size: 0.92rem;
-  letter-spacing: 0.3px;
+  font-weight: 900;
+  font-size: 1.05rem;
+  letter-spacing: 0.2px;
   cursor: pointer;
   transition: all 0.2s ease;
   backdrop-filter: blur(10px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 .fg-back:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.24);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.36);
   transform: translateX(-2px);
 }
 .fg-back:active { transform: scale(0.96); }
+
+/* === BOLD NUMBER SPINNER === */
+.fg-spin {
+  display: flex;
+  align-items: stretch;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(74, 222, 128, 0.25);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.fg-spin-btn {
+  width: 38px;
+  background: rgba(74, 222, 128, 0.15);
+  border: none;
+  color: #4ade80;
+  font-family: inherit;
+  font-weight: 900;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fg-spin-btn:hover {
+  background: rgba(74, 222, 128, 0.28);
+  color: #a3e635;
+}
+.fg-spin-btn:active { transform: scale(0.9); }
+.fg-spin-btn:disabled {
+  color: rgba(255, 255, 255, 0.12);
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.02);
+}
+.fg-spin-val {
+  flex: 1;
+  text-align: center;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 1.1rem;
+  padding: 12px 0;
+  outline: none;
+  min-width: 40px;
+}
+
+/* === BLOOKET-STYLE COLORED ANSWER GRID === */
+.fg-answer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+}
+.fg-answer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 18px;
+  border-radius: 18px;
+  border: 3px solid transparent;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  line-height: 1.3;
+  min-height: 96px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45), inset 0 -4px 0 rgba(0, 0, 0, 0.2);
+}
+.fg-answer:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55), inset 0 -4px 0 rgba(0, 0, 0, 0.2);
+}
+.fg-answer:active { transform: scale(0.97); }
+.fg-answer:disabled { cursor: not-allowed; }
+.fg-answer-orange { background: #f59e0b; }
+.fg-answer-blue { background: #3b82f6; }
+.fg-answer-green { background: #16a34a; }
+.fg-answer-red { background: #dc2626; }
+.fg-answer-correct { box-shadow: 0 0 0 4px #4ade80, 0 0 28px rgba(74, 222, 128, 0.7); }
+.fg-answer-wrong { opacity: 0.5; filter: grayscale(0.5); }
+
+/* === CODE BACKGROUND OVERLAY === */
+.fg-codebg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.08;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 14px,
+    rgba(74, 222, 128, 0.4) 14px,
+    rgba(74, 222, 128, 0.4) 15px
+  );
+  overflow: hidden;
+}
+
+/* === BIG PLAY BUTTON === */
+.fg-play-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px 64px;
+  border: none;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #22c55e, #4ade80, #a3e635);
+  color: #052e16;
+  font-family: inherit;
+  font-weight: 900;
+  font-size: 1.6rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 12px 32px rgba(74, 222, 128, 0.4),
+    0 4px 12px rgba(74, 222, 128, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.15);
+}
+.fg-play-btn:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 18px 44px rgba(74, 222, 128, 0.5),
+    inset 0 2px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.15);
+}
+.fg-play-btn:active { transform: scale(0.96); }
+
+/* === BIG-NAME INPUT (matches the Forbidden "your name" reference) === */
+.fg-name-input {
+  width: 100%;
+  padding: 22px 22px;
+  border-radius: 20px;
+  border: 2.5px solid #4ade80;
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  font-family: inherit;
+  font-size: 1.4rem;
+  font-weight: 800;
+  outline: none;
+  text-align: center;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+}
+.fg-name-input:focus {
+  border-color: #a3e635;
+  box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.22), 0 0 30px rgba(74, 222, 128, 0.3);
+}
+.fg-name-input::placeholder { color: rgba(255, 255, 255, 0.35); font-weight: 600; }
 
 .fg-btn-danger {
   background: linear-gradient(135deg, #fb7185, #e11d48);

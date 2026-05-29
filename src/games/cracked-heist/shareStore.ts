@@ -39,9 +39,11 @@ export function persistGame(state: RoomState): string {
       handle: p.handle,
       color: p.avatar.color,
       coins: p.coins,
+      tokens: p.tokens,
       hacks: p.hacksDone,
       caught: p.caughtCount,
     })),
+    log: state.fullLog,
   }
   map[code] = summary
   save(map)

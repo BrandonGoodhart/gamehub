@@ -9,44 +9,37 @@ interface Props {
 
 type Kind = 'spy' | 'hack' | 'password'
 
-const STYLES: Record<
-  Kind,
-  { grad: string; bg: string; border: string; text: string; icon: string }
-> = {
+const STYLES: Record<Kind, { grad: string; bg: string; border: string; text: string }> = {
   hack: {
     grad: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
     bg: 'rgba(251,191,36,0.06)',
     border: 'rgba(251,191,36,0.3)',
     text: '#fcd34d',
-    icon: '⚡',
   },
   spy: {
     grad: 'linear-gradient(135deg, #34d399, #5eead4)',
     bg: 'rgba(94,234,212,0.05)',
     border: 'rgba(94,234,212,0.3)',
     text: '#99f6e4',
-    icon: '👁',
   },
   password: {
     grad: 'linear-gradient(135deg, #4ade80, #a3e635)',
     bg: 'rgba(163,230,53,0.05)',
     border: 'rgba(163,230,53,0.3)',
     text: '#d9f99d',
-    icon: '🔓',
   },
 }
 
 interface BtnProps {
   kind: Kind
   label: string
-  cost: number
+  costLabel: string
   desc: string
-  meCoins: number
+  ok: boolean
   onChoose: (k: Kind) => void
 }
 
-function Btn({ kind, label, cost, desc, meCoins, onChoose }: BtnProps) {
-  const ok = meCoins >= cost
+function Btn({ kind, label, costLabel, desc, ok, onChoose }: BtnProps) {
   const s = STYLES[kind]
   return (
     <motion.button
@@ -63,19 +56,19 @@ function Btn({ kind, label, cost, desc, meCoins, onChoose }: BtnProps) {
       }}
     >
       <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-lg font-extrabold"
-            style={{ background: s.grad, color: '#052e16', boxShadow: ok ? `0 4px 12px ${s.border}` : 'none' }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-base font-extrabold"
+            style={{ background: s.grad, color: '#052e16' }}
           >
-            {s.icon}
+            {label.charAt(0)}
           </div>
           <div className="font-extrabold text-base" style={{ color: ok ? s.text : 'rgba(255,255,255,0.4)' }}>
             {label}
           </div>
         </div>
         <div className="text-xs font-extrabold tabular-nums" style={{ color: ok ? s.text : 'rgba(255,255,255,0.3)' }}>
-          -{cost}c
+          {costLabel}
         </div>
       </div>
       <div className="fg-sub text-xs leading-tight">{desc}</div>
@@ -85,31 +78,30 @@ function Btn({ kind, label, cost, desc, meCoins, onChoose }: BtnProps) {
 
 export default function ActionPanel({ state, me, onChoose }: Props) {
   const c = state.settings.costs
-  const r = state.settings.rewards
   return (
     <div className="space-y-3">
       <Btn
         kind="hack"
-        label="Hack"
-        cost={c.hack}
-        desc={`Steal +${r.hack}c instantly. Leaves a trace for 3 rounds.`}
-        meCoins={me.coins}
+        label="Hack Computer"
+        costLabel={`${c.hack} tokens`}
+        desc={`Spend tokens to crack open a computer panel for bonus coins (3-20).`}
+        ok={me.tokens >= c.hack}
         onChoose={onChoose}
       />
       <Btn
         kind="spy"
         label="Spy"
-        cost={c.spy}
-        desc={`Tail a hacker. If they hacked recently, steal up to ${r.spyCatch}c.`}
-        meCoins={me.coins}
+        costLabel={`${c.spy} coins`}
+        desc={`Find the hacker among 3 suspects. Right = +${state.settings.rewards.spyCatch} coins.`}
+        ok={me.coins >= c.spy}
         onChoose={onChoose}
       />
       <Btn
         kind="password"
         label="Crack Password"
-        cost={c.password}
-        desc={`Pick 1 of 3 passwords. Right = steal ${r.passwordCatch}c.`}
-        meCoins={me.coins}
+        costLabel={`${c.password} coins`}
+        desc={`Pick 1 of 3 passwords. Right = +${state.settings.rewards.passwordCatch} coins.`}
+        ok={me.coins >= c.password}
         onChoose={onChoose}
       />
     </div>

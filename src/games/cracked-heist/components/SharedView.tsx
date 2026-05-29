@@ -9,6 +9,13 @@ interface Props {
   onBack: () => void
 }
 
+const TONE_COLOR: Record<string, string> = {
+  good: '#86efac',
+  bad: '#fda4af',
+  neutral: 'rgba(220,252,231,0.7)',
+  system: '#5eead4',
+}
+
 export default function SharedView({ game, code, onBack }: Props) {
   const [copied, setCopied] = useState(false)
 
@@ -23,7 +30,7 @@ export default function SharedView({ game, code, onBack }: Props) {
   }
 
   return (
-    <div className="max-w-[440px] mx-auto w-full space-y-5 pb-5">
+    <div className="max-w-[480px] mx-auto w-full space-y-5 pb-5">
       <div className="flex">
         <button onClick={onBack} className="fg-back">
           ← Back
@@ -37,12 +44,11 @@ export default function SharedView({ game, code, onBack }: Props) {
         >
           Game Replay
         </h1>
-        <p className="fg-sub text-xs mt-1">share code</p>
+        <p className="fg-sub text-xs mt-1">share code (tap to copy)</p>
         <button
           onClick={copy}
           className="fg-code mt-2 cursor-pointer"
-          style={{ fontSize: '1.6rem' }}
-          title="copy code"
+          style={{ fontSize: '1.6rem', background: 'none', border: 'none' }}
         >
           {code} {copied && <span className="text-[var(--green-l)] text-xs ml-2">copied</span>}
         </button>
@@ -54,14 +60,9 @@ export default function SharedView({ game, code, onBack }: Props) {
           animate={{ opacity: 1 }}
           className="fg-panel fg-panel-lg text-center"
         >
-          <div
-            className="font-extrabold text-lg text-white mb-2"
-            style={{ letterSpacing: '-0.5px' }}
-          >
-            No game found.
-          </div>
+          <div className="font-extrabold text-lg text-white mb-2">No game found.</div>
           <p className="fg-sub text-sm">
-            That share code isn't in this browser. Games are saved per-device.
+            That share code isn't saved on this device. Cross-device sharing needs a backend (coming soon).
           </p>
         </motion.div>
       ) : (
@@ -70,9 +71,7 @@ export default function SharedView({ game, code, onBack }: Props) {
             <div className="grid grid-cols-2 gap-3 text-center">
               <div>
                 <div className="fg-lbl">category</div>
-                <div className="text-white font-bold text-sm">
-                  {game.category ?? 'Custom'}
-                </div>
+                <div className="text-white font-bold text-sm">{game.category ?? 'Custom'}</div>
               </div>
               <div>
                 <div className="fg-lbl">rounds</div>
@@ -114,14 +113,34 @@ export default function SharedView({ game, code, onBack }: Props) {
                         {p.hacks} hacks · {p.caught} caught
                       </div>
                     </div>
-                    <div
-                      className="font-extrabold tabular-nums"
-                      style={{ color: '#fbbf24' }}
-                    >
+                    <div className="font-extrabold tabular-nums" style={{ color: '#fbbf24' }}>
                       {p.coins}c
                     </div>
                   </div>
                 ))}
+            </div>
+          </div>
+
+          <div className="fg-panel p-4">
+            <div className="fg-lbl mb-3">live feed</div>
+            <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
+              {(game.log ?? []).map((e) => {
+                const color = TONE_COLOR[e.tone] ?? '#fff'
+                return (
+                  <div key={e.id} className="flex items-start gap-2 text-xs leading-snug">
+                    <span
+                      className="inline-block w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                      style={{ background: color, boxShadow: `0 0 6px ${color}` }}
+                    />
+                    <span className="font-semibold" style={{ color }}>
+                      {e.text}
+                    </span>
+                  </div>
+                )
+              })}
+              {(game.log ?? []).length === 0 && (
+                <div className="fg-sub text-xs italic">No events recorded.</div>
+              )}
             </div>
           </div>
         </>

@@ -5,9 +5,10 @@ import AvatarSvg from './AvatarSvg'
 interface Props {
   state: RoomState
   me: Player
+  onViewOptions?: () => void
 }
 
-export default function HUD({ state, me }: Props) {
+export default function HUD({ state, me, onViewOptions }: Props) {
   const total = state.settings.roundSeconds
   const remaining = state.timeLeft
   const danger = remaining <= 10
@@ -17,32 +18,38 @@ export default function HUD({ state, me }: Props) {
   const offset = circumference - (remaining / total) * circumference
 
   return (
-    <div className="fg-panel px-4 py-3 flex items-center justify-between gap-4 backdrop-blur-xl">
-      <div className="flex items-center gap-4">
-        <div className="relative">
-          <AvatarSvg avatar={me.avatar} size={48} initial={me.handle} />
-        </div>
+    <div className="fg-panel px-4 py-3 flex items-center justify-between gap-3 backdrop-blur-xl flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap">
+        <AvatarSvg avatar={me.avatar} size={44} initial={me.handle} />
         <div className="flex flex-col">
           <div className="fg-lbl text-[9px]">room</div>
-          <div className="fg-code text-sm">{state.code}</div>
+          <div className="fg-code text-sm" style={{ letterSpacing: '0.2em' }}>
+            {state.code}
+          </div>
         </div>
         <div className="hidden sm:flex flex-col">
           <div className="fg-lbl text-[9px]">round</div>
-          <div className="text-sm font-bold">
-            {state.round}<span className="fg-sub">/{state.settings.totalRounds}</span>
+          <div className="text-sm font-extrabold">
+            {state.round}
+            <span className="fg-sub">/{state.settings.totalRounds}</span>
           </div>
         </div>
-        <div className="hidden md:flex flex-col">
-          <div className="fg-lbl text-[9px]">you</div>
-          <div className="text-sm font-bold text-[var(--green-l)]">{me.handle}</div>
-        </div>
+        {onViewOptions && (
+          <button
+            onClick={onViewOptions}
+            className="fg-back"
+            style={{ padding: '8px 14px', fontSize: '0.78rem' }}
+          >
+            View Options
+          </button>
+        )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 flex-wrap">
         <motion.div
           animate={danger ? { scale: [1, 1.08, 1] } : {}}
           transition={{ duration: 0.6, repeat: danger ? Infinity : 0 }}
-          className="relative w-[60px] h-[60px]"
+          className="relative w-[58px] h-[58px]"
         >
           <svg className="w-full h-full -rotate-90" viewBox="0 0 66 66">
             <defs>
@@ -73,7 +80,7 @@ export default function HUD({ state, me }: Props) {
           </svg>
           <div
             className={`absolute inset-0 flex items-center justify-center text-sm font-extrabold tabular-nums ${
-              danger ? 'text-[var(--red)]' : 'text-white'
+              danger ? 'text-[#fb7185]' : 'text-white'
             }`}
           >
             {String(Math.floor(remaining / 60))}:{String(remaining % 60).padStart(2, '0')}
@@ -81,8 +88,14 @@ export default function HUD({ state, me }: Props) {
         </motion.div>
         <div className="text-right">
           <div className="fg-lbl text-[9px]">coins</div>
-          <div className="text-2xl font-extrabold tabular-nums" style={{ color: '#fbbf24' }}>
+          <div className="text-xl font-extrabold tabular-nums" style={{ color: '#fbbf24' }}>
             {me.coins}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="fg-lbl text-[9px]">tokens</div>
+          <div className="text-xl font-extrabold tabular-nums" style={{ color: '#5eead4' }}>
+            {me.tokens}
           </div>
         </div>
       </div>
