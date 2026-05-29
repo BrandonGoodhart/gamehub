@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
 import { useGame } from '../games/cracked-heist/gameState'
 import AmbientBg from '../games/cracked-heist/components/AmbientBg'
 import StartScreen from '../games/cracked-heist/components/StartScreen'
@@ -54,14 +53,7 @@ export default function CrackedHeist() {
       <AmbientBg />
 
       <div className="relative z-10 px-4 py-5 md:py-7">
-        <div className="max-w-6xl mx-auto flex items-center justify-between mb-5">
-          <Link
-            to="/"
-            className="fg-btn fg-btn-outline fg-btn-sm"
-            style={{ width: 'auto', padding: '8px 14px' }}
-          >
-            ← Hub
-          </Link>
+        <div className="max-w-6xl mx-auto flex items-center justify-end mb-5">
           <div className="fg-sub text-xs" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
             cracked-heist v0.3
           </div>

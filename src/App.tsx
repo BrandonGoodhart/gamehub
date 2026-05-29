@@ -1,17 +1,12 @@
-import { Routes, Route } from 'react-router'
-import Home from './pages/Home'
-import TicTacToe from './pages/TicTacToe'
-import Poker from './pages/Poker'
+import { Routes, Route, Navigate } from 'react-router'
 import CrackedHeist from './pages/CrackedHeist'
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen">
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/tic-tac-toe" element={<TicTacToe />} />
-        <Route path="/poker" element={<Poker />} />
-        <Route path="/cracked-heist" element={<CrackedHeist />} />
+        <Route path="/" element={<CrackedHeist />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   )
