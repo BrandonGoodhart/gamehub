@@ -1,10 +1,12 @@
 export type Phase =
+  | 'loading'
   | 'start'
   | 'hostLobby'
   | 'joinPrompt'
   | 'pickAvatar'
-  | 'lobby'
   | 'pickCategory'
+  | 'customQuestions'
+  | 'viewShared'
   | 'countdown'
   | 'playing'
   | 'roundEnd'
@@ -12,17 +14,8 @@ export type Phase =
 
 export type ActionKind = 'spy' | 'hack' | 'password'
 
-export type HairStyle = 'short' | 'long' | 'mohawk' | 'curly' | 'bald' | 'bun' | 'spiky'
-export type FaceExpression = 'happy' | 'cool' | 'wink' | 'angry' | 'goofy' | 'serious'
-export type HatKind = 'none' | 'cap' | 'hoodie' | 'crown' | 'beanie' | 'helmet' | 'witch'
-
 export interface Avatar {
-  hairStyle: HairStyle
-  hairColor: string
-  skinColor: string
-  expression: FaceExpression
-  hat: HatKind
-  hatColor: string
+  color: string
 }
 
 export interface Player {
@@ -71,6 +64,7 @@ export interface RoomState {
   meId: string
   hostId: string
   category: string | null
+  customQuestions: Question[] | null
   questionQueue: Question[]
   currentQuestion: Question | null
   questionStartTs: number
@@ -78,4 +72,13 @@ export interface RoomState {
   settings: Settings
   pendingAction: ActionKind | null
   countdownValue: number
+  shareCode: string | null
+}
+
+export interface SharedGame {
+  code: string
+  finishedAt: number
+  category: string | null
+  rounds: number
+  players: { handle: string; color: string; coins: number; hacks: number; caught: number }[]
 }

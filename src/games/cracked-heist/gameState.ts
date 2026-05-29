@@ -41,13 +41,14 @@ function initialState(): RoomState {
   const meId = uid()
   return {
     code: generateRoomCode(),
-    phase: 'start',
+    phase: 'loading',
     round: 0,
     timeLeft: DEFAULT_SETTINGS.roundSeconds,
     players: [],
     meId,
     hostId: '',
     category: null,
+    customQuestions: null,
     questionQueue: [],
     currentQuestion: null,
     questionStartTs: 0,
@@ -55,6 +56,7 @@ function initialState(): RoomState {
     settings: { ...DEFAULT_SETTINGS },
     pendingAction: null,
     countdownValue: 3,
+    shareCode: null,
   }
 }
 
@@ -66,6 +68,7 @@ type Action =
   | { type: 'addBotsForDemo'; count: number }
   | { type: 'kickPlayer'; id: string }
   | { type: 'pickCategory'; category: string }
+  | { type: 'pickCustomQuestions'; questions: Question[] }
   | { type: 'beginCountdown' }
   | { type: 'tickCountdown' }
   | { type: 'tickTimer' }
@@ -77,6 +80,7 @@ type Action =
   | { type: 'doPassword'; guesserId: string; targetId: string; guess: string }
   | { type: 'startRound' }
   | { type: 'endRound' }
+  | { type: 'setShareCode'; code: string }
   | { type: 'reset' }
   | { type: 'setPending'; kind: ActionKind | null }
 
@@ -165,7 +169,21 @@ function reducer(state: RoomState, action: Action): RoomState {
       }
     }
     case 'pickCategory':
-      return { ...state, category: action.category, questionQueue: shuffledQs(action.category) }
+      return {
+        ...state,
+        category: action.category,
+        customQuestions: null,
+        questionQueue: shuffledQs(action.category),
+      }
+    case 'pickCustomQuestions': {
+      const shuffled = [...action.questions].sort(() => Math.random() - 0.5)
+      return {
+        ...state,
+        category: 'Custom',
+        customQuestions: action.questions,
+        questionQueue: shuffled,
+      }
+    }
     case 'beginCountdown':
       return { ...state, phase: 'countdown', countdownValue: 3 }
     case 'tickCountdown':
@@ -173,7 +191,10 @@ function reducer(state: RoomState, action: Action): RoomState {
     case 'tickTimer':
       return { ...state, timeLeft: Math.max(0, state.timeLeft - 1) }
     case 'nextQuestion': {
-      const queueSrc = state.questionQueue.length > 0 ? state.questionQueue : shuffledQs(state.category ?? CATEGORIES[0])
+      const refill = state.customQuestions
+        ? [...state.customQuestions].sort(() => Math.random() - 0.5)
+        : shuffledQs(state.category ?? CATEGORIES[0])
+      const queueSrc = state.questionQueue.length > 0 ? state.questionQueue : refill
       const [next, ...rest] = queueSrc
       return { ...state, currentQuestion: next, questionStartTs: Date.now(), questionQueue: rest }
     }
@@ -294,8 +315,10 @@ function reducer(state: RoomState, action: Action): RoomState {
     }
     case 'setPending':
       return { ...state, pendingAction: action.kind }
+    case 'setShareCode':
+      return { ...state, shareCode: action.code }
     case 'reset':
-      return initialState()
+      return { ...initialState(), phase: 'start' }
   }
 }
 

@@ -1,38 +1,43 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import type { Avatar } from '../types'
-import {
-  EXPRESSIONS,
-  HAIR_COLORS,
-  HAIR_STYLES,
-  HATS,
-  HAT_COLORS,
-  SKIN_COLORS,
-  randomAvatar,
-} from '../avatar'
+import { COLOR_PALETTE } from '../avatar'
 import AvatarSvg from './AvatarSvg'
 
 interface Props {
   initialHandle?: string
   initialAvatar: Avatar
   onConfirm: (handle: string, avatar: Avatar) => void
+  onBack?: () => void
 }
 
-export default function AvatarPicker({ initialHandle = '', initialAvatar, onConfirm }: Props) {
+export default function AvatarPicker({
+  initialHandle = '',
+  initialAvatar,
+  onConfirm,
+  onBack,
+}: Props) {
   const [avatar, setAvatar] = useState<Avatar>(initialAvatar)
   const [handle, setHandle] = useState(initialHandle)
-  const set = (patch: Partial<Avatar>) => setAvatar((a) => ({ ...a, ...patch }))
 
   return (
     <div className="max-w-[440px] mx-auto w-full space-y-5 pb-5">
+      {onBack && (
+        <div className="flex">
+          <button onClick={onBack} className="fg-back">
+            ← Back
+          </button>
+        </div>
+      )}
+
       <div className="text-center">
         <h1
           className="fg-display"
           style={{ fontSize: 'clamp(2rem, 7vw, 3rem)', padding: '0 8px' }}
         >
-          Make Your Hacker
+          Pick a Color
         </h1>
-        <p className="fg-sub text-xs mt-1">choose your look</p>
+        <p className="fg-sub text-xs mt-1">name yourself and pick a color</p>
       </div>
 
       <motion.div
@@ -43,11 +48,10 @@ export default function AvatarPicker({ initialHandle = '', initialAvatar, onConf
         <div
           className="rounded-3xl p-3"
           style={{
-            background:
-              'radial-gradient(circle at 50% 30%, rgba(74,222,128,.18), transparent 70%)',
+            background: `radial-gradient(circle at 50% 30%, ${avatar.color}33, transparent 70%)`,
           }}
         >
-          <AvatarSvg avatar={avatar} size={160} />
+          <AvatarSvg avatar={avatar} size={140} initial={handle || '?'} />
         </div>
         <input
           value={handle}
@@ -55,90 +59,33 @@ export default function AvatarPicker({ initialHandle = '', initialAvatar, onConf
           placeholder="your name"
           className="fg-inp text-center text-lg font-bold"
         />
-        <button
-          onClick={() => setAvatar(randomAvatar())}
-          className="fg-btn fg-btn-outline fg-btn-sm"
-          style={{ padding: '10px 18px' }}
-        >
-          🎲 Randomize
-        </button>
       </motion.div>
 
-      <div className="fg-panel p-4 space-y-4">
-        <Section title="hair">
-          <Row>
-            {HAIR_STYLES.map((s) => (
-              <Pill
-                key={s}
-                active={avatar.hairStyle === s}
-                onClick={() => set({ hairStyle: s })}
-              >
-                {s}
-              </Pill>
-            ))}
-          </Row>
-          <Row>
-            {HAIR_COLORS.map((c) => (
-              <Swatch
+      <div className="fg-panel p-4">
+        <div className="fg-lbl mb-3">color</div>
+        <div className="grid grid-cols-8 gap-2">
+          {COLOR_PALETTE.map((c) => {
+            const active = avatar.color === c
+            return (
+              <button
                 key={c}
-                color={c}
-                active={avatar.hairColor === c}
-                onClick={() => set({ hairColor: c })}
+                onClick={() => setAvatar({ color: c })}
+                style={{
+                  backgroundColor: c,
+                  boxShadow: active
+                    ? `0 0 0 3px rgba(255,255,255,0.9), 0 0 16px ${c}aa`
+                    : `0 2px 6px ${c}44`,
+                }}
+                className={`aspect-square rounded-xl border-2 transition-transform ${
+                  active
+                    ? 'border-white scale-110'
+                    : 'border-transparent hover:scale-110'
+                }`}
+                aria-label={`color ${c}`}
               />
-            ))}
-          </Row>
-        </Section>
-
-        <Section title="skin">
-          <Row>
-            {SKIN_COLORS.map((c) => (
-              <Swatch
-                key={c}
-                color={c}
-                active={avatar.skinColor === c}
-                onClick={() => set({ skinColor: c })}
-              />
-            ))}
-          </Row>
-        </Section>
-
-        <Section title="face">
-          <Row>
-            {EXPRESSIONS.map((e) => (
-              <Pill
-                key={e}
-                active={avatar.expression === e}
-                onClick={() => set({ expression: e })}
-              >
-                {e}
-              </Pill>
-            ))}
-          </Row>
-        </Section>
-
-        <Section title="hat">
-          <Row>
-            {HATS.map((h) => (
-              <Pill
-                key={h}
-                active={avatar.hat === h}
-                onClick={() => set({ hat: h })}
-              >
-                {h}
-              </Pill>
-            ))}
-          </Row>
-          <Row>
-            {HAT_COLORS.map((c) => (
-              <Swatch
-                key={c}
-                color={c}
-                active={avatar.hatColor === c}
-                onClick={() => set({ hatColor: c })}
-              />
-            ))}
-          </Row>
-        </Section>
+            )
+          })}
+        </div>
       </div>
 
       <motion.button
@@ -151,61 +98,5 @@ export default function AvatarPicker({ initialHandle = '', initialAvatar, onConf
         Enter Lobby →
       </motion.button>
     </div>
-  )
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="fg-lbl mb-2">{title}</div>
-      <div className="space-y-2">{children}</div>
-    </div>
-  )
-}
-
-function Row({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-wrap gap-2">{children}</div>
-}
-
-function Pill({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button onClick={onClick} className={`fg-pill ${active ? 'fg-pill-sel' : ''}`}>
-      {children}
-    </button>
-  )
-}
-
-function Swatch({
-  color,
-  active,
-  onClick,
-}: {
-  color: string
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        backgroundColor: color,
-        boxShadow: active
-          ? '0 0 0 3px rgba(74,222,128,.8), 0 0 18px rgba(74,222,128,.5)'
-          : undefined,
-      }}
-      className={`w-8 h-8 rounded-full border-2 transition-all ${
-        active
-          ? 'border-[var(--green-l)] scale-110'
-          : 'border-[var(--glass-border)] hover:border-[var(--green)] hover:scale-105'
-      }`}
-    />
   )
 }

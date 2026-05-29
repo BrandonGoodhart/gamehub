@@ -18,22 +18,9 @@ export default function JoinPrompt({ onJoin, onBack, error }: Props) {
   return (
     <div className="max-w-[440px] mx-auto w-full">
       <div className="flex items-center gap-3 mb-5">
-        <button
-          onClick={onBack}
-          className="rounded-xl px-3 py-2 transition-all"
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(74,222,128,0.18)',
-            color: 'rgba(255,255,255,0.7)',
-            fontWeight: 700,
-            fontSize: '0.85rem',
-          }}
-        >
-          ←
+        <button onClick={onBack} className="fg-back">
+          ← Back
         </button>
-        <div className="fg-display text-xl" style={{ padding: 0 }}>
-          Join Game
-        </div>
       </div>
 
       <motion.div

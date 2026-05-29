@@ -1,11 +1,25 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 
 interface Props {
   onHost: () => void
   onJoin: () => void
+  onViewShared: (code: string) => void
 }
 
-export default function StartScreen({ onHost, onJoin }: Props) {
+export default function StartScreen({ onHost, onJoin, onViewShared }: Props) {
+  const [shareCode, setShareCode] = useState('')
+  const [shareError, setShareError] = useState('')
+
+  function submitShare() {
+    const c = shareCode.trim().toUpperCase()
+    if (c.length !== 6) {
+      setShareError('Code must be 6 characters.')
+      return
+    }
+    onViewShared(c)
+  }
+
   return (
     <div className="max-w-[440px] mx-auto w-full text-center pb-5 pt-4">
       <motion.div
@@ -15,10 +29,7 @@ export default function StartScreen({ onHost, onJoin }: Props) {
       >
         <h1
           className="fg-display"
-          style={{
-            fontSize: 'clamp(2.6rem, 9.5vw, 4.8rem)',
-            padding: '0 8px',
-          }}
+          style={{ fontSize: 'clamp(2.6rem, 9.5vw, 4.8rem)', padding: '0 8px' }}
         >
           Cracked-Heist
         </h1>
@@ -27,62 +38,84 @@ export default function StartScreen({ onHost, onJoin }: Props) {
         </p>
       </motion.div>
 
-      <div
-        className="grid grid-cols-2 gap-3.5 mt-7 mx-auto"
-        style={{ maxWidth: 380 }}
-      >
+      <div className="grid grid-cols-2 gap-3.5 mt-7 mx-auto" style={{ maxWidth: 380 }}>
         <ModeCard
           delay={0.12}
           tag="teacher"
-          icon="⚡"
-          title="Host"
+          big="HOST"
+          title="Host a game"
           desc="Open a room. Pick a category. Run the class."
           onClick={onHost}
         />
         <ModeCard
           delay={0.2}
           tag="student"
-          icon="→"
-          title="Join"
+          big="JOIN"
+          title="Join with code"
           desc="Got a 6-char code? Drop in and play."
           onClick={onJoin}
         />
-        <motion.button
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.28 }}
-          whileHover={{ y: -3 }}
-          whileTap={{ scale: 0.97 }}
-          className="fg-mode-card col-span-2 py-4 px-5 flex items-center justify-center gap-2"
-          onClick={() =>
-            window.alert(
-              'How to play:\n\n' +
-                '1) Host opens a room — students enter the 6-char code.\n' +
-                '2) Build your hacker (hair, hat, face).\n' +
-                '3) Answer trivia to earn coins (+25 each).\n' +
-                '4) Spend coins on actions: Hack (steal coins, leaves a trace), Spy (catch a recent hacker), Crack Password (pick 1 of 3).\n' +
-                '5) Most coins at the end wins.',
-            )
-          }
-        >
-          <span className="fg-sub text-sm font-bold">How to play</span>
-          <span className="text-[var(--green-l)]">?</span>
-        </motion.button>
       </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="fg-panel mt-5 p-4 text-left"
+        style={{ maxWidth: 380, margin: '20px auto 0' }}
+      >
+        <div className="fg-lbl mb-2">view a past game</div>
+        <p className="fg-sub text-xs mb-3">
+          Paste a 6-character share code from a finished game.
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={shareCode}
+            onChange={(e) => {
+              setShareError('')
+              setShareCode(e.target.value.toUpperCase().slice(0, 6))
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && submitShare()}
+            placeholder="------"
+            className="fg-inp text-center"
+            style={{
+              fontFamily: 'JetBrains Mono, SF Mono, ui-monospace, monospace',
+              fontWeight: 700,
+              letterSpacing: '0.3em',
+              padding: '12px 14px',
+              fontSize: '1rem',
+              flex: 1,
+            }}
+          />
+          <button
+            onClick={submitShare}
+            disabled={shareCode.length !== 6}
+            className="fg-btn fg-btn-grad"
+            style={{ width: 'auto', padding: '12px 20px', fontSize: '0.9rem' }}
+          >
+            View
+          </button>
+        </div>
+        {shareError && (
+          <div className="text-[var(--red)] text-xs mt-2 font-semibold">
+            {shareError}
+          </div>
+        )}
+      </motion.div>
     </div>
   )
 }
 
 function ModeCard({
   tag,
-  icon,
+  big,
   title,
   desc,
   onClick,
   delay,
 }: {
   tag: string
-  icon: string
+  big: string
   title: string
   desc: string
   onClick: () => void
@@ -97,27 +130,25 @@ function ModeCard({
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
       className="fg-mode-card text-center"
-      style={{ padding: '30px 18px' }}
+      style={{ padding: '26px 16px' }}
     >
-      <div className="fg-lbl mb-2">{tag}</div>
+      <div className="fg-lbl mb-3">{tag}</div>
       <div
         className="fg-display"
         style={{
-          fontSize: '3.2rem',
+          fontSize: '2rem',
           lineHeight: 1,
-          marginBottom: 10,
+          marginBottom: 12,
           padding: 0,
+          letterSpacing: '-0.04em',
         }}
       >
-        {icon}
+        {big}
       </div>
-      <div
-        className="text-white"
-        style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: 5 }}
-      >
+      <div className="text-white" style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 5 }}>
         {title}
       </div>
-      <div className="fg-sub" style={{ fontSize: '0.78rem', lineHeight: 1.4 }}>
+      <div className="fg-sub" style={{ fontSize: '0.74rem', lineHeight: 1.4 }}>
         {desc}
       </div>
     </motion.button>

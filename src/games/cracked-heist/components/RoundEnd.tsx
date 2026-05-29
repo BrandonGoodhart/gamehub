@@ -43,7 +43,7 @@ export default function RoundEnd({ state, onNext }: Props) {
               >
                 {i + 1}
               </span>
-              <AvatarSvg avatar={p.avatar} size={32} />
+              <AvatarSvg avatar={p.avatar} size={32} initial={p.handle} />
               <span className="font-bold text-white">{p.handle}</span>
               {p.id === state.meId && <span className="text-[10px] text-[var(--teal)] font-bold">you</span>}
             </div>

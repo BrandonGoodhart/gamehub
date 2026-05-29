@@ -20,7 +20,7 @@ export default function HUD({ state, me }: Props) {
     <div className="fg-panel px-4 py-3 flex items-center justify-between gap-4 backdrop-blur-xl">
       <div className="flex items-center gap-4">
         <div className="relative">
-          <AvatarSvg avatar={me.avatar} size={48} />
+          <AvatarSvg avatar={me.avatar} size={48} initial={me.handle} />
         </div>
         <div className="flex flex-col">
           <div className="fg-lbl text-[9px]">room</div>

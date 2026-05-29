@@ -43,7 +43,7 @@ export default function PlayerList({ state, selectableIds, onSelect, highlightHa
               backdropFilter: 'blur(10px)',
             }}
           >
-            <AvatarSvg avatar={p.avatar} size={36} />
+            <AvatarSvg avatar={p.avatar} size={36} initial={p.handle} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-sm text-white truncate">{p.handle}</span>

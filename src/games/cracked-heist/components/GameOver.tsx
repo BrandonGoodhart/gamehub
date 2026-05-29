@@ -1,6 +1,8 @@
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { RoomState } from '../types'
 import AvatarSvg from './AvatarSvg'
+import { persistGame } from '../shareStore'
 
 interface Props {
   state: RoomState
@@ -12,6 +14,19 @@ export default function GameOver({ state, onReset }: Props) {
   const winner = sorted[0]
   const me = state.players.find((p) => p.id === state.meId)!
   const youWon = winner.id === state.meId
+  const code = useMemo(() => state.shareCode ?? persistGame(state), [state])
+  const [copied, setCopied] = useState(false)
+
+  function copy() {
+    try {
+      navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // ignore
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.92 }}
@@ -24,7 +39,7 @@ export default function GameOver({ state, onReset }: Props) {
           {youWon ? 'You Won!' : 'Cracked.'}
         </h2>
         <div className="flex items-center justify-center gap-3 mt-3">
-          <AvatarSvg avatar={winner.avatar} size={56} />
+          <AvatarSvg avatar={winner.avatar} size={56} initial={winner.handle} />
           <div className="text-left">
             <div className="fg-lbl">winner</div>
             <div className="text-xl font-extrabold text-white">{winner.handle}</div>
@@ -33,6 +48,29 @@ export default function GameOver({ state, onReset }: Props) {
             </div>
           </div>
         </div>
+      </div>
+
+      <div
+        className="rounded-2xl p-4 mb-5 text-center"
+        style={{
+          background: 'rgba(74,222,128,0.06)',
+          border: '1.5px solid rgba(74,222,128,0.3)',
+        }}
+      >
+        <div className="fg-lbl mb-1">share code</div>
+        <button
+          onClick={copy}
+          className="fg-code block mx-auto"
+          style={{ fontSize: '2rem', cursor: 'pointer' }}
+          title="copy"
+        >
+          {code}
+        </button>
+        <p className="fg-sub text-xs mt-2">
+          {copied
+            ? 'Copied to clipboard'
+            : 'Tap to copy. Paste this on the home page to view these results later.'}
+        </p>
       </div>
 
       <div className="fg-lbl mb-2">your stats</div>
@@ -58,7 +96,7 @@ export default function GameOver({ state, onReset }: Props) {
           >
             <div className="flex items-center gap-2">
               <span className="fg-sub w-5 text-right">{i + 1}.</span>
-              <AvatarSvg avatar={p.avatar} size={24} />
+              <AvatarSvg avatar={p.avatar} size={24} initial={p.handle} />
               <span className="font-bold text-white text-sm">{p.handle}</span>
             </div>
             <span className="font-extrabold text-sm tabular-nums" style={{ color: '#fbbf24' }}>

@@ -65,7 +65,7 @@ export default function HostLobby({ state, isHost, onKick, onStart }: Props) {
                   backdropFilter: 'blur(10px)',
                 }}
               >
-                <AvatarSvg avatar={p.avatar} size={56} />
+                <AvatarSvg avatar={p.avatar} size={56} initial={p.handle} />
                 <div
                   className="font-bold text-xs truncate max-w-full text-white text-center"
                   style={{ maxWidth: 80 }}

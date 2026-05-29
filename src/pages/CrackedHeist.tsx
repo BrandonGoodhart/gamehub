@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useGame } from '../games/cracked-heist/gameState'
 import AmbientBg from '../games/cracked-heist/components/AmbientBg'
+import LoadingSplash from '../games/cracked-heist/components/LoadingSplash'
 import StartScreen from '../games/cracked-heist/components/StartScreen'
 import JoinPrompt from '../games/cracked-heist/components/JoinPrompt'
 import AvatarPicker from '../games/cracked-heist/components/AvatarPicker'
 import HostLobby from '../games/cracked-heist/components/HostLobby'
 import CategoryPick from '../games/cracked-heist/components/CategoryPick'
+import CustomQuestions from '../games/cracked-heist/components/CustomQuestions'
+import SharedView from '../games/cracked-heist/components/SharedView'
 import Countdown from '../games/cracked-heist/components/Countdown'
 import HUD from '../games/cracked-heist/components/HUD'
 import QuestionCard from '../games/cracked-heist/components/QuestionCard'
@@ -17,6 +20,8 @@ import PasswordPicker from '../games/cracked-heist/components/PasswordPicker'
 import RoundEnd from '../games/cracked-heist/components/RoundEnd'
 import GameOver from '../games/cracked-heist/components/GameOver'
 import { defaultAvatar } from '../games/cracked-heist/avatar'
+import { getShared } from '../games/cracked-heist/shareStore'
+import type { SharedGame } from '../games/cracked-heist/types'
 import '../games/cracked-heist/forbidden-green.css'
 
 type ActionFlow =
@@ -31,6 +36,9 @@ export default function CrackedHeist() {
   const { state, dispatch, answer, doHack, doSpy, doPassword } = useGame()
   const [flow, setFlow] = useState<ActionFlow>({ kind: 'none' })
   const [role, setRole] = useState<EntryRole>(null)
+  const [sharedView, setSharedView] = useState<{ code: string; game: SharedGame | null } | null>(
+    null,
+  )
   const me = state.players.find((p) => p.id === state.meId)
   const isHost = !!me?.isHost
   const others = state.players.filter((p) => p.id !== state.meId && p.alive)
@@ -48,16 +56,19 @@ export default function CrackedHeist() {
   const pwTarget =
     flow.kind === 'passwordPickGuess' ? state.players.find((p) => p.id === flow.targetId) : null
 
+  function viewShared(code: string) {
+    setSharedView({ code, game: getShared(code) })
+    dispatch({ type: 'setPhase', phase: 'viewShared' })
+  }
+
   return (
     <div className="fg-root min-h-screen relative">
       <AmbientBg />
 
       <div className="relative z-10 px-4 py-5 md:py-7">
-        <div className="max-w-6xl mx-auto flex items-center justify-end mb-5">
-          <div className="fg-sub text-xs" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-            cracked-heist v0.3
-          </div>
-        </div>
+        {state.phase === 'loading' && (
+          <LoadingSplash onDone={() => dispatch({ type: 'setPhase', phase: 'start' })} />
+        )}
 
         {state.phase === 'start' && (
           <StartScreen
@@ -69,14 +80,13 @@ export default function CrackedHeist() {
               setRole('player')
               dispatch({ type: 'setPhase', phase: 'joinPrompt' })
             }}
+            onViewShared={viewShared}
           />
         )}
 
         {state.phase === 'joinPrompt' && (
           <JoinPrompt
-            onJoin={() => {
-              dispatch({ type: 'setPhase', phase: 'pickAvatar' })
-            }}
+            onJoin={() => dispatch({ type: 'setPhase', phase: 'pickAvatar' })}
             onBack={() => {
               setRole(null)
               dispatch({ type: 'setPhase', phase: 'start' })
@@ -87,6 +97,10 @@ export default function CrackedHeist() {
         {state.phase === 'pickAvatar' && (
           <AvatarPicker
             initialAvatar={defaultAvatar()}
+            onBack={() => {
+              setRole(null)
+              dispatch({ type: 'setPhase', phase: 'start' })
+            }}
             onConfirm={(handle, avatar) => {
               if (role === 'host') {
                 dispatch({ type: 'createAsHost', handle, avatar })
@@ -112,9 +126,32 @@ export default function CrackedHeist() {
           <CategoryPick
             settings={state.settings}
             onChange={(patch) => dispatch({ type: 'setSettings', patch })}
+            onBack={() => dispatch({ type: 'setPhase', phase: 'hostLobby' })}
             onStart={(cat) => {
               dispatch({ type: 'pickCategory', category: cat })
               dispatch({ type: 'beginCountdown' })
+            }}
+            onCustom={() => dispatch({ type: 'setPhase', phase: 'customQuestions' })}
+          />
+        )}
+
+        {state.phase === 'customQuestions' && (
+          <CustomQuestions
+            onBack={() => dispatch({ type: 'setPhase', phase: 'pickCategory' })}
+            onSubmit={(qs) => {
+              dispatch({ type: 'pickCustomQuestions', questions: qs })
+              dispatch({ type: 'beginCountdown' })
+            }}
+          />
+        )}
+
+        {state.phase === 'viewShared' && sharedView && (
+          <SharedView
+            game={sharedView.game}
+            code={sharedView.code}
+            onBack={() => {
+              setSharedView(null)
+              dispatch({ type: 'setPhase', phase: 'start' })
             }}
           />
         )}
@@ -161,7 +198,9 @@ export default function CrackedHeist() {
       </div>
 
       <Modal open={flow.kind === 'spyPick'} onClose={close} title="Spy — pick target">
-        <p className="fg-sub text-sm mb-3">Tail a hacker. Red glow = hacked in last 3 rounds.</p>
+        <p className="fg-sub text-sm mb-3">
+          Tail a hacker. Red glow = hacked in last 3 rounds.
+        </p>
         <PlayerList
           state={state}
           highlightHacked
