@@ -11,10 +11,15 @@ interface Props {
 
 export default function HostLobby({ state, isHost, onKick, onStart }: Props) {
   return (
-    <div className="max-w-3xl mx-auto w-full space-y-5">
+    <div className="max-w-[440px] mx-auto w-full space-y-5 pb-5">
       <div className="text-center">
-        <div className="fg-lbl mb-2">// room active</div>
-        <h1 className="fg-display text-[clamp(2rem,6vw,3rem)]">Cracked-Heist</h1>
+        <h1
+          className="fg-display"
+          style={{ fontSize: 'clamp(2rem, 7vw, 3rem)', padding: '0 8px' }}
+        >
+          Cracked-Heist
+        </h1>
+        <p className="fg-sub text-xs mt-1">room is live · waiting for players</p>
       </div>
 
       <motion.div
@@ -22,27 +27,26 @@ export default function HostLobby({ state, isHost, onKick, onStart }: Props) {
         animate={{ scale: 1, opacity: 1 }}
         className="fg-panel fg-panel-lg text-center"
       >
-        <div className="fg-lbl mb-2">/ join code</div>
+        <div className="fg-lbl mb-2">join code</div>
         <div
           className="select-all fg-code"
-          style={{ fontSize: 'clamp(2.5rem, 9vw, 4rem)' }}
+          style={{ fontSize: 'clamp(2.5rem, 11vw, 3.5rem)' }}
         >
           {state.code}
         </div>
         <div className="fg-sub text-xs mt-3">
-          students enter this on their device →{' '}
-          <span className="text-[var(--green-l)] font-bold">cracked-heist</span>
+          students enter this on their device
         </div>
       </motion.div>
 
       <div className="fg-panel p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="fg-lbl">connected ({state.players.length})</div>
-          {isHost && (
-            <div className="fg-sub text-xs">tap × to kick</div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="fg-lbl">players ({state.players.length})</div>
+          {isHost && state.players.length > 1 && (
+            <div className="fg-sub text-[10px]">tap × to kick</div>
           )}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-2.5">
           <AnimatePresence>
             {state.players.map((p, i) => (
               <motion.div
@@ -52,16 +56,30 @@ export default function HostLobby({ state, isHost, onKick, onStart }: Props) {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.6 }}
                 transition={{ delay: i * 0.04 }}
-                className="relative rounded-2xl p-3 flex flex-col items-center gap-1 fg-mode-card"
-                style={{ cursor: 'default' }}
+                className="relative rounded-2xl p-2 flex flex-col items-center gap-0.5"
+                style={{
+                  background: p.isHost ? 'rgba(251,191,36,0.05)' : 'rgba(255,255,255,0.03)',
+                  border: p.isHost
+                    ? '1px solid rgba(251,191,36,0.3)'
+                    : '1px solid rgba(74,222,128,0.12)',
+                  backdropFilter: 'blur(10px)',
+                }}
               >
-                <AvatarSvg avatar={p.avatar} size={64} />
-                <div className="font-bold text-sm truncate max-w-full text-white">{p.handle}</div>
-                <div className="text-[10px]">
+                <AvatarSvg avatar={p.avatar} size={56} />
+                <div
+                  className="font-bold text-xs truncate max-w-full text-white text-center"
+                  style={{ maxWidth: 80 }}
+                >
+                  {p.handle}
+                </div>
+                <div className="text-[9px]">
                   {p.isHost ? (
                     <span
-                      className="px-2 py-0.5 rounded-full font-extrabold tracking-wider"
-                      style={{ background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', color: '#451a03' }}
+                      className="px-1.5 py-0.5 rounded-full font-extrabold tracking-wider"
+                      style={{
+                        background: 'linear-gradient(135deg,#fbbf24,#f59e0b)',
+                        color: '#451a03',
+                      }}
                     >
                       HOST
                     </span>
@@ -75,7 +93,7 @@ export default function HostLobby({ state, isHost, onKick, onStart }: Props) {
                   <button
                     onClick={() => onKick(p.id)}
                     title={`kick ${p.handle}`}
-                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-white text-xs font-extrabold flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full text-white text-[10px] font-extrabold flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
                     style={{
                       background: 'linear-gradient(135deg,#fb7185,#e11d48)',
                       boxShadow: '0 4px 12px rgba(251,113,133,.5)',
@@ -100,7 +118,7 @@ export default function HostLobby({ state, isHost, onKick, onStart }: Props) {
           Start Game →
         </motion.button>
       ) : (
-        <div className="text-center fg-sub py-4 animate-pulse">
+        <div className="text-center fg-sub py-3 animate-pulse text-sm">
           waiting for host to start...
         </div>
       )}

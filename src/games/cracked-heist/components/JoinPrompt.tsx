@@ -16,10 +16,25 @@ export default function JoinPrompt({ onJoin, onBack, error }: Props) {
   }
 
   return (
-    <div className="max-w-md mx-auto w-full">
-      <button onClick={onBack} className="fg-sub text-sm mb-4 hover:text-white transition-colors">
-        ← back
-      </button>
+    <div className="max-w-[440px] mx-auto w-full">
+      <div className="flex items-center gap-3 mb-5">
+        <button
+          onClick={onBack}
+          className="rounded-xl px-3 py-2 transition-all"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(74,222,128,0.18)',
+            color: 'rgba(255,255,255,0.7)',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+          }}
+        >
+          ←
+        </button>
+        <div className="fg-display text-xl" style={{ padding: 0 }}>
+          Join Game
+        </div>
+      </div>
 
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
@@ -27,11 +42,10 @@ export default function JoinPrompt({ onJoin, onBack, error }: Props) {
         transition={{ duration: 0.35 }}
         className="fg-panel fg-panel-lg text-center"
       >
-        <div className="fg-lbl mb-2">/ join game</div>
-        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-1 fg-display">
-          Enter Room Code
-        </h2>
-        <p className="fg-sub text-xs mb-6">your teacher will share it on the board</p>
+        <div className="fg-lbl mb-2">room code</div>
+        <p className="fg-sub text-xs mb-5">
+          your teacher will share it on the board
+        </p>
 
         <input
           autoFocus
@@ -39,10 +53,20 @@ export default function JoinPrompt({ onJoin, onBack, error }: Props) {
           onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 6))}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
           placeholder="------"
-          className="fg-inp text-center text-3xl tracking-[0.6em]"
-          style={{ fontFamily: 'JetBrains Mono, SF Mono, ui-monospace, monospace' }}
+          className="fg-inp text-center"
+          style={{
+            fontSize: '2rem',
+            letterSpacing: '0.5em',
+            paddingLeft: '0.5em',
+            fontFamily: 'JetBrains Mono, SF Mono, ui-monospace, monospace',
+            fontWeight: 700,
+          }}
         />
-        {error && <div className="text-[var(--red)] text-xs mt-3 font-semibold">!! {error}</div>}
+        {error && (
+          <div className="text-[var(--red)] text-xs mt-3 font-semibold">
+            !! {error}
+          </div>
+        )}
 
         <motion.button
           whileHover={{ y: -2 }}

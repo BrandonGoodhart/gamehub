@@ -8,27 +8,31 @@ interface Props {
   onStart: (category: string) => void
 }
 
-const CATEGORY_GRADIENTS: Record<string, string> = {
-  'General Knowledge': 'linear-gradient(135deg, #22c55e, #4ade80)',
-  'Tech & Hacking': 'linear-gradient(135deg, #34d399, #5eead4)',
-  'Pop Culture': 'linear-gradient(135deg, #4ade80, #a3e635)',
-  'Math': 'linear-gradient(135deg, #10b981, #34d399)',
-  'Science': 'linear-gradient(135deg, #16a34a, #84cc16)',
+const CATEGORY_ICONS: Record<string, string> = {
+  'General Knowledge': '◆',
+  'Tech & Hacking': '⚡',
+  'Pop Culture': '★',
+  'Math': '∑',
+  'Science': '⚛',
 }
 
 export default function CategoryPick({ settings, onChange, onStart }: Props) {
   return (
-    <div className="max-w-3xl mx-auto w-full space-y-5">
+    <div className="max-w-[440px] mx-auto w-full space-y-5 pb-5">
       <div className="text-center">
-        <div className="fg-lbl mb-2">/ configure session</div>
-        <h2 className="fg-display text-[clamp(2rem,6vw,3rem)]">Pick a Category</h2>
+        <h1
+          className="fg-display"
+          style={{ fontSize: 'clamp(2rem, 7vw, 3rem)', padding: '0 8px' }}
+        >
+          Pick a Category
+        </h1>
+        <p className="fg-sub text-xs mt-1">configure the round</p>
       </div>
 
-      <div className="fg-panel p-5">
-        <div className="fg-lbl mb-3">round settings</div>
+      <div className="fg-panel p-4">
         <div className="grid grid-cols-3 gap-3">
           <NumField
-            label="round (sec)"
+            label="seconds"
             value={settings.roundSeconds}
             min={20}
             max={300}
@@ -51,33 +55,36 @@ export default function CategoryPick({ settings, onChange, onStart }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3.5" style={{ maxWidth: 380, margin: '0 auto' }}>
         {CATEGORIES.map((cat, i) => (
           <motion.button
             key={cat}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            whileHover={{ y: -3 }}
+            whileHover={{ y: -4 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => onStart(cat)}
-            className="fg-mode-card p-5 text-left flex items-center gap-3"
+            className="fg-mode-card text-center"
+            style={{ padding: '24px 14px' }}
           >
             <div
-              className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-xl font-extrabold"
+              className="fg-display"
               style={{
-                background: CATEGORY_GRADIENTS[cat] ?? 'linear-gradient(135deg, #22c55e, #4ade80)',
-                color: '#052e16',
-                boxShadow: '0 4px 14px rgba(74,222,128,.3)',
+                fontSize: '2.4rem',
+                lineHeight: 1,
+                marginBottom: 8,
+                padding: 0,
               }}
             >
-              {cat.charAt(0)}
+              {CATEGORY_ICONS[cat] ?? '?'}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="fg-lbl mb-0.5">category</div>
-              <div className="text-base font-extrabold tracking-tight truncate">{cat}</div>
+            <div
+              className="text-white"
+              style={{ fontWeight: 700, fontSize: '0.95rem' }}
+            >
+              {cat}
             </div>
-            <span className="text-[var(--green-l)] text-xl">→</span>
           </motion.button>
         ))}
       </div>
@@ -100,14 +107,17 @@ function NumField({
 }) {
   return (
     <label className="block">
-      <div className="fg-lbl mb-1.5">{label}</div>
+      <div className="fg-lbl mb-1.5 text-[10px]">{label}</div>
       <input
         type="number"
         min={min}
         max={max}
         value={value}
-        onChange={(e) => onChange(Math.max(min, Math.min(max, +e.target.value || min)))}
+        onChange={(e) =>
+          onChange(Math.max(min, Math.min(max, +e.target.value || min)))
+        }
         className="fg-inp text-center"
+        style={{ padding: '10px 12px', fontSize: '0.9rem' }}
       />
     </label>
   )
