@@ -24,7 +24,7 @@ import GameOver from '../games/cracked-heist/components/GameOver'
 import { defaultAvatar } from '../games/cracked-heist/avatar'
 import { getShared } from '../games/cracked-heist/shareStore'
 import { pickN } from '../games/cracked-heist/utils'
-import type { Player, SharedGame } from '../games/cracked-heist/types'
+import type { Player, Question, SharedGame } from '../games/cracked-heist/types'
 import '../games/cracked-heist/forbidden-green.css'
 
 type ActionFlow =
@@ -42,6 +42,7 @@ export default function CrackedHeist() {
   const [flow, setFlow] = useState<ActionFlow>({ kind: 'none' })
   const [role, setRole] = useState<EntryRole>(null)
   const [sharedView, setSharedView] = useState<{ code: string; game: SharedGame | null } | null>(null)
+  const [editorSeed, setEditorSeed] = useState<{ topic: string; questions: Question[] } | null>(null)
   const me = state.players.find((p) => p.id === state.meId)
   const isHost = !!me?.isHost
   const others = useMemo(
@@ -167,19 +168,37 @@ export default function CrackedHeist() {
             settings={state.settings}
             onChange={(patch) => dispatch({ type: 'setSettings', patch })}
             onBack={() => dispatch({ type: 'setPhase', phase: 'hostLobby' })}
-            onStart={(cat) => {
-              dispatch({ type: 'pickCategory', category: cat })
-              dispatch({ type: 'setPhase', phase: 'pregame' })
+            onCustom={() => {
+              setEditorSeed(null)
+              dispatch({ type: 'setPhase', phase: 'customQuestions' })
             }}
-            onCustom={() => dispatch({ type: 'setPhase', phase: 'customQuestions' })}
+            onAiGenerated={(topic, qs) => {
+              setEditorSeed({ topic, questions: qs })
+              dispatch({ type: 'setPhase', phase: 'customQuestions' })
+            }}
           />
         )}
 
         {state.phase === 'customQuestions' && (
           <CustomQuestions
-            onBack={() => dispatch({ type: 'setPhase', phase: 'pickCategory' })}
+            initial={editorSeed?.questions}
+            title={editorSeed ? `AI: ${editorSeed.topic}` : 'Custom Questions'}
+            subtitle={
+              editorSeed
+                ? 'AI made these. Edit anything you want, then start the game.'
+                : 'Minimum 4. No maximum. Tap the correct choice to mark it.'
+            }
+            onBack={() => {
+              setEditorSeed(null)
+              dispatch({ type: 'setPhase', phase: 'pickCategory' })
+            }}
             onSubmit={(qs) => {
-              dispatch({ type: 'pickCustomQuestions', questions: qs })
+              dispatch({
+                type: 'pickCustomQuestions',
+                questions: qs,
+                label: editorSeed?.topic,
+              })
+              setEditorSeed(null)
               dispatch({ type: 'setPhase', phase: 'pregame' })
             }}
           />

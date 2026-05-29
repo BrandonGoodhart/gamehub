@@ -1,6 +1,16 @@
 [build]
   command = "bun run build"
   publish = "dist"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# API redirect must come first so it isn't swallowed by the SPA fallback
+[[redirects]]
+  from = "/api/generate-questions"
+  to = "/.netlify/functions/generate-questions"
+  status = 200
 
 [[redirects]]
   from = "/*"

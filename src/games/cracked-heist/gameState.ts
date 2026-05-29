@@ -74,7 +74,7 @@ type Action =
   | { type: 'addBotsForDemo'; count: number }
   | { type: 'kickPlayer'; id: string }
   | { type: 'pickCategory'; category: string }
-  | { type: 'pickCustomQuestions'; questions: Question[] }
+  | { type: 'pickCustomQuestions'; questions: Question[]; label?: string }
   | { type: 'beginCountdown' }
   | { type: 'tickCountdown' }
   | { type: 'tickTimer' }
@@ -193,7 +193,7 @@ function reducer(state: RoomState, action: Action): RoomState {
       const shuffled = [...action.questions].sort(() => Math.random() - 0.5)
       return {
         ...state,
-        category: 'Custom',
+        category: action.label ?? 'Custom',
         customQuestions: action.questions,
         questionQueue: shuffled,
       }

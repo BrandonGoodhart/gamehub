@@ -5,6 +5,9 @@ import type { Question } from '../types'
 interface Props {
   onSubmit: (questions: Question[]) => void
   onBack: () => void
+  initial?: Question[]
+  title?: string
+  subtitle?: string
 }
 
 interface Draft {
@@ -17,17 +20,35 @@ function emptyDraft(): Draft {
   return { q: '', choices: ['', '', '', ''], answer: 0 }
 }
 
+function questionToDraft(q: Question): Draft {
+  const choices: [string, string, string, string] = [
+    q.choices[0] ?? '',
+    q.choices[1] ?? '',
+    q.choices[2] ?? '',
+    q.choices[3] ?? '',
+  ]
+  return { q: q.q, choices, answer: q.answer }
+}
+
 function isValid(d: Draft): boolean {
   return d.q.trim().length > 0 && d.choices.every((c) => c.trim().length > 0)
 }
 
-export default function CustomQuestions({ onSubmit, onBack }: Props) {
-  const [drafts, setDrafts] = useState<Draft[]>([
-    emptyDraft(),
-    emptyDraft(),
-    emptyDraft(),
-    emptyDraft(),
-  ])
+export default function CustomQuestions({
+  onSubmit,
+  onBack,
+  initial,
+  title = 'Custom Questions',
+  subtitle = 'Minimum 4. No maximum. Tap the correct choice to mark it.',
+}: Props) {
+  const [drafts, setDrafts] = useState<Draft[]>(() => {
+    if (initial && initial.length > 0) {
+      const seeded = initial.map(questionToDraft)
+      while (seeded.length < 4) seeded.push(emptyDraft())
+      return seeded
+    }
+    return [emptyDraft(), emptyDraft(), emptyDraft(), emptyDraft()]
+  })
   const [error, setError] = useState('')
 
   function update(i: number, patch: Partial<Draft>) {
@@ -85,11 +106,9 @@ export default function CustomQuestions({ onSubmit, onBack }: Props) {
           className="fg-display"
           style={{ fontSize: 'clamp(1.8rem, 6vw, 2.6rem)', padding: '0 8px' }}
         >
-          Custom Questions
+          {title}
         </h1>
-        <p className="fg-sub text-xs mt-1">
-          Minimum 4. No maximum. Tap the correct choice to mark it.
-        </p>
+        <p className="fg-sub text-xs mt-1">{subtitle}</p>
       </div>
 
       <div className="space-y-3">

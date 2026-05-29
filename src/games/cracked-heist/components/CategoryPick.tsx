@@ -1,20 +1,73 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { CATEGORIES } from '../questions'
-import type { Settings } from '../types'
+import type { Question, Settings } from '../types'
 import NumberSpinner from './NumberSpinner'
 
 interface Props {
   settings: Settings
   onChange: (patch: Partial<Settings>) => void
-  onStart: (category: string) => void
   onCustom: () => void
+  onAiGenerated: (category: string, questions: Question[]) => void
   onBack?: () => void
 }
 
-export default function CategoryPick({ settings, onChange, onStart, onCustom, onBack }: Props) {
-  const [confirmCat, setConfirmCat] = useState<string | null>(null)
+export default function CategoryPick({
+  settings,
+  onChange,
+  onCustom,
+  onAiGenerated,
+  onBack,
+}: Props) {
   const [aiOpen, setAiOpen] = useState(false)
+  const [aiTopic, setAiTopic] = useState('')
+  const [aiCount, setAiCount] = useState(10)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+
+  async function generate() {
+    const topic = aiTopic.trim()
+    if (!topic) {
+      setAiError('Type a topic first.')
+      return
+    }
+    setAiBusy(true)
+    setAiError(null)
+    try {
+      const resp = await fetch('/api/generate-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: topic, count: aiCount }),
+      })
+      const text = await resp.text()
+      let data: { questions?: Question[]; error?: string } = {}
+      try {
+        data = text ? JSON.parse(text) : {}
+      } catch {
+        // non-JSON response (usually a 404 HTML page when the function isn't deployed)
+      }
+      if (!resp.ok) {
+        if (resp.status === 404) {
+          setAiError(
+            "AI server isn't connected yet. The Netlify function needs to be deployed and ANTHROPIC_API_KEY set.",
+          )
+        } else {
+          setAiError(data.error ?? `Generation failed (${resp.status}).`)
+        }
+        return
+      }
+      const qs: Question[] = data.questions ?? []
+      if (qs.length === 0) {
+        setAiError('No questions returned. Try a different topic.')
+        return
+      }
+      onAiGenerated(topic, qs)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Network error'
+      setAiError(`Couldn't reach the AI server: ${msg}`)
+    } finally {
+      setAiBusy(false)
+    }
+  }
 
   return (
     <div className="max-w-[440px] mx-auto w-full space-y-5 pb-5">
@@ -31,9 +84,9 @@ export default function CategoryPick({ settings, onChange, onStart, onCustom, on
           className="fg-display"
           style={{ fontSize: 'clamp(2rem, 7vw, 3rem)', padding: '0 8px' }}
         >
-          Pick Questions
+          Set Up Round
         </h1>
-        <p className="fg-sub text-xs mt-1">choose a category or make your own</p>
+        <p className="fg-sub text-xs mt-1">questions and round settings</p>
       </div>
 
       <div className="fg-panel p-5">
@@ -64,122 +117,113 @@ export default function CategoryPick({ settings, onChange, onStart, onCustom, on
         </p>
       </div>
 
-      <motion.button
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        whileHover={{ y: -3 }}
-        whileTap={{ scale: 0.97 }}
-        onClick={onCustom}
-        className="fg-mode-card text-center w-full"
-        style={{ padding: '22px 16px' }}
-      >
-        <div className="fg-lbl mb-2">custom</div>
-        <div className="text-white" style={{ fontWeight: 800, fontSize: '1.1rem' }}>
-          Write your own questions
-        </div>
-        <div className="fg-sub mt-1" style={{ fontSize: '0.78rem' }}>
-          Minimum 4 questions, 4 answers each. No maximum.
-        </div>
-      </motion.button>
-
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="fg-mode-card text-center w-full"
-        style={{ padding: '20px 16px', cursor: 'default' }}
-      >
-        <div className="fg-lbl mb-2">ai assistant</div>
-        <button
-          onClick={() => setAiOpen((o) => !o)}
-          className="text-white w-full text-center"
-          style={{
-            fontWeight: 800,
-            fontSize: '1.05rem',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-          }}
-        >
-          Ask AI to make questions
-        </button>
-        <div className="fg-sub mt-1" style={{ fontSize: '0.78rem' }}>
-          {aiOpen ? 'AI assistant coming soon.' : 'Tap to open chat (coming soon).'}
-        </div>
-        {aiOpen && (
-          <div className="mt-3">
-            <input
-              disabled
-              placeholder="Tell me a category, e.g. 'world capitals'..."
-              className="fg-inp"
-              style={{ opacity: 0.5, padding: '10px 14px', fontSize: '0.85rem' }}
-            />
-            <div className="fg-sub text-[11px] mt-2 italic">
-              Not connected yet. Will arrive in a future update.
-            </div>
-          </div>
-        )}
-      </motion.div>
-
       <div>
-        <div className="fg-lbl text-center mb-3">or pick a category</div>
-        <div className="grid grid-cols-2 gap-3">
-          {CATEGORIES.map((cat, i) => (
-            <motion.button
-              key={cat}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 + i * 0.05 }}
-              whileHover={{ y: -3 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setConfirmCat(cat)}
-              className="fg-mode-card text-center"
-              style={{ padding: '22px 14px' }}
+        <div className="fg-lbl text-center mb-3">pick how to make questions</div>
+        <div className="space-y-3">
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ y: -3 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={onCustom}
+            className="fg-mode-card text-center w-full"
+            style={{ padding: '22px 16px' }}
+          >
+            <div className="fg-lbl mb-2">manual</div>
+            <div className="text-white" style={{ fontWeight: 800, fontSize: '1.1rem' }}>
+              Write your own questions
+            </div>
+            <div className="fg-sub mt-1" style={{ fontSize: '0.78rem' }}>
+              Minimum 4 questions, 4 answers each. No maximum.
+            </div>
+          </motion.button>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="fg-mode-card text-center w-full"
+            style={{ padding: '22px 16px', cursor: 'default' }}
+          >
+            <div className="fg-lbl mb-2">ai assistant</div>
+            <button
+              onClick={() => {
+                setAiOpen((o) => !o)
+                setAiError(null)
+              }}
+              className="text-white text-center"
+              style={{
+                fontWeight: 800,
+                fontSize: '1.1rem',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+              }}
             >
-              <div className="fg-lbl mb-2">category</div>
-              <div
-                className="text-white"
-                style={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2 }}
-              >
-                {cat}
+              Ask AI to make questions
+            </button>
+            <div className="fg-sub mt-1" style={{ fontSize: '0.78rem' }}>
+              {aiOpen
+                ? 'Tell the AI a topic. You can edit what it gives you.'
+                : 'Tap to open the chat.'}
+            </div>
+
+            {aiOpen && (
+              <div className="mt-4 space-y-3 text-left">
+                <div>
+                  <div className="fg-lbl mb-1.5">topic</div>
+                  <input
+                    value={aiTopic}
+                    onChange={(e) => {
+                      setAiTopic(e.target.value)
+                      setAiError(null)
+                    }}
+                    placeholder="e.g. world capitals, ocean animals, ancient Egypt"
+                    className="fg-inp"
+                    style={{ padding: '12px 14px', fontSize: '0.95rem' }}
+                    disabled={aiBusy}
+                  />
+                </div>
+                <div>
+                  <div className="fg-lbl mb-1.5">how many questions</div>
+                  <NumberSpinner
+                    value={aiCount}
+                    min={4}
+                    max={40}
+                    step={1}
+                    onChange={setAiCount}
+                  />
+                </div>
+                {aiError && (
+                  <div
+                    className="rounded-xl px-3 py-2 text-xs font-semibold"
+                    style={{
+                      background: 'rgba(251,113,133,0.1)',
+                      border: '1px solid rgba(251,113,133,0.3)',
+                      color: '#fda4af',
+                    }}
+                  >
+                    {aiError}
+                  </div>
+                )}
+                <button
+                  onClick={generate}
+                  disabled={aiBusy}
+                  className="fg-btn fg-btn-grad"
+                  style={{ width: '100%', opacity: aiBusy ? 0.6 : 1 }}
+                >
+                  {aiBusy ? 'Generating...' : 'Generate Questions →'}
+                </button>
+                <p className="fg-sub text-[11px] italic">
+                  AI questions land in the editor — you can change them before
+                  starting the game.
+                </p>
               </div>
-            </motion.button>
-          ))}
+            )}
+          </motion.div>
         </div>
       </div>
-
-      {confirmCat && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={() => setConfirmCat(null)}
-          className="fixed inset-0 z-[250] flex items-center justify-center p-4"
-          style={{ background: 'rgba(5,14,8,0.8)', backdropFilter: 'blur(12px)' }}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            onClick={(e) => e.stopPropagation()}
-            className="fg-panel fg-panel-lg max-w-md w-full text-center"
-          >
-            <div className="fg-lbl mb-1">selected category</div>
-            <div className="fg-display text-2xl mb-1">{confirmCat}</div>
-            <p className="fg-sub text-xs mb-5">Start the game with this category?</p>
-            <div className="flex gap-2.5">
-              <button onClick={() => setConfirmCat(null)} className="fg-back flex-1 justify-center">
-                Cancel
-              </button>
-              <button
-                onClick={() => onStart(confirmCat)}
-                className="fg-btn fg-btn-grad"
-                style={{ flex: 1 }}
-              >
-                Start →
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
     </div>
   )
 }
