@@ -34,7 +34,7 @@ export function persistGame(state: RoomState): string {
     code,
     finishedAt: Date.now(),
     category: state.category,
-    rounds: state.round,
+    seconds: state.settings.roundSeconds,
     players: state.players.map((p) => ({
       handle: p.handle,
       color: p.avatar.color,

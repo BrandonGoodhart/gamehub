@@ -8,9 +8,19 @@ export function generateRoomCode(): string {
   return s
 }
 
+export const PASSWORD_POOL = [
+  'GHOST',
+  'DRAGON',
+  'NINJA',
+  'WIZARD',
+  'EAGLE',
+  'TIGER',
+  'SHARK',
+  'ROBOT',
+]
+
 export function generatePassword(): string {
-  const opts = ['hunter2', 'qwerty', 'iloveu', 'abc123', 'letmein', 'p@ss', 'dragon', 'matrix', 'admin', 'root', 'snake', 'ghost']
-  return opts[Math.floor(Math.random() * opts.length)]
+  return PASSWORD_POOL[Math.floor(Math.random() * PASSWORD_POOL.length)]
 }
 
 export function pick<T>(arr: T[]): T {

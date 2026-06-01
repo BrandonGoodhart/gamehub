@@ -8,9 +8,9 @@ export type Phase =
   | 'customQuestions'
   | 'viewShared'
   | 'pregame'
+  | 'pickPassword'
   | 'countdown'
   | 'playing'
-  | 'roundEnd'
   | 'gameOver'
 
 export type ActionKind = 'spy' | 'hack' | 'password'
@@ -27,12 +27,13 @@ export interface Player {
   avatar: Avatar
   coins: number
   tokens: number
-  hackedInRounds: number[]
+  hackedRecently: boolean
   caughtCount: number
   hacksDone: number
   spiesDone: number
   passwordsGuessed: number
   password: string
+  passwordLocked: boolean
   alive: boolean
 }
 
@@ -51,7 +52,6 @@ export interface EventLog {
 
 export interface Settings {
   roundSeconds: number
-  totalRounds: number
   costs: { spy: number; hack: number; password: number }
   rewards: {
     spyCatch: number
@@ -64,7 +64,6 @@ export interface Settings {
 export interface RoomState {
   code: string
   phase: Phase
-  round: number
   timeLeft: number
   players: Player[]
   meId: string
@@ -73,20 +72,21 @@ export interface RoomState {
   customQuestions: Question[] | null
   questionQueue: Question[]
   currentQuestion: Question | null
-  questionStartTs: number
+  questionTick: number
   events: EventLog[]
   fullLog: EventLog[]
   settings: Settings
   pendingAction: ActionKind | null
   countdownValue: number
   shareCode: string | null
+  isJoiner: boolean
 }
 
 export interface SharedGame {
   code: string
   finishedAt: number
   category: string | null
-  rounds: number
+  seconds: number
   players: { handle: string; color: string; coins: number; tokens: number; hacks: number; caught: number }[]
   log: EventLog[]
 }

@@ -24,11 +24,7 @@ export default function PregameSplash({ state, onPlay }: Props) {
         </h1>
         <div className="flex items-center justify-center gap-5 fg-sub text-sm font-bold mt-2 mb-1">
           <span>
-            <span className="text-[var(--green-l)]">{state.settings.totalRounds}</span> rounds
-          </span>
-          <span style={{ opacity: 0.4 }}>•</span>
-          <span>
-            <span className="text-[var(--green-l)]">{state.settings.roundSeconds}s</span> each
+            <span className="text-[var(--green-l)]">{state.settings.roundSeconds}s</span> total
           </span>
           <span style={{ opacity: 0.4 }}>•</span>
           <span>

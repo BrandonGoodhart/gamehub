@@ -17,7 +17,7 @@ export default function PlayerList({ state, selectableIds, onSelect, highlightHa
         const selectable = !!selectableIds && selectableIds.includes(p.id)
         const isYou = p.id === state.meId
         const recentlyHacked =
-          highlightHacked && p.hackedInRounds.some((r) => r >= state.round - 2)
+          highlightHacked && p.hackedRecently
         return (
           <motion.button
             key={p.id}

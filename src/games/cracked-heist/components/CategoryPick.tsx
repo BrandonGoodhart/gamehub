@@ -90,30 +90,16 @@ export default function CategoryPick({
       </div>
 
       <div className="fg-panel p-5">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="fg-lbl mb-2">seconds per round</div>
-            <NumberSpinner
-              value={settings.roundSeconds}
-              min={20}
-              max={300}
-              step={5}
-              onChange={(v) => onChange({ roundSeconds: v })}
-            />
-          </div>
-          <div>
-            <div className="fg-lbl mb-2">number of rounds</div>
-            <NumberSpinner
-              value={settings.totalRounds}
-              min={3}
-              max={20}
-              step={1}
-              onChange={(v) => onChange({ totalRounds: v })}
-            />
-          </div>
-        </div>
-        <p className="fg-sub text-[11px] mt-3">
-          Everyone starts at 0 coins and earns them by answering correctly.
+        <div className="fg-lbl mb-2 text-center">game length (seconds)</div>
+        <NumberSpinner
+          value={settings.roundSeconds}
+          min={60}
+          max={600}
+          step={15}
+          onChange={(v) => onChange({ roundSeconds: v })}
+        />
+        <p className="fg-sub text-[11px] mt-3 text-center">
+          One round per game. Minimum 60 seconds. Everyone starts at 0 coins and 0 tokens.
         </p>
       </div>
 

@@ -74,8 +74,8 @@ export default function SharedView({ game, code, onBack }: Props) {
                 <div className="text-white font-bold text-sm">{game.category ?? 'Custom'}</div>
               </div>
               <div>
-                <div className="fg-lbl">rounds</div>
-                <div className="text-white font-bold text-sm">{game.rounds}</div>
+                <div className="fg-lbl">length</div>
+                <div className="text-white font-bold text-sm">{game.seconds}s</div>
               </div>
             </div>
           </div>

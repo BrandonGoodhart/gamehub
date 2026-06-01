@@ -4,6 +4,7 @@ import type { Question } from '../types'
 
 interface Props {
   question: Question | null
+  tick: number
   onAnswer: (choice: number) => void
 }
 
@@ -49,20 +50,20 @@ function QuestionInner({ question, onAnswer }: { question: Question; onAnswer: (
   )
 }
 
-export default function QuestionCard({ question, onAnswer }: Props) {
+export default function QuestionCard({ question, tick, onAnswer }: Props) {
   if (!question) {
     return <div className="fg-sub text-sm animate-pulse text-center">loading question…</div>
   }
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        key={question.q}
+        key={tick}
         initial={{ opacity: 0, x: 30 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -30 }}
         transition={{ duration: 0.25 }}
       >
-        <QuestionInner key={question.q} question={question} onAnswer={onAnswer} />
+        <QuestionInner key={tick} question={question} onAnswer={onAnswer} />
       </motion.div>
     </AnimatePresence>
   )

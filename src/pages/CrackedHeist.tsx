@@ -10,6 +10,7 @@ import CategoryPick from '../games/cracked-heist/components/CategoryPick'
 import CustomQuestions from '../games/cracked-heist/components/CustomQuestions'
 import SharedView from '../games/cracked-heist/components/SharedView'
 import PregameSplash from '../games/cracked-heist/components/PregameSplash'
+import PasswordPickPhase from '../games/cracked-heist/components/PasswordPickPhase'
 import Countdown from '../games/cracked-heist/components/Countdown'
 import HUD from '../games/cracked-heist/components/HUD'
 import QuestionCard from '../games/cracked-heist/components/QuestionCard'
@@ -18,8 +19,7 @@ import PlayerList from '../games/cracked-heist/components/PlayerList'
 import EventFeed from '../games/cracked-heist/components/EventFeed'
 import Modal from '../games/cracked-heist/components/Modal'
 import PasswordPicker from '../games/cracked-heist/components/PasswordPicker'
-import ComputerPicker from '../games/cracked-heist/components/ComputerPicker'
-import RoundEnd from '../games/cracked-heist/components/RoundEnd'
+import HackComputers from '../games/cracked-heist/components/HackComputers'
 import GameOver from '../games/cracked-heist/components/GameOver'
 import { defaultAvatar } from '../games/cracked-heist/avatar'
 import { getShared } from '../games/cracked-heist/shareStore'
@@ -29,8 +29,9 @@ import '../games/cracked-heist/forbidden-green.css'
 
 type ActionFlow =
   | { kind: 'none' }
-  | { kind: 'spyPick'; targets: Player[] }
-  | { kind: 'hackPicker' }
+  | { kind: 'spyPick'; targets: Player[]; truthId: string }
+  | { kind: 'spyResult'; correct: boolean }
+  | { kind: 'hackPicker'; targets: Player[] }
   | { kind: 'passwordPickTarget' }
   | { kind: 'passwordPickGuess'; targetId: string }
   | { kind: 'viewOptions' }
@@ -50,46 +51,36 @@ export default function CrackedHeist() {
     [state.players, state.meId],
   )
 
-  function pickSpyTargets(): Player[] {
-    // pick 3 targets, force at least one to be "recently hacked"
-    if (others.length === 0) return []
-    const recentlyHacked = others.filter((p) =>
-      p.hackedInRounds.some((r) => r >= state.round - 2),
-    )
-    const clean = others.filter((p) => !recentlyHacked.includes(p))
-    let target: Player
-    if (recentlyHacked.length > 0) {
-      target = recentlyHacked[Math.floor(Math.random() * recentlyHacked.length)]
+  function openSpy() {
+    if (others.length === 0) return
+    // Ensure one of the three shown is the real "recently hacked" target;
+    // if no one's been hacking, pick one and mark them.
+    const recently = others.filter((p) => p.hackedRecently)
+    let truth: Player
+    if (recently.length > 0) {
+      truth = recently[Math.floor(Math.random() * recently.length)]
     } else {
-      // force one of the clean ones to "have hacked" by adding a fake event in their record
-      target = clean[Math.floor(Math.random() * clean.length)]
-      dispatch({
-        type: 'event',
-        event: {
-          id: Date.now(),
-          text: `${target.handle} is hiding something...`,
-          tone: 'neutral',
-          ts: Date.now(),
-        },
-      })
-      // Mark them as hacked so the spy logic rewards correctly
-      target.hackedInRounds.push(state.round)
+      truth = others[Math.floor(Math.random() * others.length)]
     }
-    const decoyPool = others.filter((p) => p.id !== target.id)
+    const decoyPool = others.filter((p) => p.id !== truth.id)
     const decoys = pickN(decoyPool, Math.min(2, decoyPool.length))
-    const all = [...decoys, target]
-    return all.sort(() => Math.random() - 0.5)
+    const targets = [...decoys, truth].sort(() => Math.random() - 0.5)
+    setFlow({ kind: 'spyPick', targets, truthId: truth.id })
+  }
+
+  function openHack() {
+    if (others.length < 3) {
+      // not enough targets — still open so the user sees the "need more players" message
+      setFlow({ kind: 'hackPicker', targets: others })
+      return
+    }
+    const targets = pickN(others, 3)
+    setFlow({ kind: 'hackPicker', targets })
   }
 
   function chooseAction(kind: 'spy' | 'hack' | 'password') {
-    if (kind === 'hack') {
-      setFlow({ kind: 'hackPicker' })
-      return
-    }
-    if (kind === 'spy') {
-      setFlow({ kind: 'spyPick', targets: pickSpyTargets() })
-      return
-    }
+    if (kind === 'hack') return openHack()
+    if (kind === 'spy') return openSpy()
     if (kind === 'password') setFlow({ kind: 'passwordPickTarget' })
   }
 
@@ -127,7 +118,10 @@ export default function CrackedHeist() {
 
         {state.phase === 'joinPrompt' && (
           <JoinPrompt
-            onJoin={() => dispatch({ type: 'setPhase', phase: 'pickAvatar' })}
+            onJoin={(code) => {
+              dispatch({ type: 'setRoomCode', code })
+              dispatch({ type: 'setPhase', phase: 'pickAvatar' })
+            }}
             onBack={() => {
               setRole(null)
               dispatch({ type: 'setPhase', phase: 'start' })
@@ -216,45 +210,69 @@ export default function CrackedHeist() {
         )}
 
         {state.phase === 'pregame' && (
-          <PregameSplash state={state} onPlay={() => dispatch({ type: 'beginCountdown' })} />
+          <PregameSplash
+            state={state}
+            onPlay={() => dispatch({ type: 'setPhase', phase: 'pickPassword' })}
+          />
+        )}
+
+        {state.phase === 'pickPassword' && me && (
+          <PasswordPickPhase
+            onLock={(pw) => {
+              dispatch({ type: 'lockPassword', playerId: me.id, password: pw })
+              dispatch({ type: 'beginCountdown' })
+            }}
+          />
         )}
 
         {state.phase === 'countdown' && <Countdown value={state.countdownValue} />}
 
-        {(state.phase === 'playing' || state.phase === 'roundEnd') && me && (
+        {state.phase === 'playing' && me && (
           <div className="max-w-5xl mx-auto space-y-4">
             <HUD state={state} me={me} onViewOptions={() => setFlow({ kind: 'viewOptions' })} />
 
-            {state.phase === 'playing' && (
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
-                <div className="space-y-4">
-                  <div className="fg-gcard relative">
-                    <div className="fg-codebg" />
-                    <div className="relative z-[1]">
-                      <QuestionCard question={state.currentQuestion} onAnswer={answer} />
-                    </div>
-                  </div>
-                  <div className="fg-panel p-5">
-                    <div className="fg-lbl mb-3">live feed</div>
-                    <EventFeed events={state.events} />
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+              <div className="space-y-4">
+                <div className="fg-gcard relative">
+                  <div className="fg-codebg" />
+                  <div className="relative z-[1]">
+                    <QuestionCard
+                      question={state.currentQuestion}
+                      tick={state.questionTick}
+                      onAnswer={answer}
+                    />
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <div className="fg-panel p-5">
-                    <div className="fg-lbl mb-3">actions</div>
-                    <ActionPanel state={state} me={me} onChoose={chooseAction} />
-                  </div>
-                  <div className="fg-panel p-5">
-                    <div className="fg-lbl mb-3">hackers</div>
-                    <PlayerList state={state} />
-                  </div>
+                <div className="fg-panel p-5">
+                  <div className="fg-lbl mb-3">live feed</div>
+                  <EventFeed events={state.events} />
                 </div>
               </div>
-            )}
-
-            {state.phase === 'roundEnd' && (
-              <RoundEnd state={state} onNext={() => dispatch({ type: 'beginCountdown' })} />
-            )}
+              <div className="space-y-4">
+                <div className="fg-panel p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="fg-lbl">your password</div>
+                    <div
+                      className="font-extrabold text-xs px-2 py-1 rounded-full"
+                      style={{
+                        background: 'rgba(74,222,128,0.12)',
+                        color: '#86efac',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        letterSpacing: '0.06em',
+                      }}
+                    >
+                      {me.password || '—'}
+                    </div>
+                  </div>
+                  <div className="fg-lbl mb-3">actions</div>
+                  <ActionPanel state={state} me={me} onChoose={chooseAction} />
+                </div>
+                <div className="fg-panel p-5">
+                  <div className="fg-lbl mb-3">hackers</div>
+                  <PlayerList state={state} />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -263,56 +281,88 @@ export default function CrackedHeist() {
         )}
       </div>
 
+      {/* Spy modal */}
       <Modal
-        open={flow.kind === 'spyPick'}
+        open={flow.kind === 'spyPick' || flow.kind === 'spyResult'}
         onClose={close}
         title="Spy — find the hacker"
       >
-        <p className="fg-sub text-sm mb-3">
-          One of these three has been hacking. Pick who you think it is.
-        </p>
-        <div className="space-y-2">
-          {flow.kind === 'spyPick' &&
-            flow.targets.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => {
-                  doSpy(p.id)
-                  close()
-                }}
-                className="w-full text-left p-3 rounded-2xl border font-bold transition-all flex items-center gap-3"
-                style={{
-                  borderColor: 'rgba(94,234,212,0.3)',
-                  background: 'rgba(94,234,212,0.05)',
-                  color: '#99f6e4',
-                }}
-              >
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center font-extrabold flex-shrink-0"
-                  style={{ background: p.avatar.color, color: '#0a0a0a' }}
+        {flow.kind === 'spyPick' && (
+          <>
+            <p className="fg-sub text-sm mb-3">
+              One of these three has been hacking. Pick who you think it is.
+            </p>
+            <div className="space-y-2">
+              {flow.targets.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    const correct = p.id === flow.truthId
+                    doSpy(correct ? flow.truthId : p.id, correct)
+                    setFlow({ kind: 'spyResult', correct })
+                  }}
+                  className="w-full text-left p-3 rounded-2xl border font-bold transition-all flex items-center gap-3"
+                  style={{
+                    borderColor: 'rgba(94,234,212,0.3)',
+                    background: 'rgba(94,234,212,0.05)',
+                    color: '#99f6e4',
+                  }}
                 >
-                  {p.handle.charAt(0).toUpperCase()}
-                </div>
-                <span>{p.handle}</span>
-              </button>
-            ))}
-        </div>
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center font-extrabold flex-shrink-0"
+                    style={{ background: p.avatar.color, color: '#0a0a0a' }}
+                  >
+                    {p.handle.charAt(0).toUpperCase()}
+                  </div>
+                  <span>{p.handle}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        {flow.kind === 'spyResult' && (
+          <div
+            className="rounded-2xl p-5 text-center font-extrabold"
+            style={{
+              background: flow.correct
+                ? 'rgba(74,222,128,0.15)'
+                : 'rgba(251,113,133,0.15)',
+              border: flow.correct
+                ? '2px solid rgba(74,222,128,0.5)'
+                : '2px solid rgba(251,113,133,0.5)',
+              color: flow.correct ? '#86efac' : '#fda4af',
+              fontSize: '1.2rem',
+            }}
+          >
+            {flow.correct ? 'RIGHT — you caught them!' : 'WRONG — they got away.'}
+            <button
+              onClick={close}
+              className="fg-back mt-4 w-full justify-center"
+              style={{ fontSize: '0.9rem' }}
+            >
+              Close
+            </button>
+          </div>
+        )}
       </Modal>
 
-      <Modal open={flow.kind === 'hackPicker'} onClose={close} title="Hack — pick a computer">
+      {/* Hack modal */}
+      <Modal open={flow.kind === 'hackPicker'} onClose={close} title="Hack — three computers">
         {flow.kind === 'hackPicker' && me && (
-          <ComputerPicker
+          <HackComputers
             hackCost={state.settings.costs.hack}
             tokens={me.tokens}
+            targets={flow.targets}
             onClose={close}
-            onHack={(gained) => {
-              doHack(gained)
+            onResult={(targetId, correct) => {
+              doHack(targetId, correct)
               close()
             }}
           />
         )}
       </Modal>
 
+      {/* Crack password modals */}
       <Modal open={flow.kind === 'passwordPickTarget'} onClose={close} title="Crack — pick target">
         <p className="fg-sub text-sm mb-3">Whose wallet do you want to crack?</p>
         <div className="space-y-2">
@@ -320,14 +370,20 @@ export default function CrackedHeist() {
             <button
               key={p.id}
               onClick={() => setFlow({ kind: 'passwordPickGuess', targetId: p.id })}
-              className="w-full text-left p-3 rounded-2xl border font-bold transition-all"
+              className="w-full text-left p-3 rounded-2xl border font-bold transition-all flex items-center gap-3"
               style={{
                 borderColor: 'rgba(163,230,53,0.3)',
                 background: 'rgba(163,230,53,0.05)',
                 color: '#d9f99d',
               }}
             >
-              → {p.handle}
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center font-extrabold flex-shrink-0"
+                style={{ background: p.avatar.color, color: '#0a0a0a' }}
+              >
+                {p.handle.charAt(0).toUpperCase()}
+              </div>
+              <span>{p.handle}</span>
             </button>
           ))}
         </div>
@@ -341,8 +397,8 @@ export default function CrackedHeist() {
         {pwTarget && (
           <PasswordPicker
             target={pwTarget}
-            onGuess={(g) => {
-              doPassword(pwTarget.id, g)
+            onResult={(correct) => {
+              doPassword(pwTarget.id, correct)
               close()
             }}
           />
@@ -353,22 +409,44 @@ export default function CrackedHeist() {
         <div className="space-y-3">
           <OptionInfo
             color="#fbbf24"
-            title="Hack Computer"
+            title="Hack Computers"
             cost={`${state.settings.costs.hack} tokens`}
-            desc="Three locked computers. Spend tokens to peek, then pick one for 3-20 coins. Tokens come from answering correctly."
+            desc="Three computers, each owned by another player. Each shows three possible passwords. Pick the right tile to crack them and steal coins. Wrong = nothing."
           />
           <OptionInfo
             color="#5eead4"
             title="Spy"
             cost={`${state.settings.costs.spy} coins`}
-            desc={`Three suspects shown — one of them just hacked. Find them to win ${state.settings.rewards.spyCatch} coins.`}
+            desc={`Three suspects. One has been hacking. Find them to win ${state.settings.rewards.spyCatch} coins.`}
           />
           <OptionInfo
             color="#a3e635"
             title="Crack Password"
             cost={`${state.settings.costs.password} coins`}
-            desc={`Three passwords shown. Pick the right one to win ${state.settings.rewards.passwordCatch} coins.`}
+            desc={`Pick a target and one of three passwords. Right = +${state.settings.rewards.passwordCatch} coins.`}
           />
+          <div
+            className="rounded-2xl p-3 mt-2"
+            style={{
+              background: 'rgba(74,222,128,0.06)',
+              border: '1px solid rgba(74,222,128,0.2)',
+            }}
+          >
+            <div className="fg-lbl mb-1">your password</div>
+            <div
+              className="font-extrabold text-base"
+              style={{
+                color: '#86efac',
+                fontFamily: 'JetBrains Mono, monospace',
+                letterSpacing: '0.06em',
+              }}
+            >
+              {me?.password || '—'}
+            </div>
+            <p className="fg-sub text-[11px] mt-1">
+              Don't show this to anyone or they can crack your wallet.
+            </p>
+          </div>
         </div>
       </Modal>
     </div>

@@ -27,13 +27,6 @@ export default function HUD({ state, me, onViewOptions }: Props) {
             {state.code}
           </div>
         </div>
-        <div className="hidden sm:flex flex-col">
-          <div className="fg-lbl text-[9px]">round</div>
-          <div className="text-sm font-extrabold">
-            {state.round}
-            <span className="fg-sub">/{state.settings.totalRounds}</span>
-          </div>
-        </div>
         {onViewOptions && (
           <button
             onClick={onViewOptions}
