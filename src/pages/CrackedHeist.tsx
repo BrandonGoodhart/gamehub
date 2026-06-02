@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { multiplayerConfigured, usePartyGame } from '../games/cracked-heist/usePartyGame'
+import { usePartyGame } from '../games/cracked-heist/usePartyGame'
 import AmbientBg from '../games/cracked-heist/components/AmbientBg'
 import LoadingSplash from '../games/cracked-heist/components/LoadingSplash'
 import StartScreen from '../games/cracked-heist/components/StartScreen'
@@ -133,28 +133,6 @@ export default function CrackedHeist() {
   const pwTarget = flow.kind === 'passwordPickGuess' ? state?.players.find((p) => p.id === flow.targetId) : null
 
   // --- Render guards for pre-connection states ---
-
-  if (!multiplayerConfigured()) {
-    return (
-      <div className="fg-root min-h-screen relative">
-        <AmbientBg />
-        <div className="relative z-10 max-w-md mx-auto p-6 mt-12">
-          <div className="fg-panel fg-panel-lg text-center">
-            <h2 className="fg-display text-3xl mb-3">Multiplayer not connected yet</h2>
-            <p className="fg-sub text-sm mb-4">
-              The PartyKit room server isn't wired up. Once you deploy the party
-              server (<code>npx partykit deploy</code>) and add{' '}
-              <code>VITE_PARTYKIT_HOST</code> to Netlify environment variables,
-              this page will work.
-            </p>
-            <p className="fg-sub text-xs">
-              See <code>README-multiplayer.md</code> for setup steps.
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   if (localPhase === 'loading') {
     return (
