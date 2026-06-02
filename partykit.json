@@ -1,0 +1,6 @@
+{
+  "$schema": "https://www.partykit.io/schema.json",
+  "name": "cracked-heist",
+  "main": "party/cracked-heist.ts",
+  "compatibilityDate": "2024-09-01"
+}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useGame } from '../games/cracked-heist/gameState'
+import { multiplayerConfigured, usePartyGame } from '../games/cracked-heist/usePartyGame'
 import AmbientBg from '../games/cracked-heist/components/AmbientBg'
 import LoadingSplash from '../games/cracked-heist/components/LoadingSplash'
 import StartScreen from '../games/cracked-heist/components/StartScreen'
@@ -23,9 +23,18 @@ import HackComputers from '../games/cracked-heist/components/HackComputers'
 import GameOver from '../games/cracked-heist/components/GameOver'
 import { defaultAvatar } from '../games/cracked-heist/avatar'
 import { getShared } from '../games/cracked-heist/shareStore'
-import { pickN } from '../games/cracked-heist/utils'
-import type { Player, Question, SharedGame } from '../games/cracked-heist/types'
+import { generateRoomCode, pickN } from '../games/cracked-heist/utils'
+import type { Avatar, Player, Question, SharedGame } from '../games/cracked-heist/types'
 import '../games/cracked-heist/forbidden-green.css'
+
+type LocalPhase =
+  | 'loading'
+  | 'start'
+  | 'joinPrompt'
+  | 'pickAvatar'
+  | 'connecting'
+  | 'connected'
+  | 'viewShared'
 
 type ActionFlow =
   | { kind: 'none' }
@@ -39,29 +48,61 @@ type ActionFlow =
 type EntryRole = 'host' | 'player' | null
 
 export default function CrackedHeist() {
-  const { state, dispatch, answer, doHack, doSpy, doPassword } = useGame()
-  const [flow, setFlow] = useState<ActionFlow>({ kind: 'none' })
+  const [localPhase, setLocalPhase] = useState<LocalPhase>('loading')
   const [role, setRole] = useState<EntryRole>(null)
+  const [pendingCode, setPendingCode] = useState<string>('')
+  const [pendingHandle, setPendingHandle] = useState<string>('')
+  const [flow, setFlow] = useState<ActionFlow>({ kind: 'none' })
   const [sharedView, setSharedView] = useState<{ code: string; game: SharedGame | null } | null>(null)
   const [editorSeed, setEditorSeed] = useState<{ topic: string; questions: Question[] } | null>(null)
-  const me = state.players.find((p) => p.id === state.meId)
+
+  const { state, meId, connected, error, connect, disconnect, dispatch } = usePartyGame()
+
+  const me = state?.players.find((p) => p.id === meId)
   const isHost = !!me?.isHost
   const others = useMemo(
-    () => state.players.filter((p) => p.id !== state.meId && p.alive),
-    [state.players, state.meId],
+    () => (state?.players ?? []).filter((p) => p.id !== meId && p.alive),
+    [state?.players, meId],
   )
 
+  function startHostFlow() {
+    setRole('host')
+    setPendingCode(generateRoomCode())
+    setLocalPhase('pickAvatar')
+  }
+
+  function startJoinFlow() {
+    setRole('player')
+    setLocalPhase('joinPrompt')
+  }
+
+  function backToStart() {
+    setRole(null)
+    setPendingCode('')
+    setPendingHandle('')
+    disconnect()
+    setLocalPhase('start')
+  }
+
+  function onAvatarConfirmed(handle: string, avatar: Avatar) {
+    setPendingHandle(handle)
+    setLocalPhase('connecting')
+    connect({
+      code: pendingCode,
+      handle,
+      avatar,
+      isHost: role === 'host',
+    })
+    setLocalPhase('connected')
+  }
+
   function openSpy() {
+    if (!state) return
     if (others.length === 0) return
-    // Ensure one of the three shown is the real "recently hacked" target;
-    // if no one's been hacking, pick one and mark them.
     const recently = others.filter((p) => p.hackedRecently)
-    let truth: Player
-    if (recently.length > 0) {
-      truth = recently[Math.floor(Math.random() * recently.length)]
-    } else {
-      truth = others[Math.floor(Math.random() * others.length)]
-    }
+    const truth = recently.length > 0
+      ? recently[Math.floor(Math.random() * recently.length)]
+      : others[Math.floor(Math.random() * others.length)]
     const decoyPool = others.filter((p) => p.id !== truth.id)
     const decoys = pickN(decoyPool, Math.min(2, decoyPool.length))
     const targets = [...decoys, truth].sort(() => Math.random() - 0.5)
@@ -70,7 +111,6 @@ export default function CrackedHeist() {
 
   function openHack() {
     if (others.length < 3) {
-      // not enough targets — still open so the user sees the "need more players" message
       setFlow({ kind: 'hackPicker', targets: others })
       return
     }
@@ -84,76 +124,155 @@ export default function CrackedHeist() {
     if (kind === 'password') setFlow({ kind: 'passwordPickTarget' })
   }
 
-  const close = () => setFlow({ kind: 'none' })
-  const pwTarget =
-    flow.kind === 'passwordPickGuess' ? state.players.find((p) => p.id === flow.targetId) : null
-
   function viewShared(code: string) {
     setSharedView({ code, game: getShared(code) })
-    dispatch({ type: 'setPhase', phase: 'viewShared' })
+    setLocalPhase('viewShared')
   }
 
+  const close = () => setFlow({ kind: 'none' })
+  const pwTarget = flow.kind === 'passwordPickGuess' ? state?.players.find((p) => p.id === flow.targetId) : null
+
+  // --- Render guards for pre-connection states ---
+
+  if (!multiplayerConfigured()) {
+    return (
+      <div className="fg-root min-h-screen relative">
+        <AmbientBg />
+        <div className="relative z-10 max-w-md mx-auto p-6 mt-12">
+          <div className="fg-panel fg-panel-lg text-center">
+            <h2 className="fg-display text-3xl mb-3">Multiplayer not connected yet</h2>
+            <p className="fg-sub text-sm mb-4">
+              The PartyKit room server isn't wired up. Once you deploy the party
+              server (<code>npx partykit deploy</code>) and add{' '}
+              <code>VITE_PARTYKIT_HOST</code> to Netlify environment variables,
+              this page will work.
+            </p>
+            <p className="fg-sub text-xs">
+              See <code>README-multiplayer.md</code> for setup steps.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (localPhase === 'loading') {
+    return (
+      <div className="fg-root min-h-screen relative">
+        <AmbientBg />
+        <div className="relative z-10 px-4 py-5">
+          <LoadingSplash onDone={() => setLocalPhase('start')} />
+        </div>
+      </div>
+    )
+  }
+
+  if (localPhase === 'start') {
+    return (
+      <div className="fg-root min-h-screen relative">
+        <AmbientBg />
+        <div className="relative z-10 px-4 py-5">
+          <StartScreen
+            onHost={startHostFlow}
+            onJoin={startJoinFlow}
+            onViewShared={viewShared}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (localPhase === 'joinPrompt') {
+    return (
+      <div className="fg-root min-h-screen relative">
+        <AmbientBg />
+        <div className="relative z-10 px-4 py-5">
+          <JoinPrompt
+            onJoin={(code) => {
+              setPendingCode(code)
+              setLocalPhase('pickAvatar')
+            }}
+            onBack={backToStart}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (localPhase === 'pickAvatar') {
+    return (
+      <div className="fg-root min-h-screen relative">
+        <AmbientBg />
+        <div className="relative z-10 px-4 py-5">
+          <AvatarPicker
+            initialAvatar={defaultAvatar()}
+            onBack={backToStart}
+            onConfirm={onAvatarConfirmed}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (localPhase === 'viewShared' && sharedView) {
+    return (
+      <div className="fg-root min-h-screen relative">
+        <AmbientBg />
+        <div className="relative z-10 px-4 py-5">
+          <SharedView
+            game={sharedView.game}
+            code={sharedView.code}
+            onBack={() => {
+              setSharedView(null)
+              setLocalPhase('start')
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // localPhase is 'connecting' or 'connected'
+  if (!state || !connected || !me) {
+    return (
+      <div className="fg-root min-h-screen relative">
+        <AmbientBg />
+        <div className="relative z-10 max-w-md mx-auto p-6 mt-16 text-center">
+          <div className="fg-panel fg-panel-lg">
+            <h2 className="fg-display text-2xl mb-2">
+              {error ? 'Connection problem' : 'Connecting…'}
+            </h2>
+            <p className="fg-sub text-sm">
+              {error ?? `Room ${pendingCode}. Joining as ${pendingHandle || 'player'}.`}
+            </p>
+            <button onClick={backToStart} className="fg-back mt-5 w-full justify-center">
+              Back
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Connected — render the live game using server state
   return (
     <div className="fg-root min-h-screen relative">
       <AmbientBg />
 
       <div className="relative z-10 px-4 py-5 md:py-7">
-        {state.phase === 'loading' && (
-          <LoadingSplash onDone={() => dispatch({ type: 'setPhase', phase: 'start' })} />
-        )}
-
-        {state.phase === 'start' && (
-          <StartScreen
-            onHost={() => {
-              setRole('host')
-              dispatch({ type: 'setPhase', phase: 'pickAvatar' })
-            }}
-            onJoin={() => {
-              setRole('player')
-              dispatch({ type: 'setPhase', phase: 'joinPrompt' })
-            }}
-            onViewShared={viewShared}
-          />
-        )}
-
-        {state.phase === 'joinPrompt' && (
-          <JoinPrompt
-            onJoin={(code) => {
-              dispatch({ type: 'setRoomCode', code })
-              dispatch({ type: 'setPhase', phase: 'pickAvatar' })
-            }}
-            onBack={() => {
-              setRole(null)
-              dispatch({ type: 'setPhase', phase: 'start' })
-            }}
-          />
-        )}
-
-        {state.phase === 'pickAvatar' && (
-          <AvatarPicker
-            initialAvatar={defaultAvatar()}
-            onBack={() => {
-              setRole(null)
-              dispatch({ type: 'setPhase', phase: 'start' })
-            }}
-            onConfirm={(handle, avatar) => {
-              if (role === 'host') {
-                dispatch({ type: 'createAsHost', handle, avatar })
-                dispatch({ type: 'addBotsForDemo', count: 3 })
-              } else {
-                dispatch({ type: 'joinAsPlayer', handle, avatar })
-                dispatch({ type: 'addBotsForDemo', count: 3 })
-              }
-            }}
-          />
-        )}
-
         {state.phase === 'hostLobby' && (
           <HostLobby
             state={state}
             isHost={isHost}
             onKick={(id) => dispatch({ type: 'kickPlayer', id })}
-            onStart={() => dispatch({ type: 'setPhase', phase: 'pickCategory' })}
+            onStart={() => {
+              // If solo, fill with bots
+              const humanCount = state.players.filter((p) => p.isHuman).length
+              if (humanCount < 2) {
+                dispatch({ type: 'addBots', count: 3 })
+              }
+              dispatch({ type: 'setPhase', phase: 'pickCategory' })
+            }}
           />
         )}
 
@@ -198,17 +317,6 @@ export default function CrackedHeist() {
           />
         )}
 
-        {state.phase === 'viewShared' && sharedView && (
-          <SharedView
-            game={sharedView.game}
-            code={sharedView.code}
-            onBack={() => {
-              setSharedView(null)
-              dispatch({ type: 'setPhase', phase: 'start' })
-            }}
-          />
-        )}
-
         {state.phase === 'pregame' && (
           <PregameSplash
             state={state}
@@ -220,7 +328,10 @@ export default function CrackedHeist() {
           <PasswordPickPhase
             onLock={(pw) => {
               dispatch({ type: 'lockPassword', playerId: me.id, password: pw })
-              dispatch({ type: 'beginCountdown' })
+              // Host kicks off countdown when they're done
+              if (isHost) {
+                dispatch({ type: 'beginCountdown' })
+              }
             }}
           />
         )}
@@ -239,7 +350,13 @@ export default function CrackedHeist() {
                     <QuestionCard
                       question={state.currentQuestion}
                       tick={state.questionTick}
-                      onAnswer={answer}
+                      onAnswer={(choice) => {
+                        dispatch({ type: 'answerQuestion', playerId: me.id, choice })
+                        // Host (or any client) advances to next question; server is authoritative
+                        if (isHost) {
+                          setTimeout(() => dispatch({ type: 'nextQuestion' }), 700)
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -277,11 +394,17 @@ export default function CrackedHeist() {
         )}
 
         {state.phase === 'gameOver' && (
-          <GameOver state={state} onReset={() => dispatch({ type: 'reset' })} />
+          <GameOver
+            state={state}
+            onReset={() => {
+              if (isHost) dispatch({ type: 'reset' })
+              backToStart()
+            }}
+          />
         )}
       </div>
 
-      {/* Spy modal */}
+      {/* Modals */}
       <Modal
         open={flow.kind === 'spyPick' || flow.kind === 'spyResult'}
         onClose={close}
@@ -298,7 +421,12 @@ export default function CrackedHeist() {
                   key={p.id}
                   onClick={() => {
                     const correct = p.id === flow.truthId
-                    doSpy(correct ? flow.truthId : p.id, correct)
+                    dispatch({
+                      type: 'doSpy',
+                      spyId: me.id,
+                      targetId: correct ? flow.truthId : p.id,
+                      correct,
+                    })
                     setFlow({ kind: 'spyResult', correct })
                   }}
                   className="w-full text-left p-3 rounded-2xl border font-bold transition-all flex items-center gap-3"
@@ -346,23 +474,26 @@ export default function CrackedHeist() {
         )}
       </Modal>
 
-      {/* Hack modal */}
       <Modal open={flow.kind === 'hackPicker'} onClose={close} title="Hack — three computers">
-        {flow.kind === 'hackPicker' && me && (
+        {flow.kind === 'hackPicker' && (
           <HackComputers
             hackCost={state.settings.costs.hack}
             tokens={me.tokens}
             targets={flow.targets}
             onClose={close}
             onResult={(targetId, correct) => {
-              doHack(targetId, correct)
+              dispatch({
+                type: 'doHack',
+                playerId: me.id,
+                targetId,
+                correctPassword: correct,
+              })
               close()
             }}
           />
         )}
       </Modal>
 
-      {/* Crack password modals */}
       <Modal open={flow.kind === 'passwordPickTarget'} onClose={close} title="Crack — pick target">
         <p className="fg-sub text-sm mb-3">Whose wallet do you want to crack?</p>
         <div className="space-y-2">
@@ -398,7 +529,12 @@ export default function CrackedHeist() {
           <PasswordPicker
             target={pwTarget}
             onResult={(correct) => {
-              doPassword(pwTarget.id, correct)
+              dispatch({
+                type: 'doPassword',
+                guesserId: me.id,
+                targetId: pwTarget.id,
+                correctPassword: correct,
+              })
               close()
             }}
           />
