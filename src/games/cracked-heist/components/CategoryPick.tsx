@@ -95,7 +95,7 @@ export default function CategoryPick({
           value={settings.roundSeconds}
           min={60}
           max={600}
-          step={15}
+          step={5}
           onChange={(v) => onChange({ roundSeconds: v })}
         />
         <p className="fg-sub text-[11px] mt-3 text-center">
