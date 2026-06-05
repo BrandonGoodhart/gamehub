@@ -74,6 +74,19 @@ export default function CustomQuestions({
     setDrafts((arr) => arr.filter((_, idx) => idx !== i))
   }
 
+  // Dev shortcut — fill every visible draft with a placeholder question
+  // and four placeholder answers; mark option A (index 0) as correct.
+  function autoFill() {
+    setError('')
+    setDrafts((arr) =>
+      arr.map((_, i) => ({
+        q: `Test question ${i + 1}?`,
+        choices: ['A is correct', 'Wrong B', 'Wrong C', 'Wrong D'],
+        answer: 0,
+      })),
+    )
+  }
+
   function submit() {
     if (drafts.length < 4) {
       setError('Minimum 4 questions.')
@@ -95,9 +108,21 @@ export default function CustomQuestions({
 
   return (
     <div className="max-w-[640px] mx-auto w-full space-y-5 pb-5">
-      <div className="flex">
+      <div className="flex items-center justify-between gap-2">
         <button onClick={onBack} className="fg-back">
           ← Back
+        </button>
+        <button
+          onClick={autoFill}
+          className="fg-back"
+          title="Fill all questions with placeholders and mark A as correct"
+          style={{
+            background: 'rgba(74,222,128,0.12)',
+            borderColor: 'rgba(74,222,128,0.4)',
+            color: '#86efac',
+          }}
+        >
+          Auto-fill (A is correct)
         </button>
       </div>
 
