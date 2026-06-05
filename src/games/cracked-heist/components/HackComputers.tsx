@@ -26,7 +26,7 @@ function shuffle<T>(arr: T[]): T[] {
   return out
 }
 
-type TileState = 'idle' | 'pickedCorrect' | 'pickedWrong' | 'revealed'
+type TileState = 'idle' | 'pickedCorrect' | 'pickedWrong'
 
 function ComputerTile({
   label,
@@ -42,13 +42,12 @@ function ComputerTile({
   disabled?: boolean
 }) {
   const effectiveGlow =
-    state === 'pickedCorrect' || state === 'revealed'
+    state === 'pickedCorrect'
       ? '#22c55e'
       : state === 'pickedWrong'
         ? '#ef4444'
         : glowColor
   const isPicked = state === 'pickedCorrect' || state === 'pickedWrong'
-  const isResult = state !== 'idle'
 
   return (
     <button
@@ -59,130 +58,77 @@ function ComputerTile({
         border: 'none',
         padding: 0,
         cursor: disabled ? 'default' : 'pointer',
-        opacity: 1,
-        transition: 'opacity 0.25s, transform 0.18s',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 0,
+        gap: 6,
+        transition: 'transform 0.18s',
       }}
     >
-      {/* Monitor */}
+      {/* Monitor / screen — black inside, thick glowing border */}
       <div
         style={{
           width: '100%',
           aspectRatio: '4 / 3',
-          background:
-            'radial-gradient(ellipse at center, #0e1f12 0%, #050a06 70%, #03070a 100%)',
+          background: '#0a0a0a',
           borderRadius: 12,
           border: `3px solid ${effectiveGlow}`,
-          boxShadow: isResult
-            ? `0 0 38px ${effectiveGlow}dd, 0 0 18px ${effectiveGlow}cc, inset 0 0 24px ${effectiveGlow}55`
-            : `0 0 26px ${effectiveGlow}cc, 0 0 12px ${effectiveGlow}aa, inset 0 0 18px ${effectiveGlow}44`,
+          boxShadow: isPicked
+            ? `0 0 36px ${effectiveGlow}ee, 0 0 18px ${effectiveGlow}cc, inset 0 0 22px ${effectiveGlow}55`
+            : `0 0 22px ${effectiveGlow}cc, 0 0 10px ${effectiveGlow}aa, inset 0 0 16px ${effectiveGlow}33`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '6px 4px',
-          position: 'relative',
+          padding: '6px',
         }}
       >
-        {/* Scanline overlay for that CRT feel */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 6,
-            borderRadius: 8,
-            background:
-              'repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(255,255,255,0.03) 3px, rgba(255,255,255,0.03) 4px)',
-            pointerEvents: 'none',
-          }}
-        />
         <span
           style={{
             color: '#fff',
             fontFamily: 'JetBrains Mono, ui-monospace, monospace',
             fontWeight: 800,
-            fontSize: 'clamp(0.7rem, 1.6vw, 1rem)',
+            fontSize: 'clamp(0.72rem, 1.6vw, 1rem)',
             letterSpacing: '0.04em',
             wordBreak: 'break-all',
             lineHeight: 1.1,
-            textShadow: `0 0 8px ${effectiveGlow}aa`,
-            position: 'relative',
-            zIndex: 1,
+            textShadow: `0 0 6px ${effectiveGlow}aa`,
           }}
         >
           {label}
         </span>
       </div>
 
-      {/* Stand / neck */}
+      {/* Keyboard base — wider than the monitor, sits underneath. Black inside,
+          glowing border to match. Subtle inset to suggest a row of keys. */}
       <div
         style={{
-          width: '24%',
-          height: 8,
-          background: `linear-gradient(180deg, ${effectiveGlow}66, ${effectiveGlow}22)`,
-          borderLeft: `1.5px solid ${effectiveGlow}`,
-          borderRight: `1.5px solid ${effectiveGlow}`,
-          boxShadow: `0 0 8px ${effectiveGlow}aa`,
-        }}
-      />
-
-      {/* Base / stand foot */}
-      <div
-        style={{
-          width: '50%',
-          height: 5,
+          width: '115%',
+          height: 18,
           background: '#0a0a0a',
-          border: `1.5px solid ${effectiveGlow}`,
-          borderRadius: '4px 4px 1px 1px',
-          boxShadow: `0 0 12px ${effectiveGlow}88`,
-        }}
-      />
-
-      {/* Keyboard */}
-      <div
-        style={{
-          width: '108%',
-          marginTop: 8,
-          height: 26,
-          background: 'linear-gradient(180deg, #0e0e0e, #060606)',
-          borderRadius: 6,
-          border: `2px solid ${effectiveGlow}`,
-          boxShadow: isResult
-            ? `0 0 24px ${effectiveGlow}bb, inset 0 1px 0 ${effectiveGlow}55`
-            : `0 0 16px ${effectiveGlow}aa, inset 0 1px 0 ${effectiveGlow}33`,
+          borderRadius: 9,
+          border: `2.5px solid ${effectiveGlow}`,
+          boxShadow: isPicked
+            ? `0 0 28px ${effectiveGlow}dd, inset 0 1px 0 ${effectiveGlow}66`
+            : `0 0 18px ${effectiveGlow}bb, inset 0 1px 0 ${effectiveGlow}33`,
           position: 'relative',
-          padding: '4px 6px',
         }}
       >
-        {/* Key rows */}
-        {[0, 1].map((row) => (
-          <div
-            key={row}
-            style={{
-              display: 'flex',
-              gap: 2,
-              marginBottom: row === 0 ? 2 : 0,
-              opacity: 0.7,
-            }}
-          >
-            {Array.from({ length: 9 }).map((_, k) => (
-              <div
-                key={k}
-                style={{
-                  flex: 1,
-                  height: 7,
-                  background: `${effectiveGlow}33`,
-                  borderRadius: 1,
-                  border: `0.5px solid ${effectiveGlow}66`,
-                }}
-              />
-            ))}
-          </div>
-        ))}
+        {/* Subtle inner key line */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 4,
+            bottom: 4,
+            left: '10%',
+            right: '10%',
+            borderRadius: 3,
+            border: `1px dashed ${effectiveGlow}55`,
+            opacity: 0.7,
+          }}
+        />
       </div>
 
-      {/* Status badge — only on the tile the user actually picked */}
+      {/* Status badge — only on the tile the user picked */}
       <AnimatePresence>
         {isPicked && (
           <motion.div
@@ -190,7 +136,7 @@ function ComputerTile({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             style={{
-              marginTop: 10,
+              marginTop: 4,
               padding: '5px 14px',
               borderRadius: 999,
               fontFamily: 'inherit',
@@ -213,7 +159,7 @@ function ComputerTile({
 export default function HackComputers({ hackCost, tokens, targets, onResult, onClose }: Props) {
   const canHack = tokens >= hackCost && targets.length >= 3
 
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [stage, setStage] = useState<'usernames' | 'passwords' | 'result'>('usernames')
   const [pickedTarget, setPickedTarget] = useState<Player | null>(null)
   const [pickedPwIdx, setPickedPwIdx] = useState<number | null>(null)
   const [outcome, setOutcome] = useState<'correct' | 'wrong' | null>(null)
@@ -244,7 +190,7 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
 
   function pickTarget(p: Player) {
     setPickedTarget(p)
-    setStep(2)
+    setStage('passwords')
   }
 
   function pickPassword(i: number) {
@@ -253,13 +199,13 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
     const correct = tile.isReal
     setPickedPwIdx(i)
     setOutcome(correct ? 'correct' : 'wrong')
-    setStep(3)
-    setTimeout(() => onResult(pickedTarget.id, correct), 2200)
+    setStage('result')
+    setTimeout(() => onResult(pickedTarget.id, correct), 2000)
   }
 
   function back() {
-    if (step === 2) {
-      setStep(1)
+    if (stage === 'passwords') {
+      setStage('usernames')
       setPickedTarget(null)
     }
   }
@@ -267,7 +213,7 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
   return (
     <div className="space-y-5">
       <div className="flex items-start gap-3">
-        {step === 2 && (
+        {stage === 'passwords' && (
           <button
             onClick={back}
             aria-label="back"
@@ -286,23 +232,27 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
           </button>
         )}
         <p className="fg-sub text-sm leading-snug" style={{ flex: 1 }}>
-          {step === 1 && (
+          {stage === 'usernames' && (
             <>
-              <b className="text-white">Step 1:</b> Choose a player (username) to hack.
-              Costs <b className="text-[#5eead4]">{hackCost} tokens</b>.
+              Three computers. Choose a player to hack. Costs{' '}
+              <b className="text-[#5eead4]">{hackCost} tokens</b>.
             </>
           )}
-          {step === 2 && (
+          {stage === 'passwords' && (
             <>
-              <b className="text-white">Step 2:</b> Three possible passwords for{' '}
-              <span className="font-bold text-[var(--green-l)]">{pickedTarget?.handle}</span>.
-              Tap the one you think is real.
+              Three possible passwords for{' '}
+              <span className="font-bold text-[var(--green-l)]">
+                {pickedTarget?.handle}
+              </span>
+              . Tap the one you think is real.
             </>
           )}
-          {step === 3 && outcome === 'correct' && (
-            <span className="text-[#86efac] font-bold">You picked the right password.</span>
+          {stage === 'result' && outcome === 'correct' && (
+            <span className="text-[#86efac] font-bold">
+              You picked the right password.
+            </span>
           )}
-          {step === 3 && outcome === 'wrong' && (
+          {stage === 'result' && outcome === 'wrong' && (
             <span className="text-[#fda4af] font-bold">
               The password you picked is not correct.
             </span>
@@ -310,7 +260,7 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
         </p>
       </div>
 
-      {(step === 2 || step === 3) && pickedTarget && (
+      {(stage === 'passwords' || stage === 'result') && pickedTarget && (
         <div className="flex justify-center">
           <div
             style={{
@@ -330,8 +280,8 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3 px-1">
-        {step === 1 &&
+      <div className="grid grid-cols-3 gap-4 px-1">
+        {stage === 'usernames' &&
           targets.map((p, i) => (
             <ComputerTile
               key={p.id}
@@ -341,15 +291,11 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
               onClick={() => pickTarget(p)}
             />
           ))}
-        {(step === 2 || step === 3) &&
+        {(stage === 'passwords' || stage === 'result') &&
           passwordTiles.map((c, i) => {
             let tileState: TileState = 'idle'
-            if (step === 3) {
-              if (i === pickedPwIdx) {
-                tileState = outcome === 'correct' ? 'pickedCorrect' : 'pickedWrong'
-              } else if (outcome === 'wrong' && c.isReal) {
-                tileState = 'revealed'
-              }
+            if (stage === 'result' && i === pickedPwIdx) {
+              tileState = outcome === 'correct' ? 'pickedCorrect' : 'pickedWrong'
             }
             return (
               <ComputerTile
@@ -357,14 +303,14 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
                 label={c.label}
                 glowColor="#f97316"
                 state={tileState}
-                onClick={step === 2 ? () => pickPassword(i) : undefined}
-                disabled={step === 3}
+                onClick={stage === 'passwords' ? () => pickPassword(i) : undefined}
+                disabled={stage === 'result'}
               />
             )
           })}
       </div>
 
-      {step !== 3 && (
+      {stage !== 'result' && (
         <button onClick={onClose} className="fg-back w-full justify-center">
           Cancel
         </button>

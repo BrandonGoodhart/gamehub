@@ -267,14 +267,13 @@ export default function PhishingGame({ cost, tokens, targets, onResult, onClose 
         <p className="fg-sub text-sm leading-snug" style={{ flex: 1 }}>
           {step === 1 && (
             <>
-              <b className="text-white">Step 1:</b> Pick someone to send a phishing
-              email to. Costs <b className="text-[#5eead4]">{cost} tokens</b>.
+              Pick someone to send a phishing email to. Costs{' '}
+              <b className="text-[#5eead4]">{cost} tokens</b>.
             </>
           )}
           {step === 2 && (
             <>
-              <b className="text-white">Step 2:</b> Three fake messages. Pick the one
-              that would actually trick{' '}
+              Three fake messages. Pick the one that would actually trick{' '}
               <span className="font-bold text-[var(--green-l)]">
                 {pickedTarget?.handle}
               </span>
@@ -346,13 +345,8 @@ export default function PhishingGame({ cost, tokens, targets, onResult, onClose 
         <div className="space-y-2">
           {phishes.map((ph, i) => {
             let cardState: CardState = 'idle'
-            if (step === 3 && pickedTarget) {
-              const targetWeakness = weaknessFor(pickedTarget)
-              if (i === pickedIdx) {
-                cardState = outcome === 'correct' ? 'pickedCorrect' : 'pickedWrong'
-              } else if (outcome === 'wrong' && ph.theme === targetWeakness) {
-                cardState = 'revealed'
-              }
+            if (step === 3 && i === pickedIdx) {
+              cardState = outcome === 'correct' ? 'pickedCorrect' : 'pickedWrong'
             }
             return (
               <PhishCard
