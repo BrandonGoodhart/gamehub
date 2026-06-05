@@ -17,8 +17,8 @@ export const DEFAULT_SETTINGS: Settings = {
   roundSeconds: 60,
   costs: { spy: 10, hack: 15, password: 15 },
   rewards: {
-    spyCatch: 10,
-    passwordCatch: 15,
+    spyCatch: 5,
+    passwordCatch: 5,
     correctAnswerCoins: 0,
     correctAnswerTokens: 2,
   },
