@@ -288,11 +288,11 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
       })
       if (action.correctPassword) {
         const reward = state.settings.rewards.passwordCatch
-        const stealAmount = Math.min(target.coins, reward)
         const pNow = s1.players.find((x) => x.id === p.id)!
-        s1 = updatePlayer(s1, p.id, { coins: pNow.coins + stealAmount, hackedRecently: true })
-        s1 = updatePlayer(s1, target.id, { coins: target.coins - stealAmount })
-        return addEvent(s1, `${p.handle} hacked ${target.handle} for ${stealAmount} coins.`, 'neutral')
+        // Winner always gets the full reward; target loses up to that many
+        s1 = updatePlayer(s1, p.id, { coins: pNow.coins + reward, hackedRecently: true })
+        s1 = updatePlayer(s1, target.id, { coins: Math.max(0, target.coins - reward) })
+        return addEvent(s1, `${p.handle} hacked ${target.handle} for ${reward} coins.`, 'neutral')
       }
       s1 = updatePlayer(s1, p.id, { hackedRecently: true })
       return addEvent(s1, `${p.handle} tried to hack and failed.`, 'neutral')
@@ -331,13 +331,13 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
       })
       if (action.correctPassword) {
         const reward = state.settings.rewards.passwordCatch
-        const stealAmount = Math.min(t.coins, reward)
         const gNow = s1.players.find((p) => p.id === g.id)!
-        s1 = updatePlayer(s1, g.id, { coins: gNow.coins + stealAmount })
-        s1 = updatePlayer(s1, t.id, { coins: t.coins - stealAmount })
-        return addEvent(s1, `${g.handle} cracked ${t.handle}'s password.`, 'neutral')
+        // Winner always gets the full reward; target loses up to that many
+        s1 = updatePlayer(s1, g.id, { coins: gNow.coins + reward })
+        s1 = updatePlayer(s1, t.id, { coins: Math.max(0, t.coins - reward) })
+        return addEvent(s1, `${g.handle} tricked ${t.handle} for ${reward} coins.`, 'neutral')
       }
-      return addEvent(s1, `${g.handle} tried a password and failed.`, 'neutral')
+      return addEvent(s1, `${g.handle} tried a phish and failed.`, 'neutral')
     }
     case 'startRound': {
       const ev = makeEvent(`Game started.`, 'system')
