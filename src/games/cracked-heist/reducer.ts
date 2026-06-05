@@ -290,6 +290,7 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
         const reward = state.settings.rewards.passwordCatch
         const pNow = s1.players.find((x) => x.id === p.id)!
         // Winner always gets the full reward; target loses up to that many
+        // (clamped at 0 so they don't go negative)
         s1 = updatePlayer(s1, p.id, { coins: pNow.coins + reward, hackedRecently: true })
         s1 = updatePlayer(s1, target.id, { coins: Math.max(0, target.coins - reward) })
         return addEvent(s1, `${p.handle} hacked ${target.handle} for ${reward} coins.`, 'neutral')
@@ -311,11 +312,13 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
         const reward = state.settings.rewards.spyCatch
         const spyNow = s1.players.find((p) => p.id === spy.id)!
         s1 = updatePlayer(s1, spy.id, { coins: spyNow.coins + reward })
+        // Caught player loses up to `reward` coins (clamped at 0)
         s1 = updatePlayer(s1, target.id, {
+          coins: Math.max(0, target.coins - reward),
           caughtCount: target.caughtCount + 1,
           hackedRecently: false,
         })
-        return addEvent(s1, `${spy.handle} caught a hacker.`, 'neutral')
+        return addEvent(s1, `${spy.handle} caught ${target.handle}.`, 'neutral')
       }
       return addEvent(s1, `${spy.handle} spied around quietly.`, 'neutral')
     }
@@ -332,7 +335,7 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
       if (action.correctPassword) {
         const reward = state.settings.rewards.passwordCatch
         const gNow = s1.players.find((p) => p.id === g.id)!
-        // Winner always gets the full reward; target loses up to that many
+        // Winner gets the reward; target loses up to that many (clamped at 0)
         s1 = updatePlayer(s1, g.id, { coins: gNow.coins + reward })
         s1 = updatePlayer(s1, t.id, { coins: Math.max(0, t.coins - reward) })
         return addEvent(s1, `${g.handle} tricked ${t.handle} for ${reward} coins.`, 'neutral')
