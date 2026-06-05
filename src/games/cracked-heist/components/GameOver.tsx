@@ -87,6 +87,7 @@ export default function GameOver({ state, meId, onReset }: Props) {
         <h2 className="fg-display text-5xl mb-3">
           {youWon ? 'You Won!' : myRank === 2 ? 'Silver!' : myRank === 3 ? 'Bronze!' : 'Cracked.'}
         </h2>
+        <p className="fg-sub text-xs mb-3">Winner = the player with the most coins.</p>
         <div className="flex items-center justify-center gap-3 mt-3">
           <AvatarSvg avatar={winner.avatar} size={56} initial={winner.handle} />
           <div className="text-left">
@@ -106,19 +107,32 @@ export default function GameOver({ state, meId, onReset }: Props) {
           border: '1.5px solid rgba(74,222,128,0.3)',
         }}
       >
-        <div className="fg-lbl mb-1">leaderboard code</div>
-        <button
-          onClick={copy}
-          className="fg-code block mx-auto"
-          style={{ fontSize: '2rem', cursor: 'pointer' }}
-          title="copy"
+        <div className="fg-lbl mb-2">leaderboard code</div>
+        <div
+          className="rounded-lg p-2 mb-2 text-left"
+          style={{
+            background: 'rgba(0,0,0,0.4)',
+            border: '1px solid rgba(74,222,128,0.18)',
+            maxHeight: 80,
+            overflowY: 'auto',
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '0.7rem',
+            color: '#86efac',
+            wordBreak: 'break-all',
+            lineHeight: 1.4,
+          }}
         >
           {code}
+        </div>
+        <button
+          onClick={copy}
+          className="fg-btn fg-btn-grad"
+          style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+        >
+          {copied ? 'Copied ✓' : 'Copy code'}
         </button>
         <p className="fg-sub text-xs mt-2">
-          {copied
-            ? 'Copied to clipboard'
-            : 'Tap to copy. Paste on the home page to see this leaderboard again.'}
+          Paste this code on the home page of any device to see the leaderboard.
         </p>
       </div>
 

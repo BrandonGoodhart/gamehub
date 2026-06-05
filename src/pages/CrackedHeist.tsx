@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { usePartyGame } from '../games/cracked-heist/usePartyGame'
 import AmbientBg from '../games/cracked-heist/components/AmbientBg'
 import LoadingSplash from '../games/cracked-heist/components/LoadingSplash'
@@ -22,6 +22,7 @@ import HackComputers from '../games/cracked-heist/components/HackComputers'
 import PhishingGame from '../games/cracked-heist/components/PhishingGame'
 import PasswordReveal from '../games/cracked-heist/components/PasswordReveal'
 import GameOver from '../games/cracked-heist/components/GameOver'
+import { initAudio, isMuted, startMusic } from '../games/cracked-heist/audio'
 import { defaultAvatar } from '../games/cracked-heist/avatar'
 import { getShared } from '../games/cracked-heist/shareStore'
 import { generateRoomCode, pickN } from '../games/cracked-heist/utils'
@@ -37,6 +38,9 @@ type LocalPhase =
   | 'connected'
   | 'viewShared'
 
+// Pull in saved mute state at module load
+initAudio()
+
 type ActionFlow =
   | { kind: 'none' }
   | { kind: 'spyPick'; targets: Player[]; truthId: string }
@@ -50,6 +54,7 @@ type EntryRole = 'host' | 'player' | null
 export default function CrackedHeist() {
   const [localPhase, setLocalPhase] = useState<LocalPhase>('loading')
   const [role, setRole] = useState<EntryRole>(null)
+  const [helpOpen, setHelpOpen] = useState(false)
   const [pendingCode, setPendingCode] = useState<string>('')
   const [pendingHandle, setPendingHandle] = useState<string>('')
   const [flow, setFlow] = useState<ActionFlow>({ kind: 'none' })
@@ -64,6 +69,28 @@ export default function CrackedHeist() {
     () => (state?.players ?? []).filter((p) => p.id !== meId && p.alive),
     [state?.players, meId],
   )
+
+  // Start background music on the first user gesture (browsers require it).
+  // Respects the saved mute preference: starts the music either way, but the
+  // master gain stays at 0 if the user previously muted, so it's silent.
+  useEffect(() => {
+    let started = false
+    const handler = () => {
+      if (started) return
+      started = true
+      startMusic()
+      window.removeEventListener('pointerdown', handler)
+      window.removeEventListener('keydown', handler)
+    }
+    if (!isMuted()) {
+      window.addEventListener('pointerdown', handler, { once: false })
+      window.addEventListener('keydown', handler, { once: false })
+    }
+    return () => {
+      window.removeEventListener('pointerdown', handler)
+      window.removeEventListener('keydown', handler)
+    }
+  }, [])
 
   function startHostFlow() {
     setRole('host')
@@ -136,7 +163,7 @@ export default function CrackedHeist() {
   if (localPhase === 'loading') {
     return (
       <div className="fg-root min-h-screen relative">
-        <AmbientBg />
+        <AmbientBg onHelp={() => setHelpOpen(true)} />
         <div className="relative z-10 px-4 py-5">
           <LoadingSplash onDone={() => setLocalPhase('start')} />
         </div>
@@ -147,7 +174,7 @@ export default function CrackedHeist() {
   if (localPhase === 'start') {
     return (
       <div className="fg-root min-h-screen relative">
-        <AmbientBg />
+        <AmbientBg onHelp={() => setHelpOpen(true)} />
         <div className="relative z-10 px-4 py-5">
           <StartScreen
             onHost={startHostFlow}
@@ -162,7 +189,7 @@ export default function CrackedHeist() {
   if (localPhase === 'joinPrompt') {
     return (
       <div className="fg-root min-h-screen relative">
-        <AmbientBg />
+        <AmbientBg onHelp={() => setHelpOpen(true)} />
         <div className="relative z-10 px-4 py-5">
           <JoinPrompt
             onJoin={(code) => {
@@ -179,7 +206,7 @@ export default function CrackedHeist() {
   if (localPhase === 'pickAvatar') {
     return (
       <div className="fg-root min-h-screen relative">
-        <AmbientBg />
+        <AmbientBg onHelp={() => setHelpOpen(true)} />
         <div className="relative z-10 px-4 py-5">
           <AvatarPicker
             initialAvatar={defaultAvatar()}
@@ -194,7 +221,7 @@ export default function CrackedHeist() {
   if (localPhase === 'viewShared' && sharedView) {
     return (
       <div className="fg-root min-h-screen relative">
-        <AmbientBg />
+        <AmbientBg onHelp={() => setHelpOpen(true)} />
         <div className="relative z-10 px-4 py-5">
           <SharedView
             game={sharedView.game}
@@ -213,7 +240,7 @@ export default function CrackedHeist() {
   if (!state || !connected || !me) {
     return (
       <div className="fg-root min-h-screen relative">
-        <AmbientBg />
+        <AmbientBg onHelp={() => setHelpOpen(true)} />
         <div className="relative z-10 max-w-md mx-auto p-6 mt-16 text-center">
           <div className="fg-panel fg-panel-lg">
             <h2 className="fg-display text-2xl mb-2">
@@ -238,7 +265,7 @@ export default function CrackedHeist() {
   // Connected — render the live game using server state
   return (
     <div className="fg-root min-h-screen relative">
-      <AmbientBg />
+      <AmbientBg onHelp={() => setHelpOpen(true)} />
 
       <div className="relative z-10 px-4 py-5 md:py-7">
         {state.phase === 'hostLobby' && (
@@ -518,6 +545,60 @@ export default function CrackedHeist() {
               Tap to reveal. Hides again after a few seconds — don't show
               your screen to anyone.
             </p>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={helpOpen} onClose={() => setHelpOpen(false)} title="How it works">
+        <div className="space-y-3 text-sm">
+          <div
+            className="rounded-2xl p-3"
+            style={{
+              background: 'rgba(251,191,36,0.06)',
+              border: '1.5px solid rgba(251,191,36,0.3)',
+            }}
+          >
+            <div className="font-extrabold mb-1" style={{ color: '#fbbf24' }}>
+              Coins — these decide who wins
+            </div>
+            <p className="fg-sub text-xs leading-snug">
+              Whoever has the most coins when the timer runs out wins the game.
+              You start at 0. Earn 5 coins by successfully hacking, phishing,
+              or catching a hacker by spying.
+            </p>
+          </div>
+
+          <div
+            className="rounded-2xl p-3"
+            style={{
+              background: 'rgba(94,234,212,0.06)',
+              border: '1.5px solid rgba(94,234,212,0.3)',
+            }}
+          >
+            <div className="font-extrabold mb-1" style={{ color: '#5eead4' }}>
+              Tokens — these let you take actions
+            </div>
+            <p className="fg-sub text-xs leading-snug">
+              Tokens pay the entry cost for Hack (15), Spy (10), and Phish (15).
+              Earn 2 tokens for every question you answer correctly. Wrong
+              answers cost nothing.
+            </p>
+          </div>
+
+          <div
+            className="rounded-2xl p-3"
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(74,222,128,0.18)',
+            }}
+          >
+            <div className="font-extrabold mb-1 text-white">Quick recap</div>
+            <ul className="fg-sub text-xs leading-snug pl-4 space-y-1" style={{ listStyle: 'disc' }}>
+              <li>Answer right → +2 tokens</li>
+              <li>Successful Hack / Spy / Phish → +5 coins (cost: tokens)</li>
+              <li>Being hacked, phished, or caught → lose up to 5 coins</li>
+              <li>Most coins at the end wins</li>
+            </ul>
           </div>
         </div>
       </Modal>

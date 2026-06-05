@@ -1,4 +1,11 @@
-export default function AmbientBg() {
+import MuteButton from './MuteButton'
+import InfoButton from './InfoButton'
+
+interface Props {
+  onHelp?: () => void
+}
+
+export default function AmbientBg({ onHelp }: Props) {
   return (
     <>
       <div className="fg-bg" />
@@ -8,6 +15,20 @@ export default function AmbientBg() {
         <div className="fg-orb fg-orb3" />
         <div className="fg-orb fg-orb4" />
         <div className="fg-grain" />
+      </div>
+      <div
+        style={{
+          position: 'fixed',
+          top: 12,
+          right: 12,
+          zIndex: 300,
+          display: 'flex',
+          gap: 8,
+          alignItems: 'center',
+        }}
+      >
+        {onHelp && <InfoButton onClick={onHelp} />}
+        <MuteButton />
       </div>
     </>
   )

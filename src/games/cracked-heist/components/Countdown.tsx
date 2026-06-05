@@ -1,10 +1,20 @@
+import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { sfxCountdown } from '../audio'
 
 export default function Countdown({ value }: { value: number }) {
   const display = value > 0 ? String(value) : 'GO'
+
+  // Beep on every value change (3, 2, 1, GO)
+  useEffect(() => {
+    sfxCountdown(value)
+  }, [value])
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
-         style={{ background: 'rgba(5,14,8,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+      style={{ background: 'rgba(5,14,8,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={display}
