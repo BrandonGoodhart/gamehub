@@ -10,7 +10,7 @@ interface Props {
   onClose: () => void
 }
 
-const STEP1_COLORS = ['#f97316', '#3b82f6', '#22c55e']
+const STAGE1_COLORS = ['#f97316', '#3b82f6', '#22c55e']
 
 interface PwTile {
   label: string
@@ -28,6 +28,106 @@ function shuffle<T>(arr: T[]): T[] {
 
 type TileState = 'idle' | 'pickedCorrect' | 'pickedWrong'
 
+function ComputerSVG({ glow, label }: { glow: string; label: string }) {
+  // viewBox 100x118: monitor on top (rounded rect), wider all-in-one base
+  // below with two small floppy/CD slot details inside.
+  const filterId = `glow-${glow.replace('#', '')}`
+  return (
+    <svg
+      viewBox="0 0 100 118"
+      width="100%"
+      style={{
+        display: 'block',
+        filter: `drop-shadow(0 0 12px ${glow}cc) drop-shadow(0 0 4px ${glow}aa)`,
+      }}
+    >
+      <defs>
+        <filter id={filterId} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Monitor screen — black rounded rect on top */}
+      <rect
+        x="14"
+        y="6"
+        width="72"
+        height="58"
+        rx="8"
+        ry="8"
+        fill="#0a0a0a"
+        stroke={glow}
+        strokeWidth="3"
+      />
+
+      {/* Username/password text inside the screen */}
+      <text
+        x="50"
+        y="40"
+        textAnchor="middle"
+        fill="#fff"
+        style={{
+          fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+          fontWeight: 800,
+          fontSize: 9,
+          letterSpacing: '0.5px',
+        }}
+      >
+        {label}
+      </text>
+
+      {/* Base / case — wider than the monitor, chunky retro shape */}
+      <path
+        d="M 4 62 L 96 62 Q 100 62 100 66 L 100 110 Q 100 114 96 114 L 4 114 Q 0 114 0 110 L 0 66 Q 0 62 4 62 Z"
+        fill="#0a0a0a"
+        stroke={glow}
+        strokeWidth="3"
+      />
+
+      {/* Disk drive slots / details inside the base */}
+      <rect
+        x="15"
+        y="74"
+        width="70"
+        height="4"
+        rx="1"
+        fill="none"
+        stroke={glow}
+        strokeWidth="1.2"
+        opacity="0.7"
+      />
+      <rect
+        x="15"
+        y="84"
+        width="70"
+        height="4"
+        rx="1"
+        fill="none"
+        stroke={glow}
+        strokeWidth="1.2"
+        opacity="0.7"
+      />
+      <rect
+        x="15"
+        y="94"
+        width="40"
+        height="4"
+        rx="1"
+        fill="none"
+        stroke={glow}
+        strokeWidth="1.2"
+        opacity="0.7"
+      />
+      {/* Power LED dot */}
+      <circle cx="82" cy="103" r="2" fill={glow} opacity="0.9" />
+    </svg>
+  )
+}
+
 function ComputerTile({
   label,
   glowColor,
@@ -41,7 +141,7 @@ function ComputerTile({
   onClick?: () => void
   disabled?: boolean
 }) {
-  const effectiveGlow =
+  const effective =
     state === 'pickedCorrect'
       ? '#22c55e'
       : state === 'pickedWrong'
@@ -50,7 +150,18 @@ function ComputerTile({
   const isPicked = state === 'pickedCorrect' || state === 'pickedWrong'
 
   return (
-    <button
+    <motion.button
+      layout
+      whileHover={!disabled ? { y: -3, scale: 1.02 } : {}}
+      whileTap={!disabled ? { scale: 0.96 } : {}}
+      animate={
+        isPicked
+          ? {
+              scale: [1, 1.07, 1],
+              transition: { duration: 0.45, ease: 'easeOut' },
+            }
+          : { scale: 1 }
+      }
       onClick={onClick}
       disabled={disabled}
       style={{
@@ -62,81 +173,18 @@ function ComputerTile({
         flexDirection: 'column',
         alignItems: 'center',
         gap: 6,
-        transition: 'transform 0.18s',
       }}
     >
-      {/* Monitor / screen — black inside, thick glowing border */}
-      <div
-        style={{
-          width: '100%',
-          aspectRatio: '4 / 3',
-          background: '#0a0a0a',
-          borderRadius: 12,
-          border: `3px solid ${effectiveGlow}`,
-          boxShadow: isPicked
-            ? `0 0 36px ${effectiveGlow}ee, 0 0 18px ${effectiveGlow}cc, inset 0 0 22px ${effectiveGlow}55`
-            : `0 0 22px ${effectiveGlow}cc, 0 0 10px ${effectiveGlow}aa, inset 0 0 16px ${effectiveGlow}33`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '6px',
-        }}
-      >
-        <span
-          style={{
-            color: '#fff',
-            fontFamily: 'JetBrains Mono, ui-monospace, monospace',
-            fontWeight: 800,
-            fontSize: 'clamp(0.72rem, 1.6vw, 1rem)',
-            letterSpacing: '0.04em',
-            wordBreak: 'break-all',
-            lineHeight: 1.1,
-            textShadow: `0 0 6px ${effectiveGlow}aa`,
-          }}
-        >
-          {label}
-        </span>
-      </div>
+      <ComputerSVG glow={effective} label={label} />
 
-      {/* Keyboard base — wider than the monitor, sits underneath. Black inside,
-          glowing border to match. Subtle inset to suggest a row of keys. */}
-      <div
-        style={{
-          width: '115%',
-          height: 18,
-          background: '#0a0a0a',
-          borderRadius: 9,
-          border: `2.5px solid ${effectiveGlow}`,
-          boxShadow: isPicked
-            ? `0 0 28px ${effectiveGlow}dd, inset 0 1px 0 ${effectiveGlow}66`
-            : `0 0 18px ${effectiveGlow}bb, inset 0 1px 0 ${effectiveGlow}33`,
-          position: 'relative',
-        }}
-      >
-        {/* Subtle inner key line */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 4,
-            bottom: 4,
-            left: '10%',
-            right: '10%',
-            borderRadius: 3,
-            border: `1px dashed ${effectiveGlow}55`,
-            opacity: 0.7,
-          }}
-        />
-      </div>
-
-      {/* Status badge — only on the tile the user picked */}
       <AnimatePresence>
         {isPicked && (
           <motion.div
-            initial={{ scale: 0.6, opacity: 0, y: -4 }}
+            initial={{ scale: 0.5, opacity: 0, y: -6 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 18 }}
             style={{
-              marginTop: 4,
               padding: '5px 14px',
               borderRadius: 999,
               fontFamily: 'inherit',
@@ -145,15 +193,21 @@ function ComputerTile({
               letterSpacing: '0.07em',
               background: state === 'pickedCorrect' ? '#22c55e' : '#ef4444',
               color: state === 'pickedCorrect' ? '#052e16' : '#450a0a',
-              boxShadow: `0 0 18px ${state === 'pickedCorrect' ? '#22c55e' : '#ef4444'}aa`,
+              boxShadow: `0 0 20px ${state === 'pickedCorrect' ? '#22c55e' : '#ef4444'}bb`,
             }}
           >
             {state === 'pickedCorrect' ? '✓ Correct!' : '✗ Wrong!'}
           </motion.div>
         )}
       </AnimatePresence>
-    </button>
+    </motion.button>
   )
+}
+
+const stageVariants = {
+  enter: { opacity: 0, x: 40 },
+  center: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -40 },
 }
 
 export default function HackComputers({ hackCost, tokens, targets, onResult, onClose }: Props) {
@@ -200,7 +254,7 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
     setPickedPwIdx(i)
     setOutcome(correct ? 'correct' : 'wrong')
     setStage('result')
-    setTimeout(() => onResult(pickedTarget.id, correct), 2000)
+    setTimeout(() => onResult(pickedTarget.id, correct), 2200)
   }
 
   function back() {
@@ -212,102 +266,151 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start gap-3">
-        {stage === 'passwords' && (
-          <button
-            onClick={back}
-            aria-label="back"
-            className="rounded-full flex-shrink-0 flex items-center justify-center"
-            style={{
-              width: 30,
-              height: 30,
-              background: 'rgba(255,255,255,0.08)',
-              border: '1.5px solid rgba(255,255,255,0.2)',
-              color: '#fff',
-              fontWeight: 800,
-              cursor: 'pointer',
-            }}
-          >
-            ‹
-          </button>
-        )}
-        <p className="fg-sub text-sm leading-snug" style={{ flex: 1 }}>
-          {stage === 'usernames' && (
-            <>
-              Three computers. Choose a player to hack. Costs{' '}
-              <b className="text-[#5eead4]">{hackCost} tokens</b>.
-            </>
-          )}
+      <div className="flex items-start gap-3 min-h-[2.5rem]">
+        <AnimatePresence mode="wait">
           {stage === 'passwords' && (
-            <>
-              Three possible passwords for{' '}
-              <span className="font-bold text-[var(--green-l)]">
-                {pickedTarget?.handle}
+            <motion.button
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0 }}
+              onClick={back}
+              aria-label="back"
+              className="rounded-full flex-shrink-0 flex items-center justify-center"
+              style={{
+                width: 30,
+                height: 30,
+                background: 'rgba(255,255,255,0.08)',
+                border: '1.5px solid rgba(255,255,255,0.2)',
+                color: '#fff',
+                fontWeight: 800,
+                cursor: 'pointer',
+              }}
+            >
+              ‹
+            </motion.button>
+          )}
+        </AnimatePresence>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={stage + (outcome ?? '')}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+            className="fg-sub text-sm leading-snug"
+            style={{ flex: 1 }}
+          >
+            {stage === 'usernames' && (
+              <>
+                Three computers. Choose a player to hack. Costs{' '}
+                <b className="text-[#5eead4]">{hackCost} tokens</b>.
+              </>
+            )}
+            {stage === 'passwords' && (
+              <>
+                Three possible passwords for{' '}
+                <span className="font-bold text-[var(--green-l)]">
+                  {pickedTarget?.handle}
+                </span>
+                . Tap the one you think is real.
+              </>
+            )}
+            {stage === 'result' && outcome === 'correct' && (
+              <span className="text-[#86efac] font-bold">
+                You picked the right password.
               </span>
-              . Tap the one you think is real.
-            </>
-          )}
-          {stage === 'result' && outcome === 'correct' && (
-            <span className="text-[#86efac] font-bold">
-              You picked the right password.
-            </span>
-          )}
-          {stage === 'result' && outcome === 'wrong' && (
-            <span className="text-[#fda4af] font-bold">
-              The password you picked is not correct.
-            </span>
-          )}
-        </p>
+            )}
+            {stage === 'result' && outcome === 'wrong' && (
+              <span className="text-[#fda4af] font-bold">
+                The password you picked is not correct.
+              </span>
+            )}
+          </motion.p>
+        </AnimatePresence>
       </div>
 
-      {(stage === 'passwords' || stage === 'result') && pickedTarget && (
-        <div className="flex justify-center">
-          <div
-            style={{
-              padding: '5px 18px',
-              borderRadius: 999,
-              background: 'linear-gradient(135deg,#22c55e,#4ade80)',
-              color: '#052e16',
-              fontWeight: 800,
-              fontSize: '0.85rem',
-              fontFamily: 'JetBrains Mono, ui-monospace, monospace',
-              letterSpacing: '0.04em',
-              boxShadow: '0 0 18px rgba(74,222,128,0.5)',
-            }}
+      <AnimatePresence mode="wait">
+        {(stage === 'passwords' || stage === 'result') && pickedTarget && (
+          <motion.div
+            key="pill"
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.6 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+            className="flex justify-center"
           >
-            {pickedTarget.handle}
-          </div>
-        </div>
-      )}
+            <div
+              style={{
+                padding: '5px 18px',
+                borderRadius: 999,
+                background: 'linear-gradient(135deg,#22c55e,#4ade80)',
+                color: '#052e16',
+                fontWeight: 800,
+                fontSize: '0.85rem',
+                fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                letterSpacing: '0.04em',
+                boxShadow: '0 0 18px rgba(74,222,128,0.5)',
+              }}
+            >
+              {pickedTarget.handle}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <div className="grid grid-cols-3 gap-4 px-1">
-        {stage === 'usernames' &&
-          targets.map((p, i) => (
-            <ComputerTile
-              key={p.id}
-              label={p.handle}
-              glowColor={STEP1_COLORS[i % STEP1_COLORS.length]}
-              state="idle"
-              onClick={() => pickTarget(p)}
-            />
-          ))}
-        {(stage === 'passwords' || stage === 'result') &&
-          passwordTiles.map((c, i) => {
-            let tileState: TileState = 'idle'
-            if (stage === 'result' && i === pickedPwIdx) {
-              tileState = outcome === 'correct' ? 'pickedCorrect' : 'pickedWrong'
-            }
-            return (
-              <ComputerTile
-                key={i}
-                label={c.label}
-                glowColor="#f97316"
-                state={tileState}
-                onClick={stage === 'passwords' ? () => pickPassword(i) : undefined}
-                disabled={stage === 'result'}
-              />
-            )
-          })}
+      {/* Computer row — transitions between stages */}
+      <div style={{ position: 'relative', minHeight: 200 }}>
+        <AnimatePresence mode="wait">
+          {stage === 'usernames' && (
+            <motion.div
+              key="usernames"
+              variants={stageVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="grid grid-cols-3 gap-4 px-1"
+            >
+              {targets.map((p, i) => (
+                <ComputerTile
+                  key={p.id}
+                  label={p.handle}
+                  glowColor={STAGE1_COLORS[i % STAGE1_COLORS.length]}
+                  state="idle"
+                  onClick={() => pickTarget(p)}
+                />
+              ))}
+            </motion.div>
+          )}
+          {(stage === 'passwords' || stage === 'result') && (
+            <motion.div
+              key="passwords"
+              variants={stageVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="grid grid-cols-3 gap-4 px-1"
+            >
+              {passwordTiles.map((c, i) => {
+                let tileState: TileState = 'idle'
+                if (stage === 'result' && i === pickedPwIdx) {
+                  tileState = outcome === 'correct' ? 'pickedCorrect' : 'pickedWrong'
+                }
+                return (
+                  <ComputerTile
+                    key={i}
+                    label={c.label}
+                    glowColor="#f97316"
+                    state={tileState}
+                    onClick={stage === 'passwords' ? () => pickPassword(i) : undefined}
+                    disabled={stage === 'result'}
+                  />
+                )
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {stage !== 'result' && (
