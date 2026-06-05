@@ -35,7 +35,7 @@ export default function SharedView({ game, code, onBack }: Props) {
           className="fg-display"
           style={{ fontSize: 'clamp(2rem, 7vw, 3rem)', padding: '0 8px' }}
         >
-          Game Replay
+          Leaderboard
         </h1>
         <p className="fg-sub text-xs mt-1">share code (tap to copy)</p>
         <button
