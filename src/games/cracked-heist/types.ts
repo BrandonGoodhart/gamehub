@@ -34,6 +34,7 @@ export interface Player {
   passwordsGuessed: number
   password: string
   passwordLocked: boolean
+  passwordOptions: string[]
   alive: boolean
 }
 

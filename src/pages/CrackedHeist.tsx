@@ -218,7 +218,11 @@ export default function CrackedHeist() {
         <div className="relative z-10 max-w-md mx-auto p-6 mt-16 text-center">
           <div className="fg-panel fg-panel-lg">
             <h2 className="fg-display text-2xl mb-2">
-              {error ? 'Connection problem' : 'Connecting…'}
+              {error
+                ? error.toLowerCase().includes('name')
+                  ? 'Name taken'
+                  : 'Connection problem'
+                : 'Connecting…'}
             </h2>
             <p className="fg-sub text-sm">
               {error ?? `Room ${pendingCode}. Joining as ${pendingHandle || 'player'}.`}
@@ -304,9 +308,10 @@ export default function CrackedHeist() {
 
         {state.phase === 'pickPassword' && me && (
           <PasswordPickPhase
+            options={me.passwordOptions ?? []}
             onLock={(pw) => {
               dispatch({ type: 'lockPassword', playerId: me.id, password: pw })
-              // Host kicks off countdown when they're done
+              // Only the host can trigger countdown — everyone else just waits.
               if (isHost) {
                 dispatch({ type: 'beginCountdown' })
               }
@@ -374,6 +379,7 @@ export default function CrackedHeist() {
         {state.phase === 'gameOver' && (
           <GameOver
             state={state}
+            meId={meId}
             onReset={() => {
               if (isHost) dispatch({ type: 'reset' })
               backToStart()

@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { PASSWORD_POOL } from '../utils'
 
 interface Props {
+  options: string[]
   onLock: (password: string) => void
 }
 
-export default function PasswordPickPhase({ onLock }: Props) {
+export default function PasswordPickPhase({ options, onLock }: Props) {
   const [picked, setPicked] = useState<string | null>(null)
 
   return (
@@ -20,13 +20,14 @@ export default function PasswordPickPhase({ onLock }: Props) {
           Pick Your Password
         </h1>
         <p className="fg-sub text-xs mt-1">
-          This is your password for the whole game. Don't show anyone.
+          These three options are yours alone — nobody else can have them.
+          Don't show your screen to anyone.
         </p>
       </div>
 
       <div className="fg-panel p-5">
-        <div className="grid grid-cols-2 gap-3">
-          {PASSWORD_POOL.map((pw) => {
+        <div className="grid grid-cols-1 gap-3">
+          {options.map((pw) => {
             const active = picked === pw
             return (
               <motion.button
@@ -46,8 +47,8 @@ export default function PasswordPickPhase({ onLock }: Props) {
                   boxShadow: active
                     ? '0 0 22px rgba(74,222,128,0.5)'
                     : '0 4px 14px rgba(0,0,0,0.3)',
-                  fontSize: '1.1rem',
-                  letterSpacing: '0.05em',
+                  fontSize: '1.15rem',
+                  letterSpacing: '0.04em',
                   fontFamily:
                     'JetBrains Mono, SF Mono, ui-monospace, monospace',
                 }}
@@ -66,7 +67,7 @@ export default function PasswordPickPhase({ onLock }: Props) {
         onClick={() => picked && onLock(picked)}
         className="fg-btn fg-btn-grad"
       >
-        {picked ? `Lock In "${picked}" →` : 'Pick One Above'}
+        {picked ? `Lock In  ${picked}  →` : 'Pick One Above'}
       </motion.button>
     </div>
   )

@@ -30,16 +30,26 @@ function QuestionInner({ question, onAnswer }: { question: Question; onAnswer: (
       <div className="fg-answer-grid">
         {question.choices.map((c, i) => {
           const isPicked = picked === i
-          const isCorrect = picked !== null && i === question.answer
-          const isWrong = isPicked && i !== question.answer
+          const isAnswer = i === question.answer
+          const userRight = picked !== null && picked === question.answer
+          // Build class list per slot using the new feedback rules
+          const slotClass: string[] = ['fg-answer', COLORS[i]]
+          if (picked !== null) {
+            if (userRight) {
+              if (isAnswer) slotClass.push('fg-answer-correct')
+              else slotClass.push('fg-answer-others-red')
+            } else {
+              if (isPicked) slotClass.push('fg-answer-wrong-pick')
+              else if (isAnswer) slotClass.push('fg-answer-reveal')
+              else slotClass.push('fg-answer-others-orange')
+            }
+          }
           return (
             <button
               key={i}
               onClick={() => handle(i)}
               disabled={picked !== null}
-              className={`fg-answer ${COLORS[i]} ${isCorrect ? 'fg-answer-correct' : ''} ${
-                picked !== null && !isPicked && !isCorrect ? 'fg-answer-wrong' : ''
-              } ${isWrong ? 'fg-answer-wrong' : ''}`}
+              className={slotClass.join(' ')}
             >
               {c}
             </button>

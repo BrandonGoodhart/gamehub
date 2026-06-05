@@ -8,19 +8,39 @@ export function generateRoomCode(): string {
   return s
 }
 
-export const PASSWORD_POOL = [
-  'GHOST',
-  'DRAGON',
-  'NINJA',
-  'WIZARD',
-  'EAGLE',
-  'TIGER',
-  'SHARK',
-  'ROBOT',
+const PW_PREFIXES = [
+  'play', 'fast', 'good', 'cool', 'bold', 'safe', 'lock', 'cast',
+  'soft', 'jump', 'kick', 'wave', 'mute', 'echo', 'glow', 'mint',
+  'rush', 'noon', 'star', 'leaf', 'wolf', 'drop', 'fizz', 'gear',
 ]
+const PW_CHARS = 'abcdefghijklmnpqrstuvwxyz23456789'
 
+export function generateUniquePassword(taken: Set<string>): string {
+  for (let tries = 0; tries < 100; tries++) {
+    const prefix = PW_PREFIXES[Math.floor(Math.random() * PW_PREFIXES.length)]
+    let suffix = ''
+    for (let i = 0; i < 4; i++) suffix += PW_CHARS[Math.floor(Math.random() * PW_CHARS.length)]
+    const pw = `${prefix}-${suffix}`
+    if (!taken.has(pw)) {
+      taken.add(pw)
+      return pw
+    }
+  }
+  // Extremely unlikely fallback — millisecond timestamp tail
+  const fallback = `pw-${Date.now().toString(36).slice(-6)}`
+  taken.add(fallback)
+  return fallback
+}
+
+export function makePasswordOptions(count: number, taken: Set<string>): string[] {
+  const out: string[] = []
+  for (let i = 0; i < count; i++) out.push(generateUniquePassword(taken))
+  return out
+}
+
+// Legacy — still used in a couple places. Now generates a random unique-looking one.
 export function generatePassword(): string {
-  return PASSWORD_POOL[Math.floor(Math.random() * PASSWORD_POOL.length)]
+  return generateUniquePassword(new Set())
 }
 
 export function pick<T>(arr: T[]): T {

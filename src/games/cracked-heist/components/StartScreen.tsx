@@ -64,9 +64,9 @@ export default function StartScreen({ onHost, onJoin, onViewShared }: Props) {
         className="fg-panel mt-5 p-4 text-left"
         style={{ maxWidth: 380, margin: '20px auto 0' }}
       >
-        <div className="fg-lbl mb-2">view a past game</div>
+        <div className="fg-lbl mb-2">view a leaderboard</div>
         <p className="fg-sub text-xs mb-3">
-          Paste a 6-character share code from a finished game.
+          Paste a 6-character code from a finished game to see who won.
         </p>
         <div className="flex gap-2">
           <input

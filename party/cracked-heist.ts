@@ -1,7 +1,7 @@
 import type * as Party from 'partykit/server'
 import { makeInitialState, reducer, type GameAction } from '../src/games/cracked-heist/reducer'
 import type { Avatar, Player, Question, RoomState } from '../src/games/cracked-heist/types'
-import { PASSWORD_POOL } from '../src/games/cracked-heist/utils'
+import { generateUniquePassword, makePasswordOptions } from '../src/games/cracked-heist/utils'
 import { botAnswer, botSkill } from '../src/games/cracked-heist/bots'
 
 interface ClientToServer {
@@ -182,11 +182,31 @@ export default class CrackedHeistServer implements Party.Server {
       return
     }
     if (msg.type === 'JOIN' && msg.handle && msg.avatar) {
+      // Reject duplicate handles in this room (case-insensitive)
+      const wantedHandle = msg.handle.trim()
+      if (
+        this.state.players.some(
+          (p) => p.handle.trim().toLowerCase() === wantedHandle.toLowerCase(),
+        )
+      ) {
+        const err: ServerToClient = {
+          type: 'ERROR',
+          message: `Someone in this room is already using the name "${wantedHandle}". Pick a different name.`,
+        }
+        sender.send(JSON.stringify(err))
+        return
+      }
       const wantsHost = !!msg.isHost && !this.hasHost
       const playerId = sender.id
+      // Allocate 3 unique passwords for this player
+      const taken = new Set<string>()
+      for (const p of this.state.players) {
+        if (p.password) taken.add(p.password)
+        for (const opt of p.passwordOptions) taken.add(opt)
+      }
       const player: Player = {
         id: playerId,
-        handle: msg.handle,
+        handle: wantedHandle,
         isHuman: true,
         isHost: wantsHost,
         avatar: msg.avatar,
@@ -199,6 +219,7 @@ export default class CrackedHeistServer implements Party.Server {
         passwordsGuessed: 0,
         password: '',
         passwordLocked: false,
+        passwordOptions: makePasswordOptions(3, taken),
         alive: true,
       }
       if (wantsHost) this.hasHost = true
@@ -234,13 +255,24 @@ export default class CrackedHeistServer implements Party.Server {
         'reset',
       ]
       if (hostOnly.includes(a.type) && !isHost) return
+      // Before the host triggers countdown, auto-lock anyone (human or bot)
+      // who hasn't picked a password yet so the game doesn't stall.
+      if (a.type === 'beginCountdown') {
+        const unlocked = this.state.players.filter((p) => !p.passwordLocked)
+        for (const u of unlocked) {
+          const pw = u.passwordOptions[Math.floor(Math.random() * u.passwordOptions.length)]
+            ?? generateUniquePassword(new Set())
+          this.state = reducer(this.state, { type: 'lockPassword', playerId: u.id, password: pw })
+        }
+      }
       this.apply(a)
-      // After lockPassword from everyone, host can begin countdown manually.
-      // Auto-fill bot passwords when reaching pickPassword phase
+      // Auto-fill bot passwords when reaching pickPassword phase — each bot
+      // picks one of their pre-allocated options (so passwords stay unique).
       if (a.type === 'setPhase' && a.phase === 'pickPassword') {
         const bots = this.state.players.filter((p) => !p.isHuman && !p.passwordLocked)
         for (const b of bots) {
-          const pw = PASSWORD_POOL[Math.floor(Math.random() * PASSWORD_POOL.length)]
+          const pw = b.passwordOptions[Math.floor(Math.random() * b.passwordOptions.length)]
+            ?? generateUniquePassword(new Set())
           this.apply({ type: 'lockPassword', playerId: b.id, password: pw })
         }
       }

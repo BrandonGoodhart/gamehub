@@ -312,8 +312,35 @@
 .fg-answer-blue { background: #3b82f6; }
 .fg-answer-green { background: #16a34a; }
 .fg-answer-red { background: #dc2626; }
-.fg-answer-correct { box-shadow: 0 0 0 4px #4ade80, 0 0 28px rgba(74, 222, 128, 0.7); }
-.fg-answer-wrong { opacity: 0.5; filter: grayscale(0.5); }
+/* Picked = the correct answer */
+.fg-answer-correct {
+  box-shadow: 0 0 0 6px #22c55e, 0 0 32px rgba(74, 222, 128, 0.8) !important;
+  border-color: #4ade80 !important;
+}
+/* Picked = wrong */
+.fg-answer-wrong-pick {
+  box-shadow: 0 0 0 6px #dc2626, 0 0 32px rgba(239, 68, 68, 0.7) !important;
+  border-color: #ef4444 !important;
+  background: #991b1b !important;
+}
+/* The actual correct answer when the user picked wrong */
+.fg-answer-reveal {
+  background: #16a34a !important;
+  box-shadow: 0 0 0 4px #4ade80, 0 0 24px rgba(74, 222, 128, 0.6) !important;
+  border-color: #4ade80 !important;
+}
+/* All other tiles after a RIGHT pick: drown them in red */
+.fg-answer-others-red {
+  background: #7f1d1d !important;
+  opacity: 0.85;
+  filter: grayscale(0.1);
+}
+/* All other tiles after a WRONG pick: turn them orange */
+.fg-answer-others-orange {
+  background: #b45309 !important;
+  opacity: 0.85;
+  filter: grayscale(0.1);
+}
 
 /* === CODE BACKGROUND OVERLAY === */
 .fg-codebg {

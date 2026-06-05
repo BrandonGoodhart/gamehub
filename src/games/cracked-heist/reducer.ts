@@ -1,8 +1,17 @@
 import type { ActionKind, Avatar, EventLog, Phase, Player, Question, RoomState, Settings } from './types'
-import { generatePassword, pickN, uid } from './utils'
+import { makePasswordOptions, pickN, uid } from './utils'
 import { BOT_NAMES } from './words'
 import { CATEGORIES, QUESTION_BANK } from './questions'
 import { randomAvatar } from './avatar'
+
+function allTakenPasswords(state: RoomState): Set<string> {
+  const taken = new Set<string>()
+  for (const p of state.players) {
+    if (p.password) taken.add(p.password)
+    for (const opt of p.passwordOptions) taken.add(opt)
+  }
+  return taken
+}
 
 export const DEFAULT_SETTINGS: Settings = {
   roundSeconds: 60,
@@ -20,7 +29,9 @@ export function makeEvent(text: string, tone: EventLog['tone']): EventLog {
   return { id: ++eventCounter, text, tone, ts: Date.now() }
 }
 
-export function makeBotPlayer(handle: string): Player {
+export function makeBotPlayer(handle: string, taken: Set<string> = new Set()): Player {
+  const options = makePasswordOptions(3, taken)
+  const password = options[Math.floor(Math.random() * options.length)]
   return {
     id: uid(),
     handle,
@@ -34,8 +45,9 @@ export function makeBotPlayer(handle: string): Player {
     hacksDone: 0,
     spiesDone: 0,
     passwordsGuessed: 0,
-    password: generatePassword(),
+    password,
     passwordLocked: true,
+    passwordOptions: options,
     alive: true,
   }
 }
@@ -111,6 +123,7 @@ export function makePlayer(
   handle: string,
   avatar: Avatar,
   isHost: boolean,
+  taken: Set<string> = new Set(),
 ): Player {
   return {
     id,
@@ -127,6 +140,7 @@ export function makePlayer(
     passwordsGuessed: 0,
     password: '',
     passwordLocked: false,
+    passwordOptions: makePasswordOptions(3, taken),
     alive: true,
   }
 }
@@ -139,11 +153,24 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
       return { ...state, settings: { ...state.settings, ...action.patch } }
     case 'addPlayer': {
       if (state.players.some((p) => p.id === action.player.id)) return state
-      const next = { ...state, players: [...state.players, action.player] }
-      const ev = makeEvent(`${action.player.handle} joined.`, 'system')
+      // Reject duplicate handles (case-insensitive) — host and joining player both keep theirs only if unique
+      if (
+        state.players.some(
+          (p) => p.handle.trim().toLowerCase() === action.player.handle.trim().toLowerCase(),
+        )
+      )
+        return state
+      // If the incoming player doesn't have password options yet, allocate unique ones
+      const taken = allTakenPasswords(state)
+      const playerWithOptions =
+        action.player.passwordOptions && action.player.passwordOptions.length > 0
+          ? action.player
+          : { ...action.player, passwordOptions: makePasswordOptions(3, taken) }
+      const next = { ...state, players: [...state.players, playerWithOptions] }
+      const ev = makeEvent(`${playerWithOptions.handle} joined.`, 'system')
       return {
         ...next,
-        hostId: action.player.isHost ? action.player.id : next.hostId,
+        hostId: playerWithOptions.isHost ? playerWithOptions.id : next.hostId,
         events: [ev, ...next.events],
         fullLog: [...next.fullLog, ev],
       }
@@ -172,7 +199,8 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
     case 'addBots': {
       const used = new Set(state.players.map((p) => p.handle.toLowerCase()))
       const fresh = BOT_NAMES.filter((b) => !used.has(b.toLowerCase()))
-      const newBots = pickN(fresh, action.count).map(makeBotPlayer)
+      const taken = allTakenPasswords(state)
+      const newBots = pickN(fresh, action.count).map((h) => makeBotPlayer(h, taken))
       return { ...state, players: [...state.players, ...newBots] }
     }
     case 'pickCategory':

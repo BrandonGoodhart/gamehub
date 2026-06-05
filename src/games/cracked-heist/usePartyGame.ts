@@ -3,7 +3,7 @@ import PartySocket from 'partysocket'
 import type { Avatar, Question, RoomState } from './types'
 import { makeInitialState, reducer, type GameAction } from './reducer'
 import { botAnswer, botSkill } from './bots'
-import { PASSWORD_POOL, generateRoomCode, uid } from './utils'
+import { generateRoomCode, makePasswordOptions, uid } from './utils'
 
 interface WireWelcome {
   type: 'WELCOME'
@@ -95,6 +95,7 @@ function useLocalGame() {
           passwordsGuessed: 0,
           password: '',
           passwordLocked: false,
+          passwordOptions: makePasswordOptions(3, new Set()),
           alive: true,
         },
       })
@@ -110,17 +111,24 @@ function useLocalGame() {
   }, [])
 
   const dispatch = useCallback((action: GameAction) => {
+    // Auto-lock everyone before countdown so unset players don't stall the game.
+    if (action.type === 'beginCountdown') {
+      const unlocked = stateRef.current.players.filter((p) => !p.passwordLocked)
+      unlocked.forEach((u) => {
+        const pw = u.passwordOptions[Math.floor(Math.random() * u.passwordOptions.length)] ?? ''
+        if (pw) dispatchLocal({ type: 'lockPassword', playerId: u.id, password: pw })
+      })
+    }
     dispatchLocal(action)
-    // Side-effects normally done by the server: advance to next question after answer,
-    // assign bot passwords at pickPassword, etc.
+    // Side-effects normally done by the server
     if (action.type === 'answerQuestion' && action.playerId === stateRef.current.meId) {
       setTimeout(() => dispatchLocal({ type: 'nextQuestion' }), 700)
     }
     if (action.type === 'setPhase' && action.phase === 'pickPassword') {
       const bots = stateRef.current.players.filter((p) => !p.isHuman && !p.passwordLocked)
       bots.forEach((b) => {
-        const pw = PASSWORD_POOL[Math.floor(Math.random() * PASSWORD_POOL.length)]
-        dispatchLocal({ type: 'lockPassword', playerId: b.id, password: pw })
+        const pw = b.passwordOptions[Math.floor(Math.random() * b.passwordOptions.length)] ?? ''
+        if (pw) dispatchLocal({ type: 'lockPassword', playerId: b.id, password: pw })
       })
     }
   }, [])

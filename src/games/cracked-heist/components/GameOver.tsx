@@ -1,21 +1,55 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import confetti from 'canvas-confetti'
 import type { RoomState } from '../types'
 import AvatarSvg from './AvatarSvg'
 import { persistGame } from '../shareStore'
 
 interface Props {
   state: RoomState
+  meId: string
   onReset: () => void
 }
 
-export default function GameOver({ state, onReset }: Props) {
+function launchConfetti(rank: number) {
+  // Burst intensity scales with rank — 1st = biggest blast, 3rd = small
+  const intensity = rank === 1 ? 1 : rank === 2 ? 0.65 : 0.4
+  const count = Math.round(180 * intensity)
+  const colors =
+    rank === 1
+      ? ['#fbbf24', '#f59e0b', '#fde047', '#22c55e', '#4ade80']
+      : rank === 2
+        ? ['#e5e7eb', '#cbd5e1', '#94a3b8', '#4ade80']
+        : ['#fb923c', '#f97316', '#fbbf24', '#4ade80']
+  // Three bursts from different origins
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => {
+      confetti({
+        particleCount: count,
+        spread: 80 + i * 10,
+        startVelocity: 50,
+        origin: { y: 0.6, x: 0.2 + i * 0.3 },
+        colors,
+        scalar: 1 + intensity * 0.4,
+      })
+    }, i * 250)
+  }
+}
+
+export default function GameOver({ state, meId, onReset }: Props) {
   const sorted = [...state.players].sort((a, b) => b.coins - a.coins)
   const winner = sorted[0]
-  const me = state.players.find((p) => p.id === state.meId)!
-  const youWon = winner.id === state.meId
+  const me = state.players.find((p) => p.id === meId)
+  const myRank = me ? sorted.findIndex((p) => p.id === me.id) + 1 : 0
+  const youWon = winner.id === meId
   const code = useMemo(() => state.shareCode ?? persistGame(state), [state])
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (myRank >= 1 && myRank <= 3) {
+      launchConfetti(myRank)
+    }
+  }, [myRank])
 
   function copy() {
     try {
@@ -27,6 +61,19 @@ export default function GameOver({ state, onReset }: Props) {
     }
   }
 
+  if (!me) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="max-w-xl mx-auto fg-panel fg-panel-lg text-center"
+      >
+        <div className="fg-display text-3xl mb-4">Game Over</div>
+        <p className="fg-sub text-sm">Loading your stats…</p>
+      </motion.div>
+    )
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.92 }}
@@ -34,9 +81,11 @@ export default function GameOver({ state, onReset }: Props) {
       className="max-w-xl mx-auto fg-panel fg-panel-lg relative overflow-hidden"
     >
       <div className="text-center mb-6">
-        <div className="fg-lbl text-[#fbbf24] mb-1">game over</div>
+        <div className="fg-lbl text-[#fbbf24] mb-1">
+          {myRank === 1 ? 'first place' : myRank === 2 ? 'second place' : myRank === 3 ? 'third place' : 'game over'}
+        </div>
         <h2 className="fg-display text-5xl mb-3">
-          {youWon ? 'You Won!' : 'Cracked.'}
+          {youWon ? 'You Won!' : myRank === 2 ? 'Silver!' : myRank === 3 ? 'Bronze!' : 'Cracked.'}
         </h2>
         <div className="flex items-center justify-center gap-3 mt-3">
           <AvatarSvg avatar={winner.avatar} size={56} initial={winner.handle} />
@@ -57,7 +106,7 @@ export default function GameOver({ state, onReset }: Props) {
           border: '1.5px solid rgba(74,222,128,0.3)',
         }}
       >
-        <div className="fg-lbl mb-1">share code</div>
+        <div className="fg-lbl mb-1">leaderboard code</div>
         <button
           onClick={copy}
           className="fg-code block mx-auto"
@@ -69,7 +118,7 @@ export default function GameOver({ state, onReset }: Props) {
         <p className="fg-sub text-xs mt-2">
           {copied
             ? 'Copied to clipboard'
-            : 'Tap to copy. Paste this on the home page to view these results later.'}
+            : 'Tap to copy. Paste on the home page to see this leaderboard again.'}
         </p>
       </div>
 
@@ -80,7 +129,7 @@ export default function GameOver({ state, onReset }: Props) {
         <Stat label="caught" value={me.caughtCount} />
         <Stat label="spies" value={me.spiesDone} />
         <Stat label="cracks" value={me.passwordsGuessed} />
-        <Stat label="rank" value={`#${sorted.findIndex((p) => p.id === me.id) + 1}`} />
+        <Stat label="rank" value={`#${myRank}`} />
       </div>
 
       <div className="fg-lbl mb-2">final standings</div>
@@ -90,7 +139,7 @@ export default function GameOver({ state, onReset }: Props) {
             key={p.id}
             className="flex items-center justify-between px-3 py-1.5 rounded-xl"
             style={{
-              background: p.id === state.meId ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.03)',
+              background: p.id === meId ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(74,222,128,0.08)',
             }}
           >

@@ -1,28 +1,25 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { Player } from '../types'
-import { PASSWORD_POOL, pickN } from '../utils'
 
 interface Props {
   target: Player
   onResult: (correct: boolean) => void
 }
 
-function buildOptions(real: string): string[] {
-  const decoys = pickN(
-    PASSWORD_POOL.filter((d) => d !== real),
-    2,
-  )
-  const all = [...decoys, real]
-  for (let i = all.length - 1; i > 0; i--) {
+function buildOptions(target: Player): string[] {
+  const base = (target.passwordOptions && target.passwordOptions.length === 3)
+    ? [...target.passwordOptions]
+    : [target.password, target.password + '_a', target.password + '_b']
+  for (let i = base.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[all[i], all[j]] = [all[j], all[i]]
+    ;[base[i], base[j]] = [base[j], base[i]]
   }
-  return all
+  return base
 }
 
 export default function PasswordPicker({ target, onResult }: Props) {
-  const options = useMemo(() => buildOptions(target.password), [target.password])
+  const options = useMemo(() => buildOptions(target), [target])
   const [picked, setPicked] = useState<string | null>(null)
   const [outcome, setOutcome] = useState<'right' | 'wrong' | null>(null)
 

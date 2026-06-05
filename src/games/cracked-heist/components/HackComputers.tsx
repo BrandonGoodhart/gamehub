@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { Player } from '../types'
-import { PASSWORD_POOL, pickN } from '../utils'
 
 interface Props {
   hackCost: number
@@ -19,9 +18,16 @@ interface Tile {
 
 function buildBoard(targets: Player[]): Tile[][] {
   return targets.map((t) => {
-    const decoyPool = PASSWORD_POOL.filter((p) => p !== t.password)
-    const decoys = pickN(decoyPool, 2)
-    const options = [t.password, ...decoys].sort(() => Math.random() - 0.5)
+    // Use that player's actual 3 options. One is real (their picked password),
+    // the other two are decoys allocated for them at join time.
+    const options = (t.passwordOptions && t.passwordOptions.length === 3)
+      ? [...t.passwordOptions]
+      : [t.password, t.password + '_a', t.password + '_b']
+    // Shuffle so the real one isn't always in the same slot
+    for (let i = options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[options[i], options[j]] = [options[j], options[i]]
+    }
     return options.map((pw) => ({
       targetId: t.id,
       password: pw,
@@ -63,8 +69,9 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
   return (
     <div className="space-y-4">
       <p className="fg-sub text-sm">
-        Three computers. Each one shows three passwords. Tap the one you think
-        matches the player on that computer. Costs <b className="text-[#5eead4]">{hackCost} tokens</b>.
+        Three computers. Each one shows three passwords — one is real. Tap the
+        password you think actually belongs to that player. Costs{' '}
+        <b className="text-[#5eead4]">{hackCost} tokens</b>.
       </p>
 
       <div className="grid grid-cols-3 gap-2">
@@ -73,7 +80,7 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
           return (
             <div key={player.id} className="flex flex-col gap-2">
               <div
-                className="rounded-xl px-1 py-1.5 text-center font-extrabold text-white text-xs truncate"
+                className="rounded-xl px-1 py-1.5 text-center font-extrabold text-xs truncate"
                 style={{
                   background: player.avatar.color,
                   color: '#0a0a0a',
@@ -94,7 +101,7 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
                     whileTap={{ scale: 0.95 }}
                     onClick={() => pick(col, row)}
                     disabled={pickedTile !== null}
-                    className="rounded-xl px-2 py-3 text-center font-extrabold text-xs sm:text-sm transition-all"
+                    className="rounded-xl px-1 py-2 text-center font-extrabold text-[10px] sm:text-xs transition-all break-all leading-tight"
                     style={{
                       background: showReal
                         ? 'linear-gradient(135deg,#22c55e,#4ade80)'
@@ -110,7 +117,7 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
                       cursor: pickedTile !== null ? 'default' : 'pointer',
                       fontFamily:
                         'JetBrains Mono, SF Mono, ui-monospace, monospace',
-                      letterSpacing: '0.03em',
+                      letterSpacing: '0.01em',
                       opacity: revealed && !isPicked ? 0.4 : 1,
                     }}
                   >

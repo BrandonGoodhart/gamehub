@@ -9,13 +9,6 @@ interface Props {
   onBack: () => void
 }
 
-const TONE_COLOR: Record<string, string> = {
-  good: '#86efac',
-  bad: '#fda4af',
-  neutral: 'rgba(220,252,231,0.7)',
-  system: '#5eead4',
-}
-
 export default function SharedView({ game, code, onBack }: Props) {
   const [copied, setCopied] = useState(false)
 
@@ -121,28 +114,6 @@ export default function SharedView({ game, code, onBack }: Props) {
             </div>
           </div>
 
-          <div className="fg-panel p-4">
-            <div className="fg-lbl mb-3">live feed</div>
-            <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
-              {(game.log ?? []).map((e) => {
-                const color = TONE_COLOR[e.tone] ?? '#fff'
-                return (
-                  <div key={e.id} className="flex items-start gap-2 text-xs leading-snug">
-                    <span
-                      className="inline-block w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                      style={{ background: color, boxShadow: `0 0 6px ${color}` }}
-                    />
-                    <span className="font-semibold" style={{ color }}>
-                      {e.text}
-                    </span>
-                  </div>
-                )
-              })}
-              {(game.log ?? []).length === 0 && (
-                <div className="fg-sub text-xs italic">No events recorded.</div>
-              )}
-            </div>
-          </div>
         </>
       )}
     </div>
