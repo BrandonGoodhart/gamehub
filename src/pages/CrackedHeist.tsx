@@ -335,9 +335,9 @@ export default function CrackedHeist() {
                       tick={state.questionTick}
                       onAnswer={(choice) => {
                         dispatch({ type: 'answerQuestion', playerId: me.id, choice })
-                        // Host (or any client) advances to next question; server is authoritative
+                        // QuestionCard already waited (fast on correct, 3s on wrong)
                         if (isHost) {
-                          setTimeout(() => dispatch({ type: 'nextQuestion' }), 700)
+                          dispatch({ type: 'nextQuestion' })
                         }
                       }}
                     />
@@ -536,13 +536,13 @@ export default function CrackedHeist() {
           <OptionInfo
             color="#5eead4"
             title="Spy"
-            cost={`${state.settings.costs.spy} coins`}
+            cost={`${state.settings.costs.spy} tokens`}
             desc={`Three suspects. One has been hacking. Find them to win ${state.settings.rewards.spyCatch} coins.`}
           />
           <OptionInfo
             color="#a3e635"
             title="Crack Password"
-            cost={`${state.settings.costs.password} coins`}
+            cost={`${state.settings.costs.password} tokens`}
             desc={`Pick a target and one of three passwords. Right = +${state.settings.rewards.passwordCatch} coins.`}
           />
           <div

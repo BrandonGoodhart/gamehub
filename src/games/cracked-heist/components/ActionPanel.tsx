@@ -91,17 +91,17 @@ export default function ActionPanel({ state, me, onChoose }: Props) {
       <Btn
         kind="spy"
         label="Spy"
-        costLabel={`${c.spy} coins`}
+        costLabel={`${c.spy} tokens`}
         desc={`Find the hacker among 3 suspects. Right = +${state.settings.rewards.spyCatch} coins.`}
-        ok={me.coins >= c.spy}
+        ok={me.tokens >= c.spy}
         onChoose={onChoose}
       />
       <Btn
         kind="password"
         label="Crack Password"
-        costLabel={`${c.password} coins`}
+        costLabel={`${c.password} tokens`}
         desc={`Pick 1 of 3 passwords. Right = +${state.settings.rewards.passwordCatch} coins.`}
-        ok={me.coins >= c.password}
+        ok={me.tokens >= c.password}
         onChoose={onChoose}
       />
     </div>

@@ -312,10 +312,12 @@
 .fg-answer-blue { background: #3b82f6; }
 .fg-answer-green { background: #16a34a; }
 .fg-answer-red { background: #dc2626; }
-/* Picked = the correct answer */
+/* Picked = the correct answer — solid green fill plus a thick green glow */
 .fg-answer-correct {
-  box-shadow: 0 0 0 6px #22c55e, 0 0 32px rgba(74, 222, 128, 0.8) !important;
-  border-color: #4ade80 !important;
+  background: linear-gradient(135deg, #16a34a, #22c55e, #4ade80) !important;
+  box-shadow: 0 0 0 6px #22c55e, 0 0 36px rgba(74, 222, 128, 0.85) !important;
+  border-color: #86efac !important;
+  color: #052e16 !important;
 }
 /* Picked = wrong */
 .fg-answer-wrong-pick {

@@ -120,10 +120,6 @@ function useLocalGame() {
       })
     }
     dispatchLocal(action)
-    // Side-effects normally done by the server
-    if (action.type === 'answerQuestion' && action.playerId === stateRef.current.meId) {
-      setTimeout(() => dispatchLocal({ type: 'nextQuestion' }), 700)
-    }
     if (action.type === 'setPhase' && action.phase === 'pickPassword') {
       const bots = stateRef.current.players.filter((p) => !p.isHuman && !p.passwordLocked)
       bots.forEach((b) => {

@@ -302,9 +302,9 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
       const target = state.players.find((x) => x.id === action.targetId)
       if (!spy || !target) return state
       const cost = state.settings.costs.spy
-      if (spy.coins < cost) return state
+      if (spy.tokens < cost) return state
       let s1 = updatePlayer(state, spy.id, {
-        coins: spy.coins - cost,
+        tokens: spy.tokens - cost,
         spiesDone: spy.spiesDone + 1,
       })
       if (action.correct) {
@@ -324,9 +324,9 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
       const t = state.players.find((x) => x.id === action.targetId)
       if (!g || !t) return state
       const cost = state.settings.costs.password
-      if (g.coins < cost) return state
+      if (g.tokens < cost) return state
       let s1 = updatePlayer(state, g.id, {
-        coins: g.coins - cost,
+        tokens: g.tokens - cost,
         passwordsGuessed: g.passwordsGuessed + 1,
       })
       if (action.correctPassword) {

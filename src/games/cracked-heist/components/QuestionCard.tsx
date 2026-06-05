@@ -16,7 +16,11 @@ function QuestionInner({ question, onAnswer }: { question: Question; onAnswer: (
   function handle(i: number) {
     if (picked !== null) return
     setPicked(i)
-    setTimeout(() => onAnswer(i), 600)
+    const correct = i === question.answer
+    // Right answer: short hold so the game feels snappy.
+    // Wrong answer: 3-second hold so players can read the correct one.
+    const delay = correct ? 500 : 3000
+    setTimeout(() => onAnswer(i), delay)
   }
 
   return (
