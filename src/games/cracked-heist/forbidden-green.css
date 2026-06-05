@@ -566,3 +566,125 @@
 .fg-root ::-webkit-scrollbar { width: 6px; }
 .fg-root ::-webkit-scrollbar-track { background: transparent; }
 .fg-root ::-webkit-scrollbar-thumb { background: rgba(74, 222, 128, 0.25); border-radius: 4px; }
+
+/* === HACK COMPUTERS — exact reference spec, parameterized via --glow === */
+.hc-computer {
+  --glow: #00d9ff;
+  width: 100%;
+  text-align: center;
+  filter: drop-shadow(0 0 16px var(--glow));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hc-monitor-outer {
+  width: 86%;
+  aspect-ratio: 120 / 92;
+  background: linear-gradient(145deg, #26312e, #050807);
+  border: 4px solid var(--glow);
+  border-radius: 12px;
+  box-shadow:
+    0 0 18px var(--glow),
+    inset 0 0 10px rgba(255, 255, 255, 0.12),
+    inset 0 0 22px #000;
+  padding: 8px;
+}
+
+.hc-screen {
+  height: 100%;
+  border-radius: 7px;
+  background: radial-gradient(circle at 50% 25%, #20332f, #050706 70%);
+  box-shadow:
+    inset 0 0 25px #000,
+    inset 0 0 8px var(--glow);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 900;
+  font-size: clamp(0.7rem, 1.4vw, 0.95rem);
+  text-shadow: 0 0 8px #fff;
+  word-break: break-all;
+  padding: 4px;
+  line-height: 1.05;
+}
+
+.hc-stand {
+  width: 28%;
+  height: 13px;
+  background: linear-gradient(#172722, #07100d);
+  border-left: 3px solid var(--glow);
+  border-right: 3px solid var(--glow);
+  box-shadow: 0 0 10px var(--glow);
+}
+
+.hc-keyboard {
+  width: 100%;
+  aspect-ratio: 145 / 45;
+  border: 4px solid var(--glow);
+  border-radius: 8px 8px 16px 16px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.18), transparent 35%),
+    linear-gradient(#16332f, #07100d);
+  box-shadow:
+    0 0 18px var(--glow),
+    inset 0 0 10px rgba(255, 255, 255, 0.12);
+  position: relative;
+}
+
+.hc-key-row {
+  position: absolute;
+  left: 9%;
+  display: flex;
+  gap: 3px;
+}
+
+.hc-key-row.one { top: 18%; }
+.hc-key-row.two { top: 42%; }
+.hc-key-row.three { top: 64%; }
+
+.hc-key {
+  width: 7px;
+  height: 5px;
+  border-radius: 2px;
+  background: var(--glow);
+  opacity: 0.75;
+  box-shadow: 0 0 5px var(--glow);
+}
+
+.hc-key.wide {
+  width: 18px;
+}
+
+.hc-trackpad {
+  position: absolute;
+  right: 21%;
+  bottom: 20%;
+  width: 14%;
+  height: 24%;
+  border-radius: 4px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.hc-power {
+  position: absolute;
+  right: 8%;
+  top: 33%;
+  width: 11px;
+  height: 11px;
+  background: #39ff5a;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #39ff5a;
+}
+
+.hc-base-shine {
+  position: absolute;
+  left: 7%;
+  top: 9%;
+  width: 62%;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}

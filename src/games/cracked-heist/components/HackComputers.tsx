@@ -12,19 +12,6 @@ interface Props {
 
 const STAGE1_COLORS = ['#f97316', '#3b82f6', '#22c55e']
 
-// Glow color → derived shades for the keyboard gradient and key stripes
-const SHADES: Record<string, { light: string; dark: string; keyDark: string }> = {
-  '#f97316': { light: '#fb923c', dark: '#7c2d12', keyDark: '#3f1709' }, // orange
-  '#3b82f6': { light: '#60a5fa', dark: '#1e3a8a', keyDark: '#0f1c47' }, // blue
-  '#22c55e': { light: '#4ade80', dark: '#15803d', keyDark: '#062012' }, // green
-  '#ef4444': { light: '#f87171', dark: '#7f1d1d', keyDark: '#3f0a0a' }, // red
-  '#06b6d4': { light: '#22d3ee', dark: '#0e7490', keyDark: '#052f37' }, // cyan (fallback)
-}
-
-function shadesFor(color: string) {
-  return SHADES[color] ?? SHADES['#06b6d4']
-}
-
 interface PwTile {
   label: string
   isReal: boolean
@@ -61,7 +48,6 @@ function ComputerTile({
         ? '#ef4444'
         : glowColor
   const isPicked = state === 'pickedCorrect' || state === 'pickedWrong'
-  const sh = shadesFor(effective)
 
   return (
     <motion.button
@@ -86,86 +72,55 @@ function ComputerTile({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 0,
-        filter: `drop-shadow(0 0 18px ${effective})`,
       }}
     >
-      {/* SCREEN */}
       <div
-        style={{
-          width: '88%',
-          aspectRatio: '105 / 80',
-          background: 'linear-gradient(#15201d, #070b0a)',
-          border: `4px solid ${effective}`,
-          borderRadius: 10,
-          boxShadow: `0 0 12px ${effective}, inset 0 0 18px #000`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff',
-          fontFamily: 'JetBrains Mono, ui-monospace, monospace',
-          fontWeight: 800,
-          fontSize: 'clamp(0.7rem, 1.6vw, 1rem)',
-          letterSpacing: '0.04em',
-          padding: '6px',
-          wordBreak: 'break-all',
-          lineHeight: 1.1,
-        }}
+        className="hc-computer"
+        style={{ ['--glow' as string]: effective } as React.CSSProperties}
       >
-        {label}
+        <div className="hc-monitor-outer">
+          <div className="hc-screen">{label}</div>
+        </div>
+
+        <div className="hc-stand" />
+
+        <div className="hc-keyboard">
+          <div className="hc-base-shine" />
+
+          <div className="hc-key-row one">
+            <div className="hc-key" />
+            <div className="hc-key" />
+            <div className="hc-key" />
+            <div className="hc-key" />
+            <div className="hc-key" />
+            <div className="hc-key" />
+            <div className="hc-key" />
+            <div className="hc-key" />
+          </div>
+
+          <div className="hc-key-row two">
+            <div className="hc-key" />
+            <div className="hc-key" />
+            <div className="hc-key" />
+            <div className="hc-key" />
+            <div className="hc-key" />
+            <div className="hc-key" />
+            <div className="hc-key wide" />
+          </div>
+
+          <div className="hc-key-row three">
+            <div className="hc-key" />
+            <div className="hc-key" />
+            <div className="hc-key wide" />
+            <div className="hc-key" />
+            <div className="hc-key" />
+          </div>
+
+          <div className="hc-trackpad" />
+          <div className="hc-power" />
+        </div>
       </div>
 
-      {/* NECK — narrow connector between screen and keyboard */}
-      <div
-        style={{
-          width: '24%',
-          height: 10,
-          background: '#15332f',
-          borderLeft: `3px solid ${effective}`,
-          borderRight: `3px solid ${effective}`,
-        }}
-      />
-
-      {/* KEYBOARD — wider than the screen, gradient base with keys + power LED */}
-      <div
-        style={{
-          width: '102%',
-          aspectRatio: '125 / 38',
-          background: `linear-gradient(${sh.light}, ${sh.dark})`,
-          border: `3px solid ${effective}`,
-          borderRadius: 8,
-          boxShadow: `0 0 12px ${effective}`,
-          position: 'relative',
-        }}
-      >
-        {/* Keys: striped pattern of dark/light bars */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '12%',
-            top: '32%',
-            width: '54%',
-            height: '32%',
-            background: `repeating-linear-gradient(90deg, ${sh.keyDark} 0px, ${sh.keyDark} 5px, ${effective} 6px)`,
-            borderRadius: 3,
-          }}
-        />
-        {/* Power LED */}
-        <div
-          style={{
-            position: 'absolute',
-            right: '8%',
-            top: '32%',
-            width: '11%',
-            aspectRatio: '1',
-            background: '#33ff55',
-            borderRadius: '50%',
-            boxShadow: '0 0 6px #33ff55',
-          }}
-        />
-      </div>
-
-      {/* Status badge — only on the picked tile */}
       <AnimatePresence>
         {isPicked && (
           <motion.div
