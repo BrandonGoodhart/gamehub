@@ -18,8 +18,8 @@ import ActionPanel from '../games/cracked-heist/components/ActionPanel'
 import PlayerList from '../games/cracked-heist/components/PlayerList'
 import EventFeed from '../games/cracked-heist/components/EventFeed'
 import Modal from '../games/cracked-heist/components/Modal'
-import PasswordPicker from '../games/cracked-heist/components/PasswordPicker'
 import HackComputers from '../games/cracked-heist/components/HackComputers'
+import PhishingGame from '../games/cracked-heist/components/PhishingGame'
 import PasswordReveal from '../games/cracked-heist/components/PasswordReveal'
 import GameOver from '../games/cracked-heist/components/GameOver'
 import { defaultAvatar } from '../games/cracked-heist/avatar'
@@ -42,8 +42,7 @@ type ActionFlow =
   | { kind: 'spyPick'; targets: Player[]; truthId: string }
   | { kind: 'spyResult'; correct: boolean }
   | { kind: 'hackPicker'; targets: Player[] }
-  | { kind: 'passwordPickTarget' }
-  | { kind: 'passwordPickGuess'; targetId: string }
+  | { kind: 'phishing' }
   | { kind: 'viewOptions' }
 
 type EntryRole = 'host' | 'player' | null
@@ -122,7 +121,7 @@ export default function CrackedHeist() {
   function chooseAction(kind: 'spy' | 'hack' | 'password') {
     if (kind === 'hack') return openHack()
     if (kind === 'spy') return openSpy()
-    if (kind === 'password') setFlow({ kind: 'passwordPickTarget' })
+    if (kind === 'password') setFlow({ kind: 'phishing' })
   }
 
   function viewShared(code: string) {
@@ -131,7 +130,6 @@ export default function CrackedHeist() {
   }
 
   const close = () => setFlow({ kind: 'none' })
-  const pwTarget = flow.kind === 'passwordPickGuess' ? state?.players.find((p) => p.id === flow.targetId) : null
 
   // --- Render guards for pre-connection states ---
 
@@ -469,51 +467,22 @@ export default function CrackedHeist() {
         )}
       </Modal>
 
-      <Modal open={flow.kind === 'passwordPickTarget'} onClose={close} title="Crack — pick target">
-        <p className="fg-sub text-sm mb-3">Whose wallet do you want to crack?</p>
-        <div className="space-y-2">
-          {others.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setFlow({ kind: 'passwordPickGuess', targetId: p.id })}
-              className="w-full text-left p-3 rounded-2xl border font-bold transition-all flex items-center gap-3"
-              style={{
-                borderColor: 'rgba(163,230,53,0.3)',
-                background: 'rgba(163,230,53,0.05)',
-                color: '#d9f99d',
-              }}
-            >
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center font-extrabold flex-shrink-0"
-                style={{ background: p.avatar.color, color: '#0a0a0a' }}
-              >
-                {p.handle.charAt(0).toUpperCase()}
-              </div>
-              <span>{p.handle}</span>
-            </button>
-          ))}
-        </div>
-      </Modal>
-
-      <Modal
-        open={flow.kind === 'passwordPickGuess' && !!pwTarget}
-        onClose={close}
-        title="Crack — pick password"
-      >
-        {pwTarget && (
-          <PasswordPicker
-            target={pwTarget}
-            onResult={(correct) => {
-              dispatch({
-                type: 'doPassword',
-                guesserId: me.id,
-                targetId: pwTarget.id,
-                correctPassword: correct,
-              })
-              close()
-            }}
-          />
-        )}
+      <Modal open={flow.kind === 'phishing'} onClose={close} title="Phishing — pick a victim">
+        <PhishingGame
+          cost={state.settings.costs.password}
+          tokens={me.tokens}
+          targets={others}
+          onClose={close}
+          onResult={(targetId, correct) => {
+            dispatch({
+              type: 'doPassword',
+              guesserId: me.id,
+              targetId,
+              correctPassword: correct,
+            })
+            close()
+          }}
+        />
       </Modal>
 
       <Modal open={flow.kind === 'viewOptions'} onClose={close} title="Your game options">
@@ -532,9 +501,9 @@ export default function CrackedHeist() {
           />
           <OptionInfo
             color="#a3e635"
-            title="Crack Password"
+            title="Send Phishing"
             cost={`${state.settings.costs.password} tokens`}
-            desc={`Pick a target and one of three passwords. Right = +${state.settings.rewards.passwordCatch} coins.`}
+            desc={`Pick a target and a fake message that fits how they think (greed, authority, or urgency). Right = +${state.settings.rewards.passwordCatch} coins.`}
           />
           <div
             className="rounded-2xl p-3 mt-2"

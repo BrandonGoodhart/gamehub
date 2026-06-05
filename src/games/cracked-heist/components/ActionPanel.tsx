@@ -98,9 +98,9 @@ export default function ActionPanel({ state, me, onChoose }: Props) {
       />
       <Btn
         kind="password"
-        label="Crack Password"
+        label="Send Phishing"
         costLabel={`${c.password} tokens`}
-        desc={`Pick 1 of 3 passwords. Right = +${state.settings.rewards.passwordCatch} coins.`}
+        desc={`Pick a target + the message that will trick them. Right = +${state.settings.rewards.passwordCatch} coins.`}
         ok={me.tokens >= c.password}
         onChoose={onChoose}
       />
