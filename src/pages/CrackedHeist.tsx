@@ -20,6 +20,7 @@ import EventFeed from '../games/cracked-heist/components/EventFeed'
 import Modal from '../games/cracked-heist/components/Modal'
 import PasswordPicker from '../games/cracked-heist/components/PasswordPicker'
 import HackComputers from '../games/cracked-heist/components/HackComputers'
+import PasswordReveal from '../games/cracked-heist/components/PasswordReveal'
 import GameOver from '../games/cracked-heist/components/GameOver'
 import { defaultAvatar } from '../games/cracked-heist/avatar'
 import { getShared } from '../games/cracked-heist/shareStore'
@@ -352,17 +353,7 @@ export default function CrackedHeist() {
                 <div className="fg-panel p-5">
                   <div className="flex items-center justify-between mb-3">
                     <div className="fg-lbl">your password</div>
-                    <div
-                      className="font-extrabold text-xs px-2 py-1 rounded-full"
-                      style={{
-                        background: 'rgba(74,222,128,0.12)',
-                        color: '#86efac',
-                        fontFamily: 'JetBrains Mono, monospace',
-                        letterSpacing: '0.06em',
-                      }}
-                    >
-                      {me.password || '—'}
-                    </div>
+                    <PasswordReveal password={me.password} />
                   </div>
                   <div className="fg-lbl mb-3">actions</div>
                   <ActionPanel state={state} me={me} onChoose={chooseAction} />
@@ -552,19 +543,11 @@ export default function CrackedHeist() {
               border: '1px solid rgba(74,222,128,0.2)',
             }}
           >
-            <div className="fg-lbl mb-1">your password</div>
-            <div
-              className="font-extrabold text-base"
-              style={{
-                color: '#86efac',
-                fontFamily: 'JetBrains Mono, monospace',
-                letterSpacing: '0.06em',
-              }}
-            >
-              {me?.password || '—'}
-            </div>
-            <p className="fg-sub text-[11px] mt-1">
-              Don't show this to anyone or they can crack your wallet.
+            <div className="fg-lbl mb-2">your password</div>
+            <PasswordReveal password={me?.password ?? ''} size="md" />
+            <p className="fg-sub text-[11px] mt-2">
+              Tap to reveal. Hides again after a few seconds — don't show
+              your screen to anyone.
             </p>
           </div>
         </div>
