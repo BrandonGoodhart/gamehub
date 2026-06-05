@@ -21,7 +21,6 @@ function launchConfetti(rank: number) {
       : rank === 2
         ? ['#e5e7eb', '#cbd5e1', '#94a3b8', '#4ade80']
         : ['#fb923c', '#f97316', '#fbbf24', '#4ade80']
-  // Three bursts from different origins
   for (let i = 0; i < 3; i++) {
     setTimeout(() => {
       confetti({
@@ -36,12 +35,31 @@ function launchConfetti(rank: number) {
   }
 }
 
+// Standard competition ranking: tied players share the same rank, next
+// rank skips ahead. So [10, 10, 8, 5] → [1, 1, 3, 4].
+function computeRanks(coins: number[]): number[] {
+  const ranks: number[] = []
+  for (let i = 0; i < coins.length; i++) {
+    if (i === 0) ranks.push(1)
+    else if (coins[i] === coins[i - 1]) ranks.push(ranks[i - 1])
+    else ranks.push(i + 1)
+  }
+  return ranks
+}
+
 export default function GameOver({ state, meId, onReset }: Props) {
   const sorted = [...state.players].sort((a, b) => b.coins - a.coins)
-  const winner = sorted[0]
+  const ranks = computeRanks(sorted.map((p) => p.coins))
+  // Indices where rank === 1 (all tied winners)
+  const winnerIndices = ranks.map((r, i) => (r === 1 ? i : -1)).filter((i) => i >= 0)
+  const winners = winnerIndices.map((i) => sorted[i])
+  const isMultiwayTieAtTop = winners.length > 1
   const me = state.players.find((p) => p.id === meId)
-  const myRank = me ? sorted.findIndex((p) => p.id === me.id) + 1 : 0
-  const youWon = winner.id === meId
+  const myIdx = me ? sorted.findIndex((p) => p.id === me.id) : -1
+  const myRank = myIdx >= 0 ? ranks[myIdx] : 0
+  // Count how many players share my rank — used to display "T1" etc.
+  const tiedCount = (rank: number) => ranks.filter((r) => r === rank).length
+  const youWon = winners.some((w) => w.id === meId)
   const code = useMemo(() => state.shareCode ?? persistGame(state), [state])
   const [copied, setCopied] = useState(false)
 
@@ -74,6 +92,31 @@ export default function GameOver({ state, meId, onReset }: Props) {
     )
   }
 
+  const headerLabel =
+    myRank === 1
+      ? isMultiwayTieAtTop
+        ? `tied for first place`
+        : 'first place'
+      : myRank === 2
+        ? tiedCount(2) > 1
+          ? 'tied for second place'
+          : 'second place'
+        : myRank === 3
+          ? tiedCount(3) > 1
+            ? 'tied for third place'
+            : 'third place'
+          : 'game over'
+
+  const bigTitle = youWon
+    ? isMultiwayTieAtTop
+      ? "It's a Tie!"
+      : 'You Won!'
+    : myRank === 2
+      ? 'Silver!'
+      : myRank === 3
+        ? 'Bronze!'
+        : 'Cracked.'
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.92 }}
@@ -81,22 +124,36 @@ export default function GameOver({ state, meId, onReset }: Props) {
       className="max-w-xl mx-auto fg-panel fg-panel-lg relative overflow-hidden"
     >
       <div className="text-center mb-6">
-        <div className="fg-lbl text-[#fbbf24] mb-1">
-          {myRank === 1 ? 'first place' : myRank === 2 ? 'second place' : myRank === 3 ? 'third place' : 'game over'}
-        </div>
-        <h2 className="fg-display text-5xl mb-3">
-          {youWon ? 'You Won!' : myRank === 2 ? 'Silver!' : myRank === 3 ? 'Bronze!' : 'Cracked.'}
-        </h2>
-        <p className="fg-sub text-xs mb-3">Winner = the player with the most coins.</p>
-        <div className="flex items-center justify-center gap-3 mt-3">
-          <AvatarSvg avatar={winner.avatar} size={56} initial={winner.handle} />
-          <div className="text-left">
-            <div className="fg-lbl">winner</div>
-            <div className="text-xl font-extrabold text-white">{winner.handle}</div>
-            <div className="text-sm font-bold" style={{ color: '#fbbf24' }}>
-              {winner.coins}c
+        <div className="fg-lbl text-[#fbbf24] mb-1">{headerLabel}</div>
+        <h2 className="fg-display text-5xl mb-3">{bigTitle}</h2>
+        <p className="fg-sub text-xs mb-3">
+          Winner = the player with the most coins.{' '}
+          {isMultiwayTieAtTop && `Tied — ${winners.length} players share first.`}
+        </p>
+
+        {/* Winner card — one tile per winner */}
+        <div className="flex items-center justify-center flex-wrap gap-3 mt-3">
+          {winners.map((w) => (
+            <div
+              key={w.id}
+              className="flex items-center gap-2 px-3 py-2 rounded-2xl"
+              style={{
+                background: 'rgba(251,191,36,0.06)',
+                border: '1.5px solid rgba(251,191,36,0.35)',
+              }}
+            >
+              <AvatarSvg avatar={w.avatar} size={40} initial={w.handle} />
+              <div className="text-left">
+                <div className="fg-lbl">
+                  {isMultiwayTieAtTop ? 'tied 1st' : 'winner'}
+                </div>
+                <div className="text-base font-extrabold text-white">{w.handle}</div>
+                <div className="text-xs font-bold" style={{ color: '#fbbf24' }}>
+                  {w.coins}c
+                </div>
+              </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -143,30 +200,43 @@ export default function GameOver({ state, meId, onReset }: Props) {
         <Stat label="caught" value={me.caughtCount} />
         <Stat label="spies" value={me.spiesDone} />
         <Stat label="cracks" value={me.passwordsGuessed} />
-        <Stat label="rank" value={`#${myRank}`} />
+        <Stat
+          label="rank"
+          value={`${tiedCount(myRank) > 1 ? 'T' : ''}#${myRank}`}
+        />
       </div>
 
       <div className="fg-lbl mb-2">final standings</div>
       <div className="space-y-1.5 mb-5">
-        {sorted.map((p, i) => (
-          <div
-            key={p.id}
-            className="flex items-center justify-between px-3 py-1.5 rounded-xl"
-            style={{
-              background: p.id === meId ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(74,222,128,0.08)',
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <span className="fg-sub w-5 text-right">{i + 1}.</span>
-              <AvatarSvg avatar={p.avatar} size={24} initial={p.handle} />
-              <span className="font-bold text-white text-sm">{p.handle}</span>
+        {sorted.map((p, i) => {
+          const r = ranks[i]
+          const tied = tiedCount(r) > 1
+          return (
+            <div
+              key={p.id}
+              className="flex items-center justify-between px-3 py-1.5 rounded-xl"
+              style={{
+                background: p.id === meId ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(74,222,128,0.08)',
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-9 text-right font-extrabold text-sm tabular-nums"
+                  style={{ color: tied ? '#5eead4' : 'rgba(255,255,255,0.55)' }}
+                  title={tied ? 'Tied with another player' : undefined}
+                >
+                  {tied ? `T${r}` : r}.
+                </span>
+                <AvatarSvg avatar={p.avatar} size={24} initial={p.handle} />
+                <span className="font-bold text-white text-sm">{p.handle}</span>
+              </div>
+              <span className="font-extrabold text-sm tabular-nums" style={{ color: '#fbbf24' }}>
+                {p.coins}c
+              </span>
             </div>
-            <span className="font-extrabold text-sm tabular-nums" style={{ color: '#fbbf24' }}>
-              {p.coins}c
-            </span>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <button onClick={onReset} className="fg-btn fg-btn-grad">

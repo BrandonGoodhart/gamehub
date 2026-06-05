@@ -9,6 +9,17 @@ interface Props {
   onBack: () => void
 }
 
+// Standard competition ranking: [10,10,8,5] → [1,1,3,4]
+function computeRanks(coins: number[]): number[] {
+  const ranks: number[] = []
+  for (let i = 0; i < coins.length; i++) {
+    if (i === 0) ranks.push(1)
+    else if (coins[i] === coins[i - 1]) ranks.push(ranks[i - 1])
+    else ranks.push(i + 1)
+  }
+  return ranks
+}
+
 export default function SharedView({ game, code, onBack }: Props) {
   const [copied, setCopied] = useState(false)
 
@@ -75,47 +86,62 @@ export default function SharedView({ game, code, onBack }: Props) {
 
           <div className="fg-panel p-4">
             <div className="fg-lbl mb-3">final standings</div>
-            <div className="space-y-2">
-              {[...game.players]
-                .sort((a, b) => b.coins - a.coins)
-                .map((p, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 rounded-2xl p-2"
-                    style={{
-                      background: 'rgba(255,255,255,0.03)',
-                      border: '1px solid rgba(74,222,128,0.1)',
-                    }}
-                  >
-                    <span
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold"
-                      style={{
-                        background:
-                          i === 0
-                            ? 'linear-gradient(135deg,#fbbf24,#f59e0b)'
-                            : 'rgba(74,222,128,0.12)',
-                        color: i === 0 ? '#451a03' : '#86efac',
-                      }}
-                    >
-                      {i + 1}
-                    </span>
-                    <AvatarSvg avatar={{ color: p.color }} size={32} initial={p.handle} />
-                    <div className="flex-1">
-                      <div className="font-bold text-white text-sm">{p.handle}</div>
-                      <div className="fg-sub text-[10px]">
-                        {p.hacks} hacks · {p.caught} caught
-                      </div>
-                    </div>
-                    <div className="font-extrabold tabular-nums" style={{ color: '#fbbf24' }}>
-                      {p.coins}c
-                    </div>
-                  </div>
-                ))}
-            </div>
+            <Standings players={game.players} />
           </div>
 
         </>
       )}
+    </div>
+  )
+}
+
+function Standings({ players }: { players: SharedGame['players'] }) {
+  const sorted = [...players].sort((a, b) => b.coins - a.coins)
+  const ranks = computeRanks(sorted.map((p) => p.coins))
+  const tiedCount = (rank: number) => ranks.filter((r) => r === rank).length
+
+  return (
+    <div className="space-y-2">
+      {sorted.map((p, i) => {
+        const r = ranks[i]
+        const tied = tiedCount(r) > 1
+        const isTopRank = r === 1
+        return (
+          <div
+            key={i}
+            className="flex items-center gap-3 rounded-2xl p-2"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(74,222,128,0.1)',
+            }}
+          >
+            <span
+              className="min-w-[28px] h-7 px-1.5 rounded-full flex items-center justify-center text-xs font-extrabold tabular-nums"
+              style={{
+                background: isTopRank
+                  ? 'linear-gradient(135deg,#fbbf24,#f59e0b)'
+                  : tied
+                    ? 'rgba(94,234,212,0.15)'
+                    : 'rgba(74,222,128,0.12)',
+                color: isTopRank ? '#451a03' : tied ? '#5eead4' : '#86efac',
+              }}
+              title={tied ? 'Tied with another player' : undefined}
+            >
+              {tied ? `T${r}` : r}
+            </span>
+            <AvatarSvg avatar={{ color: p.color }} size={32} initial={p.handle} />
+            <div className="flex-1">
+              <div className="font-bold text-white text-sm">{p.handle}</div>
+              <div className="fg-sub text-[10px]">
+                {p.hacks} hacks · {p.caught} caught
+              </div>
+            </div>
+            <div className="font-extrabold tabular-nums" style={{ color: '#fbbf24' }}>
+              {p.coins}c
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
