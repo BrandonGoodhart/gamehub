@@ -12,6 +12,19 @@ interface Props {
 
 const STAGE1_COLORS = ['#f97316', '#3b82f6', '#22c55e']
 
+// Glow color → derived shades for the keyboard gradient and key stripes
+const SHADES: Record<string, { light: string; dark: string; keyDark: string }> = {
+  '#f97316': { light: '#fb923c', dark: '#7c2d12', keyDark: '#3f1709' }, // orange
+  '#3b82f6': { light: '#60a5fa', dark: '#1e3a8a', keyDark: '#0f1c47' }, // blue
+  '#22c55e': { light: '#4ade80', dark: '#15803d', keyDark: '#062012' }, // green
+  '#ef4444': { light: '#f87171', dark: '#7f1d1d', keyDark: '#3f0a0a' }, // red
+  '#06b6d4': { light: '#22d3ee', dark: '#0e7490', keyDark: '#052f37' }, // cyan (fallback)
+}
+
+function shadesFor(color: string) {
+  return SHADES[color] ?? SHADES['#06b6d4']
+}
+
 interface PwTile {
   label: string
   isReal: boolean
@@ -27,106 +40,6 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 type TileState = 'idle' | 'pickedCorrect' | 'pickedWrong'
-
-function ComputerSVG({ glow, label }: { glow: string; label: string }) {
-  // viewBox 100x118: monitor on top (rounded rect), wider all-in-one base
-  // below with two small floppy/CD slot details inside.
-  const filterId = `glow-${glow.replace('#', '')}`
-  return (
-    <svg
-      viewBox="0 0 100 118"
-      width="100%"
-      style={{
-        display: 'block',
-        filter: `drop-shadow(0 0 12px ${glow}cc) drop-shadow(0 0 4px ${glow}aa)`,
-      }}
-    >
-      <defs>
-        <filter id={filterId} x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="1.5" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
-      {/* Monitor screen — black rounded rect on top */}
-      <rect
-        x="14"
-        y="6"
-        width="72"
-        height="58"
-        rx="8"
-        ry="8"
-        fill="#0a0a0a"
-        stroke={glow}
-        strokeWidth="3"
-      />
-
-      {/* Username/password text inside the screen */}
-      <text
-        x="50"
-        y="40"
-        textAnchor="middle"
-        fill="#fff"
-        style={{
-          fontFamily: 'JetBrains Mono, ui-monospace, monospace',
-          fontWeight: 800,
-          fontSize: 9,
-          letterSpacing: '0.5px',
-        }}
-      >
-        {label}
-      </text>
-
-      {/* Base / case — wider than the monitor, chunky retro shape */}
-      <path
-        d="M 4 62 L 96 62 Q 100 62 100 66 L 100 110 Q 100 114 96 114 L 4 114 Q 0 114 0 110 L 0 66 Q 0 62 4 62 Z"
-        fill="#0a0a0a"
-        stroke={glow}
-        strokeWidth="3"
-      />
-
-      {/* Disk drive slots / details inside the base */}
-      <rect
-        x="15"
-        y="74"
-        width="70"
-        height="4"
-        rx="1"
-        fill="none"
-        stroke={glow}
-        strokeWidth="1.2"
-        opacity="0.7"
-      />
-      <rect
-        x="15"
-        y="84"
-        width="70"
-        height="4"
-        rx="1"
-        fill="none"
-        stroke={glow}
-        strokeWidth="1.2"
-        opacity="0.7"
-      />
-      <rect
-        x="15"
-        y="94"
-        width="40"
-        height="4"
-        rx="1"
-        fill="none"
-        stroke={glow}
-        strokeWidth="1.2"
-        opacity="0.7"
-      />
-      {/* Power LED dot */}
-      <circle cx="82" cy="103" r="2" fill={glow} opacity="0.9" />
-    </svg>
-  )
-}
 
 function ComputerTile({
   label,
@@ -148,6 +61,7 @@ function ComputerTile({
         ? '#ef4444'
         : glowColor
   const isPicked = state === 'pickedCorrect' || state === 'pickedWrong'
+  const sh = shadesFor(effective)
 
   return (
     <motion.button
@@ -172,11 +86,86 @@ function ComputerTile({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 6,
+        gap: 0,
+        filter: `drop-shadow(0 0 18px ${effective})`,
       }}
     >
-      <ComputerSVG glow={effective} label={label} />
+      {/* SCREEN */}
+      <div
+        style={{
+          width: '88%',
+          aspectRatio: '105 / 80',
+          background: 'linear-gradient(#15201d, #070b0a)',
+          border: `4px solid ${effective}`,
+          borderRadius: 10,
+          boxShadow: `0 0 12px ${effective}, inset 0 0 18px #000`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+          fontWeight: 800,
+          fontSize: 'clamp(0.7rem, 1.6vw, 1rem)',
+          letterSpacing: '0.04em',
+          padding: '6px',
+          wordBreak: 'break-all',
+          lineHeight: 1.1,
+        }}
+      >
+        {label}
+      </div>
 
+      {/* NECK — narrow connector between screen and keyboard */}
+      <div
+        style={{
+          width: '24%',
+          height: 10,
+          background: '#15332f',
+          borderLeft: `3px solid ${effective}`,
+          borderRight: `3px solid ${effective}`,
+        }}
+      />
+
+      {/* KEYBOARD — wider than the screen, gradient base with keys + power LED */}
+      <div
+        style={{
+          width: '102%',
+          aspectRatio: '125 / 38',
+          background: `linear-gradient(${sh.light}, ${sh.dark})`,
+          border: `3px solid ${effective}`,
+          borderRadius: 8,
+          boxShadow: `0 0 12px ${effective}`,
+          position: 'relative',
+        }}
+      >
+        {/* Keys: striped pattern of dark/light bars */}
+        <div
+          style={{
+            position: 'absolute',
+            left: '12%',
+            top: '32%',
+            width: '54%',
+            height: '32%',
+            background: `repeating-linear-gradient(90deg, ${sh.keyDark} 0px, ${sh.keyDark} 5px, ${effective} 6px)`,
+            borderRadius: 3,
+          }}
+        />
+        {/* Power LED */}
+        <div
+          style={{
+            position: 'absolute',
+            right: '8%',
+            top: '32%',
+            width: '11%',
+            aspectRatio: '1',
+            background: '#33ff55',
+            borderRadius: '50%',
+            boxShadow: '0 0 6px #33ff55',
+          }}
+        />
+      </div>
+
+      {/* Status badge — only on the picked tile */}
       <AnimatePresence>
         {isPicked && (
           <motion.div
@@ -185,6 +174,7 @@ function ComputerTile({
             exit={{ opacity: 0 }}
             transition={{ type: 'spring', stiffness: 380, damping: 18 }}
             style={{
+              marginTop: 10,
               padding: '5px 14px',
               borderRadius: 999,
               fontFamily: 'inherit',
@@ -358,8 +348,7 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
         )}
       </AnimatePresence>
 
-      {/* Computer row — transitions between stages */}
-      <div style={{ position: 'relative', minHeight: 200 }}>
+      <div style={{ position: 'relative', minHeight: 220 }}>
         <AnimatePresence mode="wait">
           {stage === 'usernames' && (
             <motion.div
