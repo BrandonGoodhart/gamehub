@@ -13,7 +13,13 @@ export type Phase =
   | 'playing'
   | 'gameOver'
 
-export type ActionKind = 'spy' | 'hack' | 'password'
+export type ActionKind = 'spy' | 'hack' | 'password' | 'risk'
+
+export type RiskOutcome = 'x2' | 'x3' | 'half' | 'plus5' | 'plus10' | 'minus5' | 'minus10'
+
+export const RISK_OUTCOMES: RiskOutcome[] = ['x2', 'x3', 'half', 'plus5', 'plus10', 'minus5', 'minus10']
+
+export const RISK_COST = 3
 
 export interface Avatar {
   color: string

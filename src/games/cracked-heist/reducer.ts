@@ -1,4 +1,5 @@
-import type { ActionKind, Avatar, EventLog, Phase, Player, Question, RoomState, Settings } from './types'
+import type { ActionKind, Avatar, EventLog, Phase, Player, Question, RiskOutcome, RoomState, Settings } from './types'
+import { RISK_COST } from './types'
 import { makePasswordOptions, pickN, uid } from './utils'
 import { BOT_NAMES } from './words'
 import { CATEGORIES, QUESTION_BANK } from './questions'
@@ -93,6 +94,7 @@ export type GameAction =
   | { type: 'doSpy'; spyId: string; targetId: string; correct: boolean }
   | { type: 'doHack'; playerId: string; targetId: string; correctPassword: boolean }
   | { type: 'doPassword'; guesserId: string; targetId: string; correctPassword: boolean }
+  | { type: 'doRisk'; playerId: string; outcome: RiskOutcome }
   | { type: 'startRound' }
   | { type: 'endGame' }
   | { type: 'setShareCode'; code: string }
@@ -341,6 +343,25 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
         return addEvent(s1, `${g.handle} tricked ${t.handle} for ${reward} coins.`, 'neutral')
       }
       return addEvent(s1, `${g.handle} tried a phish and failed.`, 'neutral')
+    }
+    case 'doRisk': {
+      const p = state.players.find((x) => x.id === action.playerId)
+      if (!p) return state
+      if (p.coins < RISK_COST) return state
+      const afterCost = p.coins - RISK_COST
+      let next: number
+      let label: string
+      switch (action.outcome) {
+        case 'x2':      next = afterCost * 2;                  label = '×2';   break
+        case 'x3':      next = afterCost * 3;                  label = '×3';   break
+        case 'half':    next = Math.floor(afterCost / 2);      label = '÷2';   break
+        case 'plus5':   next = afterCost + 5;                  label = '+5';   break
+        case 'plus10':  next = afterCost + 10;                 label = '+10';  break
+        case 'minus5':  next = Math.max(0, afterCost - 5);     label = '−5';   break
+        case 'minus10': next = Math.max(0, afterCost - 10);    label = '−10';  break
+      }
+      const s1 = updatePlayer(state, p.id, { coins: Math.max(0, next) })
+      return addEvent(s1, `${p.handle} risked it — ${label}.`, 'neutral')
     }
     case 'startRound': {
       const ev = makeEvent(`Game started.`, 'system')

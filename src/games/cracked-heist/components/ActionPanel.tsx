@@ -1,13 +1,14 @@
 import { motion } from 'framer-motion'
 import type { Player, RoomState } from '../types'
+import { RISK_COST } from '../types'
 
 interface Props {
   state: RoomState
   me: Player
-  onChoose: (kind: 'spy' | 'hack' | 'password') => void
+  onChoose: (kind: 'spy' | 'hack' | 'password' | 'risk') => void
 }
 
-type Kind = 'spy' | 'hack' | 'password'
+type Kind = 'spy' | 'hack' | 'password' | 'risk'
 
 const STYLES: Record<Kind, { grad: string; bg: string; border: string; text: string }> = {
   hack: {
@@ -27,6 +28,12 @@ const STYLES: Record<Kind, { grad: string; bg: string; border: string; text: str
     bg: 'rgba(163,230,53,0.05)',
     border: 'rgba(163,230,53,0.3)',
     text: '#d9f99d',
+  },
+  risk: {
+    grad: 'linear-gradient(135deg, #f472b6, #c084fc)',
+    bg: 'rgba(192,132,252,0.06)',
+    border: 'rgba(192,132,252,0.35)',
+    text: '#f5d0fe',
   },
 }
 
@@ -102,6 +109,14 @@ export default function ActionPanel({ state, me, onChoose }: Props) {
         costLabel={`${c.password} tokens`}
         desc={`Pick a target + the message that will trick them. Right = +${state.settings.rewards.passwordCatch} coins.`}
         ok={me.tokens >= c.password}
+        onChoose={onChoose}
+      />
+      <Btn
+        kind="risk"
+        label="Risk It"
+        costLabel={`${RISK_COST} coins`}
+        desc={`Spin for a random outcome: ×2, ×3, ÷2, +5, +10, −5, or −10 coins.`}
+        ok={me.coins >= RISK_COST}
         onChoose={onChoose}
       />
     </div>

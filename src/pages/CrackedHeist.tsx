@@ -20,6 +20,7 @@ import EventFeed from '../games/cracked-heist/components/EventFeed'
 import Modal from '../games/cracked-heist/components/Modal'
 import HackComputers from '../games/cracked-heist/components/HackComputers'
 import PhishingGame from '../games/cracked-heist/components/PhishingGame'
+import RiskGame from '../games/cracked-heist/components/RiskGame'
 import PasswordReveal from '../games/cracked-heist/components/PasswordReveal'
 import GameOver from '../games/cracked-heist/components/GameOver'
 import { initAudio, isMuted, startMusic } from '../games/cracked-heist/audio'
@@ -27,6 +28,7 @@ import { defaultAvatar } from '../games/cracked-heist/avatar'
 import { getShared } from '../games/cracked-heist/shareStore'
 import { generateRoomCode, pickN } from '../games/cracked-heist/utils'
 import type { Avatar, Player, Question, SharedGame } from '../games/cracked-heist/types'
+import { RISK_COST } from '../games/cracked-heist/types'
 import '../games/cracked-heist/forbidden-green.css'
 
 type LocalPhase =
@@ -47,6 +49,7 @@ type ActionFlow =
   | { kind: 'spyResult'; correct: boolean }
   | { kind: 'hackPicker'; targets: Player[] }
   | { kind: 'phishing' }
+  | { kind: 'risk' }
   | { kind: 'viewOptions' }
 
 type EntryRole = 'host' | 'player' | null
@@ -145,10 +148,11 @@ export default function CrackedHeist() {
     setFlow({ kind: 'hackPicker', targets })
   }
 
-  function chooseAction(kind: 'spy' | 'hack' | 'password') {
+  function chooseAction(kind: 'spy' | 'hack' | 'password' | 'risk') {
     if (kind === 'hack') return openHack()
     if (kind === 'spy') return openSpy()
-    if (kind === 'password') setFlow({ kind: 'phishing' })
+    if (kind === 'password') return setFlow({ kind: 'phishing' })
+    if (kind === 'risk') setFlow({ kind: 'risk' })
   }
 
   function viewShared(code: string) {
@@ -512,6 +516,18 @@ export default function CrackedHeist() {
         />
       </Modal>
 
+      <Modal open={flow.kind === 'risk'} onClose={close} title="Risk It — spin for coins">
+        {flow.kind === 'risk' && (
+          <RiskGame
+            coins={me.coins}
+            onClose={close}
+            onResult={(outcome) => {
+              dispatch({ type: 'doRisk', playerId: me.id, outcome })
+            }}
+          />
+        )}
+      </Modal>
+
       <Modal open={flow.kind === 'viewOptions'} onClose={close} title="Your game options">
         <div className="space-y-3">
           <OptionInfo
@@ -531,6 +547,12 @@ export default function CrackedHeist() {
             title="Send Phishing"
             cost={`${state.settings.costs.password} tokens`}
             desc={`Pick a target and a fake message that fits how they think (greed, authority, or urgency). Right = +${state.settings.rewards.passwordCatch} coins.`}
+          />
+          <OptionInfo
+            color="#c084fc"
+            title="Risk It"
+            cost={`${RISK_COST} coins`}
+            desc="Spin a random outcome: ×2, ×3, ÷2, +5, +10, −5, or −10 coins. Pay the entry fee first; the result applies to what's left."
           />
           <div
             className="rounded-2xl p-3 mt-2"
@@ -597,6 +619,7 @@ export default function CrackedHeist() {
               <li>Answer right → +2 tokens</li>
               <li>Successful Hack / Spy / Phish → +5 coins (cost: tokens)</li>
               <li>Being hacked, phished, or caught → lose up to 5 coins</li>
+              <li>Risk It → pay {RISK_COST} coins for a random ×2 / ×3 / ÷2 / ±5 / ±10 swing</li>
               <li>Most coins at the end wins</li>
             </ul>
           </div>
