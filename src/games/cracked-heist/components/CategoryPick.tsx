@@ -76,41 +76,61 @@ export default function CategoryPick({
             </div>
           </motion.button>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="fg-mode-card text-center w-full"
-            style={{ padding: '22px 16px', cursor: 'default' }}
-          >
-            <div className="fg-lbl mb-2">ai assistant</div>
-            <button
-              onClick={() => setAiOpen((o) => !o)}
-              className="text-white text-center"
-              style={{
-                fontWeight: 800,
-                fontSize: '1.1rem',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0,
-              }}
+          {!aiOpen ? (
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              whileHover={{ y: -3 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setAiOpen(true)}
+              className="fg-mode-card text-center w-full"
+              style={{ padding: '22px 16px' }}
             >
-              Ask AI to make questions
-            </button>
-            <div className="fg-sub mt-1" style={{ fontSize: '0.78rem' }}>
-              {aiOpen ? 'Chat with the AI to make a set.' : 'Tap to open the chat.'}
-            </div>
-
-            {aiOpen && (
+              <div className="fg-lbl mb-2">ai assistant</div>
+              <div className="text-white" style={{ fontWeight: 800, fontSize: '1.1rem' }}>
+                Ask AI to make questions
+              </div>
+              <div className="fg-sub mt-1" style={{ fontSize: '0.78rem' }}>
+                Tap to open the chat.
+              </div>
+            </motion.button>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="fg-mode-card text-center w-full"
+              style={{ padding: '22px 16px', cursor: 'default' }}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div className="fg-lbl">ai assistant</div>
+                <button
+                  onClick={() => setAiOpen(false)}
+                  className="fg-sub text-xs"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  close
+                </button>
+              </div>
+              <div
+                className="text-white text-left"
+                style={{ fontWeight: 800, fontSize: '1.05rem' }}
+              >
+                Ask AI to make questions
+              </div>
               <AiChat
                 onDone={(topic, qs) => {
                   setAiOpen(false)
                   onAiGenerated(topic, qs)
                 }}
               />
-            )}
-          </motion.div>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>
