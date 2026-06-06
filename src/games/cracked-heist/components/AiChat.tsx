@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Question } from '../types'
 
-const COUNT_OPTIONS = [4, 6, 8, 10, 12, 15, 20, 25, 30, 40]
+const MIN_COUNT = 4
+const MAX_COUNT = 40
 
 interface Props {
   onDone: (topic: string, questions: Question[]) => void
@@ -281,33 +282,59 @@ export default function AiChat({ onDone }: Props) {
 
         {step === 'askCount' && (
           <>
-            <div className="fg-lbl mb-2 text-left">how many questions — tap to pick</div>
-            <div className="grid grid-cols-5 gap-2 mb-3">
-              {COUNT_OPTIONS.map((n) => {
-                const active = count === n
-                return (
-                  <button
-                    key={n}
-                    onClick={() => setCount(n)}
-                    className="rounded-xl font-extrabold tabular-nums"
-                    style={{
-                      padding: '12px 0',
-                      fontSize: '1.05rem',
-                      cursor: 'pointer',
-                      background: active
-                        ? 'linear-gradient(135deg,#4ade80,#a3e635)'
-                        : 'rgba(255,255,255,0.06)',
-                      color: active ? '#052e16' : '#d1d5db',
-                      border: active
-                        ? '2px solid #86efac'
-                        : '2px solid rgba(74,222,128,0.18)',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {n}
-                  </button>
-                )
-              })}
+            <div className="fg-lbl mb-2 text-left">how many questions</div>
+            <div
+              className="flex items-stretch rounded-2xl mb-3 overflow-hidden"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '2px solid rgba(74,222,128,0.35)',
+              }}
+            >
+              <button
+                aria-label="decrease"
+                onClick={() => setCount((n) => Math.max(MIN_COUNT, n - 1))}
+                disabled={count <= MIN_COUNT}
+                style={{
+                  width: 64,
+                  fontSize: '2rem',
+                  fontWeight: 900,
+                  background: count <= MIN_COUNT ? 'rgba(255,255,255,0.02)' : 'rgba(74,222,128,0.18)',
+                  color: count <= MIN_COUNT ? 'rgba(255,255,255,0.2)' : '#4ade80',
+                  border: 'none',
+                  cursor: count <= MIN_COUNT ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                −
+              </button>
+              <div
+                className="flex-1 flex items-center justify-center tabular-nums"
+                style={{
+                  color: '#ffffff',
+                  fontSize: '1.8rem',
+                  fontWeight: 900,
+                  padding: '14px 0',
+                }}
+              >
+                {count}
+              </div>
+              <button
+                aria-label="increase"
+                onClick={() => setCount((n) => Math.min(MAX_COUNT, n + 1))}
+                disabled={count >= MAX_COUNT}
+                style={{
+                  width: 64,
+                  fontSize: '2rem',
+                  fontWeight: 900,
+                  background: count >= MAX_COUNT ? 'rgba(255,255,255,0.02)' : 'rgba(74,222,128,0.18)',
+                  color: count >= MAX_COUNT ? 'rgba(255,255,255,0.2)' : '#4ade80',
+                  border: 'none',
+                  cursor: count >= MAX_COUNT ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                +
+              </button>
             </div>
             <button
               onClick={submitCount}
@@ -317,7 +344,7 @@ export default function AiChat({ onDone }: Props) {
               Make {count} questions →
             </button>
             <p className="fg-sub text-[11px] mt-2 text-left">
-              Minimum 4. More questions take longer (usually under 15 seconds).
+              Minimum 4, max 40. More questions take longer (usually under 15 seconds).
             </p>
           </>
         )}
