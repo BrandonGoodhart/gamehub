@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@netlify/functions": "^5.2.2",
+    "@supabase/supabase-js": "^2.107.0",
     "canvas-confetti": "^1.9.4",
     "framer-motion": "^12.35.2",
-    "partysocket": "^1.1.19",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router": "^7.13.1"
@@ -30,7 +30,6 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "partykit": "^0.0.115",
     "tailwindcss": "^4.2.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",

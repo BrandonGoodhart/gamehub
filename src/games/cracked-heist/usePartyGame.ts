@@ -1,24 +1,38 @@
+// Supabase Realtime-backed multiplayer.
+// Replaces the PartyKit server-authoritative model with a host-authoritative
+// client-side one. Whoever joins the room first as the host runs the reducer
+// locally, applies actions from joiners, and broadcasts the resulting state
+// over a Supabase Realtime channel. Joiners just send actions and render the
+// state the host broadcasts.
+
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import PartySocket from 'partysocket'
+import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import type { Avatar, Question, RoomState } from './types'
 import { makeInitialState, reducer, type GameAction } from './reducer'
 import { botAnswer, botSkill } from './bots'
 import { generateRoomCode, makePasswordOptions, uid } from './utils'
 
-interface WireWelcome {
-  type: 'WELCOME'
-  meId: string
-  state: RoomState
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+
+let supabase: SupabaseClient | null = null
+function getSupabase(): SupabaseClient | null {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null
+  if (!supabase) {
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      realtime: {
+        params: {
+          eventsPerSecond: 20,
+        },
+      },
+    })
+  }
+  return supabase
 }
-interface WireState {
-  type: 'STATE'
-  state: RoomState
+
+export function multiplayerConfigured(): boolean {
+  return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
 }
-interface WireError {
-  type: 'ERROR'
-  message: string
-}
-type WireMessage = WireWelcome | WireState | WireError
 
 interface ConnectArgs {
   code: string
@@ -27,13 +41,33 @@ interface ConnectArgs {
   isHost: boolean
 }
 
-const HOST: string =
-  (import.meta.env.VITE_PARTYKIT_HOST as string | undefined)?.replace(/^https?:\/\//, '') ??
-  ''
-
-export function multiplayerConfigured(): boolean {
-  return Boolean(HOST)
+interface WireJoin {
+  type: 'JOIN'
+  clientId: string
+  handle: string
+  avatar: Avatar
+  isHost: boolean
 }
+interface WireAction {
+  type: 'ACTION'
+  clientId: string
+  action: GameAction
+}
+interface WireState {
+  type: 'STATE'
+  state: RoomState
+}
+interface WireWelcome {
+  type: 'WELCOME'
+  meId: string
+  state: RoomState
+}
+interface WireError {
+  type: 'ERROR'
+  toClientId: string
+  message: string
+}
+type Wire = WireJoin | WireAction | WireState | WireWelcome | WireError
 
 interface LocalState {
   state: RoomState
@@ -45,21 +79,16 @@ function localReducerWrapper(
   a:
     | GameAction
     | { type: '__SET_ME_ID'; id: string }
-    | { type: '__SET_CODE'; code: string },
+    | { type: '__SET_CODE'; code: string }
+    | { type: '__SET_STATE'; state: RoomState },
 ): LocalState {
-  if (a.type === '__SET_ME_ID') {
-    return { ...s, meId: a.id }
-  }
-  if (a.type === '__SET_CODE') {
-    return { ...s, state: { ...s.state, code: a.code } }
-  }
+  if (a.type === '__SET_ME_ID') return { ...s, meId: a.id }
+  if (a.type === '__SET_CODE') return { ...s, state: { ...s.state, code: a.code } }
+  if (a.type === '__SET_STATE') return { ...s, state: a.state }
   return { ...s, state: reducer(s.state, a as GameAction) }
 }
 
-// ---------------- Local fallback hook ----------------
-// Used when VITE_PARTYKIT_HOST is missing. Runs everything client-side
-// with the same reducer the server would.
-
+// ---------------- Local fallback hook (no env vars set) ----------------
 function useLocalGame() {
   const [{ state, meId }, dispatchLocal] = useReducer(localReducerWrapper, undefined, () => ({
     state: makeInitialState(generateRoomCode()),
@@ -74,9 +103,7 @@ function useLocalGame() {
   const connect = useCallback(({ code, handle, avatar, isHost }: ConnectArgs) => {
     const id = uid()
     dispatchLocal({ type: '__SET_ME_ID', id })
-    // Seed the local "room" with the requested code; reset uses state.code, which
-    // we've just initialized to a random one — so push the chosen code in explicitly.
-    dispatchLocal({ type: '__SET_CODE' as never, code } as never)
+    dispatchLocal({ type: '__SET_CODE', code })
     setTimeout(() => {
       dispatchLocal({
         type: 'addPlayer',
@@ -99,7 +126,6 @@ function useLocalGame() {
           alive: true,
         },
       })
-      // Add 3 bots automatically so there's someone to play with
       dispatchLocal({ type: 'addBots', count: 3 })
     }, 0)
     setConnected(true)
@@ -111,7 +137,6 @@ function useLocalGame() {
   }, [])
 
   const dispatch = useCallback((action: GameAction) => {
-    // Auto-lock everyone before countdown so unset players don't stall the game.
     if (action.type === 'beginCountdown') {
       const unlocked = stateRef.current.players.filter((p) => !p.passwordLocked)
       unlocked.forEach((u) => {
@@ -129,7 +154,6 @@ function useLocalGame() {
     }
   }, [])
 
-  // Countdown ticking
   useEffect(() => {
     if (state.phase !== 'countdown') return
     if (state.countdownValue < 0) {
@@ -140,7 +164,6 @@ function useLocalGame() {
     return () => clearTimeout(t)
   }, [state.phase, state.countdownValue])
 
-  // Game timer
   useEffect(() => {
     if (state.phase !== 'playing') return
     const id = setInterval(() => dispatchLocal({ type: 'tickTimer' } as GameAction), 1000)
@@ -153,7 +176,6 @@ function useLocalGame() {
     }
   }, [state.timeLeft, state.phase])
 
-  // First question on entering playing
   useEffect(() => {
     if (state.phase !== 'playing') return
     if (!state.currentQuestion) {
@@ -162,7 +184,6 @@ function useLocalGame() {
     }
   }, [state.phase, state.currentQuestion])
 
-  // Bots answer
   useEffect(() => {
     if (state.phase !== 'playing' || !state.currentQuestion) return
     const q: Question = state.currentQuestion
@@ -181,7 +202,6 @@ function useLocalGame() {
     return () => timers.forEach((t) => clearTimeout(t))
   }, [state.currentQuestion, state.phase, state.players])
 
-  // Bot side-actions
   useEffect(() => {
     if (state.phase !== 'playing') return
     const id = setInterval(() => {
@@ -208,65 +228,354 @@ function useLocalGame() {
   return { state, meId, connected, error: null as string | null, connect, disconnect, dispatch }
 }
 
-// ---------------- Multiplayer (server-backed) hook ----------------
+// ---------------- Multiplayer (Supabase Realtime) hook ----------------
+// Host runs the reducer locally and broadcasts state. Joiners send actions
+// to the host over the same channel and render the broadcasted state.
 
-function usePartyGameServer() {
+function useSupabaseGame() {
   const [state, setState] = useState<RoomState | null>(null)
   const [meId, setMeId] = useState<string>('')
   const [connected, setConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const socketRef = useRef<PartySocket | null>(null)
+
+  const channelRef = useRef<RealtimeChannel | null>(null)
+  const myClientIdRef = useRef<string>('')
+  const myHandleRef = useRef<string>('')
+  const myAvatarRef = useRef<Avatar | null>(null)
+  const isHostRef = useRef(false)
+  const codeRef = useRef<string>('')
+
+  // Host-only state (kept in refs so timers see the latest)
+  const hostStateRef = useRef<RoomState | null>(null)
+  const joinedClientIdsRef = useRef<Set<string>>(new Set())
+
+  function broadcast(msg: Wire) {
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'msg',
+      payload: msg,
+    })
+  }
+
+  function hostApply(action: GameAction) {
+    if (!isHostRef.current || !hostStateRef.current) return
+    hostStateRef.current = reducer(hostStateRef.current, action)
+    setState(hostStateRef.current)
+    broadcast({ type: 'STATE', state: hostStateRef.current })
+  }
+
+  // Host-side: receive a JOIN from a fresh client and welcome them
+  function handleJoin(msg: WireJoin) {
+    if (!isHostRef.current || !hostStateRef.current) return
+    if (joinedClientIdsRef.current.has(msg.clientId)) {
+      // Already known — just resend state in case they reconnected
+      broadcast({ type: 'WELCOME', meId: msg.clientId, state: hostStateRef.current })
+      return
+    }
+    // Reject duplicate handles
+    const wantedLower = msg.handle.trim().toLowerCase()
+    const dup = hostStateRef.current.players.some(
+      (p) => p.handle.trim().toLowerCase() === wantedLower,
+    )
+    if (dup) {
+      broadcast({
+        type: 'ERROR',
+        toClientId: msg.clientId,
+        message: `Someone in this room is already using the name "${msg.handle.trim()}". Pick a different name.`,
+      })
+      return
+    }
+    joinedClientIdsRef.current.add(msg.clientId)
+    const taken = new Set<string>()
+    for (const p of hostStateRef.current.players) {
+      if (p.password) taken.add(p.password)
+      for (const opt of p.passwordOptions) taken.add(opt)
+    }
+    hostApply({
+      type: 'addPlayer',
+      player: {
+        id: msg.clientId,
+        handle: msg.handle.trim(),
+        isHuman: true,
+        isHost: false,
+        avatar: msg.avatar,
+        coins: 0,
+        tokens: 0,
+        hackedRecently: false,
+        caughtCount: 0,
+        hacksDone: 0,
+        spiesDone: 0,
+        passwordsGuessed: 0,
+        password: '',
+        passwordLocked: false,
+        passwordOptions: makePasswordOptions(3, taken),
+        alive: true,
+      },
+    })
+    broadcast({ type: 'WELCOME', meId: msg.clientId, state: hostStateRef.current! })
+  }
+
+  // Host-side: receive an ACTION from a joiner
+  function handleAction(msg: WireAction) {
+    if (!isHostRef.current || !hostStateRef.current) return
+    const a = msg.action
+    // Guard against impersonation
+    if (
+      ('playerId' in a && a.playerId && a.playerId !== msg.clientId) ||
+      ('spyId' in a && a.spyId && a.spyId !== msg.clientId) ||
+      ('guesserId' in a && a.guesserId && a.guesserId !== msg.clientId)
+    ) {
+      return
+    }
+    // Only host can run these
+    const hostOnly: GameAction['type'][] = [
+      'setSettings',
+      'pickCategory',
+      'pickCustomQuestions',
+      'kickPlayer',
+      'beginCountdown',
+      'setPhase',
+      'addBots',
+      'reset',
+    ]
+    if (hostOnly.includes(a.type)) return
+    hostApply(a)
+  }
 
   const connect = useCallback(({ code, handle, avatar, isHost }: ConnectArgs) => {
-    socketRef.current?.close()
     setError(null)
+    const sb = getSupabase()
+    if (!sb) {
+      setError('Multiplayer is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify.')
+      return
+    }
 
-    const ws = new PartySocket({
-      host: HOST,
-      room: code.toUpperCase(),
-    })
-    socketRef.current = ws
+    const myClientId = uid()
+    myClientIdRef.current = myClientId
+    myHandleRef.current = handle
+    myAvatarRef.current = avatar
+    isHostRef.current = isHost
+    codeRef.current = code.toUpperCase()
 
-    ws.addEventListener('open', () => {
-      setConnected(true)
-      ws.send(JSON.stringify({ type: 'JOIN', handle, avatar, isHost }))
-    })
-    ws.addEventListener('close', () => setConnected(false))
-    ws.addEventListener('error', () => setError('Lost connection. Try refreshing.'))
-    ws.addEventListener('message', (event: MessageEvent<string>) => {
-      let msg: WireMessage
-      try {
-        msg = JSON.parse(event.data)
-      } catch {
-        return
+    if (isHost) {
+      // Seed authoritative state
+      const initial = makeInitialState(codeRef.current)
+      const taken = new Set<string>()
+      const seeded: RoomState = {
+        ...initial,
+        hostId: myClientId,
+        players: [
+          {
+            id: myClientId,
+            handle: handle.trim(),
+            isHuman: true,
+            isHost: true,
+            avatar,
+            coins: 0,
+            tokens: 0,
+            hackedRecently: false,
+            caughtCount: 0,
+            hacksDone: 0,
+            spiesDone: 0,
+            passwordsGuessed: 0,
+            password: '',
+            passwordLocked: false,
+            passwordOptions: makePasswordOptions(3, taken),
+            alive: true,
+          },
+        ],
       }
-      if (msg.type === 'WELCOME') {
-        setMeId(msg.meId)
-        setState(msg.state)
-      } else if (msg.type === 'STATE') {
-        setState(msg.state)
-      } else if (msg.type === 'ERROR') {
-        setError(msg.message)
+      hostStateRef.current = seeded
+      joinedClientIdsRef.current = new Set([myClientId])
+      setState(seeded)
+      setMeId(myClientId)
+    } else {
+      setMeId(myClientId)
+    }
+
+    const channel = sb.channel(`cracked-heist:${codeRef.current}`, {
+      config: { broadcast: { self: false, ack: false } },
+    })
+
+    channel.on('broadcast', { event: 'msg' }, ({ payload }: { payload: Wire }) => {
+      const msg = payload
+      switch (msg.type) {
+        case 'JOIN':
+          handleJoin(msg)
+          break
+        case 'ACTION':
+          handleAction(msg)
+          break
+        case 'STATE':
+          if (!isHostRef.current) setState(msg.state)
+          break
+        case 'WELCOME':
+          if (!isHostRef.current && msg.meId === myClientIdRef.current) {
+            setState(msg.state)
+          }
+          break
+        case 'ERROR':
+          if (msg.toClientId === myClientIdRef.current) {
+            setError(msg.message)
+          }
+          break
       }
     })
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        setConnected(true)
+        if (!isHost) {
+          // Send a JOIN so the host can welcome us
+          broadcast({
+            type: 'JOIN',
+            clientId: myClientId,
+            handle,
+            avatar,
+            isHost: false,
+          })
+        }
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        setConnected(false)
+      }
+    })
+
+    channelRef.current = channel
   }, [])
 
   const disconnect = useCallback(() => {
-    socketRef.current?.close()
-    socketRef.current = null
-    setConnected(false)
+    const sb = getSupabase()
+    if (channelRef.current && sb) {
+      sb.removeChannel(channelRef.current)
+    }
+    channelRef.current = null
+    isHostRef.current = false
+    hostStateRef.current = null
+    joinedClientIdsRef.current = new Set()
     setState(null)
     setMeId('')
+    setConnected(false)
   }, [])
 
   const dispatch = useCallback((action: GameAction) => {
-    socketRef.current?.send(JSON.stringify({ type: 'ACTION', action }))
+    if (isHostRef.current) {
+      // Pre-countdown: auto-lock anyone who hasn't picked a password
+      if (action.type === 'beginCountdown' && hostStateRef.current) {
+        const unlocked = hostStateRef.current.players.filter((p) => !p.passwordLocked)
+        for (const u of unlocked) {
+          const pw =
+            u.passwordOptions[Math.floor(Math.random() * u.passwordOptions.length)] ?? ''
+          if (pw) hostApply({ type: 'lockPassword', playerId: u.id, password: pw })
+        }
+      }
+      hostApply(action)
+      // Auto-fill bot passwords once we hit pickPassword
+      if (action.type === 'setPhase' && action.phase === 'pickPassword' && hostStateRef.current) {
+        const bots = hostStateRef.current.players.filter((p) => !p.isHuman && !p.passwordLocked)
+        for (const b of bots) {
+          const pw =
+            b.passwordOptions[Math.floor(Math.random() * b.passwordOptions.length)] ?? ''
+          if (pw) hostApply({ type: 'lockPassword', playerId: b.id, password: pw })
+        }
+      }
+    } else {
+      // Joiner: send action to host
+      broadcast({ type: 'ACTION', clientId: myClientIdRef.current, action })
+    }
   }, [])
+
+  // -------- Host-only timers / lifecycle --------
+
+  useEffect(() => {
+    if (!isHostRef.current || !state) return
+    if (state.phase !== 'countdown') return
+    if (state.countdownValue < 0) {
+      hostApply({ type: 'startRound' } as GameAction)
+      return
+    }
+    const t = setTimeout(() => hostApply({ type: 'tickCountdown' } as GameAction), 1000)
+    return () => clearTimeout(t)
+  }, [state?.phase, state?.countdownValue])
+
+  useEffect(() => {
+    if (!isHostRef.current || !state) return
+    if (state.phase !== 'playing') return
+    const id = setInterval(() => hostApply({ type: 'tickTimer' } as GameAction), 1000)
+    return () => clearInterval(id)
+  }, [state?.phase])
+
+  useEffect(() => {
+    if (!isHostRef.current || !state) return
+    if (state.phase === 'playing' && state.timeLeft <= 0) {
+      hostApply({ type: 'endGame' } as GameAction)
+    }
+  }, [state?.timeLeft, state?.phase])
+
+  useEffect(() => {
+    if (!isHostRef.current || !state) return
+    if (state.phase !== 'playing') return
+    if (!state.currentQuestion) {
+      const t = setTimeout(() => hostApply({ type: 'nextQuestion' } as GameAction), 400)
+      return () => clearTimeout(t)
+    }
+  }, [state?.phase, state?.currentQuestion])
+
+  // Bots answer (host only)
+  useEffect(() => {
+    if (!isHostRef.current || !state) return
+    if (state.phase !== 'playing' || !state.currentQuestion) return
+    const q: Question = state.currentQuestion
+    const bots = state.players.filter((p) => !p.isHuman && p.alive)
+    const timers: number[] = []
+    bots.forEach((bot) => {
+      const skill = botSkill(bot)
+      const delay = 1800 + Math.random() * 7000
+      const t = window.setTimeout(() => {
+        if (
+          !hostStateRef.current ||
+          hostStateRef.current.currentQuestion !== q ||
+          hostStateRef.current.phase !== 'playing'
+        )
+          return
+        const choice = botAnswer(q, skill)
+        hostApply({ type: 'answerQuestion', playerId: bot.id, choice })
+      }, delay)
+      timers.push(t)
+    })
+    return () => timers.forEach((t) => clearTimeout(t))
+  }, [state?.currentQuestion, state?.phase])
+
+  // Bot side-actions (host only)
+  useEffect(() => {
+    if (!isHostRef.current || !state) return
+    if (state.phase !== 'playing') return
+    const id = setInterval(() => {
+      const cur = hostStateRef.current
+      if (!cur) return
+      const bots = cur.players.filter((p) => !p.isHuman && p.alive)
+      bots.forEach((bot) => {
+        if (Math.random() > 0.4) return
+        if (bot.tokens < cur.settings.costs.hack) return
+        const targets = cur.players.filter((p) => p.id !== bot.id && p.alive)
+        if (targets.length === 0) return
+        const target = targets[Math.floor(Math.random() * targets.length)]
+        const correct = Math.random() < 0.4
+        hostApply({
+          type: 'doHack',
+          playerId: bot.id,
+          targetId: target.id,
+          correctPassword: correct,
+        })
+      })
+    }, 5500)
+    return () => clearInterval(id)
+  }, [state?.phase])
 
   useEffect(() => {
     return () => {
-      socketRef.current?.close()
-      socketRef.current = null
+      const sb = getSupabase()
+      if (channelRef.current && sb) sb.removeChannel(channelRef.current)
+      channelRef.current = null
     }
   }, [])
 
@@ -274,10 +583,8 @@ function usePartyGameServer() {
 }
 
 // ---------------- Public hook ----------------
-// HOST is a build-time constant, so we can bind once at module load.
-// This avoids calling both hooks every render and the React-rules-of-hooks
-// gymnastics that would otherwise come with a conditional.
+// Same name kept for drop-in compatibility with the previous PartyKit hook.
 
 export const usePartyGame: () => ReturnType<typeof useLocalGame> = multiplayerConfigured()
-  ? (usePartyGameServer as unknown as typeof useLocalGame)
+  ? (useSupabaseGame as unknown as typeof useLocalGame)
   : useLocalGame

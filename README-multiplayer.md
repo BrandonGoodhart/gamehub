@@ -1,80 +1,58 @@
 # Cracked-Heist Multiplayer Setup
 
-The game runs in two pieces:
-
-1. **Frontend** (Vite/React) — deployed to Netlify
-2. **PartyKit room server** — deployed to PartyKit's free cloud
-
-The frontend connects to the room server via WebSocket. Without the server URL configured, the home page shows a "Multiplayer not connected yet" message.
+The game uses **Supabase Realtime** for multiplayer. No server to deploy — everything is configured from the Supabase dashboard in your browser.
 
 ## One-time setup
 
-### 1. Sign in to PartyKit
+### 1. Make a Supabase account
+Go to **[supabase.com](https://supabase.com)** and sign up (free, just an email — no credit card).
 
-```sh
-npx partykit login
-```
+### 2. Create a new project
+- Click **"New project"**
+- Name it anything (e.g. "cracked-heist")
+- Pick any region close to you
+- Set a database password (you won't actually use it for this game, but Supabase requires one)
+- Click **Create new project** and wait ~1 minute for it to provision
 
-This opens a browser and creates a free PartyKit account (or signs in with an existing one).
+### 3. Copy your project URL and anon key
+Once the project is ready, go to **Settings → API**. You'll see two values:
 
-### 2. Deploy the room server
+| Key | Where to find it |
+|---|---|
+| **Project URL** | At the top of Settings → API, looks like `https://abcxyz.supabase.co` |
+| **anon public** | Under "Project API keys" — a long string starting with `eyJ...` |
 
-From the repo root:
-
-```sh
-npx partykit deploy
-```
-
-You'll get a URL printed at the end, something like:
-
-```
-✅ Deployed to https://cracked-heist.<your-username>.partykit.dev
-```
-
-Copy that URL.
-
-### 3. Wire the frontend to the server
-
-On Netlify, go to **Site configuration → Environment variables** and add:
+### 4. Add them to Netlify
+On Netlify → **Site configuration** → **Environment variables**, add:
 
 | Key | Value |
 |---|---|
-| `VITE_PARTYKIT_HOST` | `cracked-heist.<your-username>.partykit.dev` |
+| `VITE_SUPABASE_URL` | Your project URL (the whole thing, with `https://`) |
+| `VITE_SUPABASE_ANON_KEY` | Your anon public key |
 
-(Drop the `https://` prefix — the client adds it.)
-
-Trigger a redeploy (push to GitHub or click "Deploy site").
-
-### 4. (Optional) AI question generation
-
+### 5. (Optional) AI question generation
 If you also want the "Ask AI to make questions" button to work, add:
 
 | Key | Value |
 |---|---|
-| `GEMINI_API_KEY` | Your Google Gemini API key (from aistudio.google.com/apikey — free tier works) |
+| `GEMINI_API_KEY` | Your Google Gemini API key (from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — free tier works) |
 
-The function uses `gemini-2.5-flash-lite` via the Google Generative Language API.
+### 6. Redeploy
+On Netlify → **Deploys** → **Trigger deploy** → **Deploy site**. Wait ~1 minute. Multiplayer now works.
 
-## Updating the room server
+## How it works (technical note)
 
-Anytime you change `party/cracked-heist.ts` or `src/games/cracked-heist/reducer.ts`:
-
-```sh
-npx partykit deploy
-```
-
-That's it — the frontend automatically reconnects on next page load.
+- Whoever hosts the room runs the game reducer locally and broadcasts state over a Supabase Realtime channel named after the room code.
+- Joiners send actions over the same channel; the host applies them and broadcasts the new state.
+- No backend code to deploy — Supabase Realtime is a hosted WebSocket fan-out service.
+- The free tier supports plenty of concurrent connections for classroom use.
 
 ## Local development
 
-Run both servers in two terminals:
-
 ```sh
-# Terminal 1
-npx partykit dev
-
-# Terminal 2
-VITE_PARTYKIT_HOST=http://localhost:1999 bun run dev
+VITE_SUPABASE_URL=https://your.supabase.co \
+VITE_SUPABASE_ANON_KEY=your-anon-key \
+bun run dev
 ```
 
-Then open two browser windows at `http://localhost:5173`. One hosts, the other joins with the host's room code — they're in the same game.
+Then open two browser windows. One hosts, the other joins with the host's room code — they share a room.
