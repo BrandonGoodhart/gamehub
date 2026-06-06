@@ -47,10 +47,14 @@ export function setMuted(m: boolean) {
   } catch {
     // ignore
   }
-  if (master && ctx) {
-    master.gain.cancelScheduledValues(ctx.currentTime)
-    master.gain.setTargetAtTime(m ? 0 : 0.6, ctx.currentTime, 0.05)
+  const c = ensureCtx()
+  if (master && c) {
+    if (c.state === 'suspended') c.resume()
+    master.gain.cancelScheduledValues(c.currentTime)
+    master.gain.setTargetAtTime(m ? 0 : 0.6, c.currentTime, 0.05)
   }
+  // Unmuting after page load: make sure the music has actually started
+  if (!m) startMusic()
   listeners.forEach((cb) => cb())
 }
 

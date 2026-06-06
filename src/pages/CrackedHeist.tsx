@@ -23,7 +23,7 @@ import PhishingGame from '../games/cracked-heist/components/PhishingGame'
 import RiskGame from '../games/cracked-heist/components/RiskGame'
 import PasswordReveal from '../games/cracked-heist/components/PasswordReveal'
 import GameOver from '../games/cracked-heist/components/GameOver'
-import { initAudio, isMuted, startMusic } from '../games/cracked-heist/audio'
+import { initAudio, startMusic } from '../games/cracked-heist/audio'
 import { defaultAvatar } from '../games/cracked-heist/avatar'
 import { getShared } from '../games/cracked-heist/shareStore'
 import { generateRoomCode, pickN } from '../games/cracked-heist/utils'
@@ -74,8 +74,8 @@ export default function CrackedHeist() {
   )
 
   // Start background music on the first user gesture (browsers require it).
-  // Respects the saved mute preference: starts the music either way, but the
-  // master gain stays at 0 if the user previously muted, so it's silent.
+  // We always start music — if the user is muted, the master gain is 0 so
+  // it's silent. That way unmuting later just opens the gain and you hear it.
   useEffect(() => {
     let started = false
     const handler = () => {
@@ -85,10 +85,8 @@ export default function CrackedHeist() {
       window.removeEventListener('pointerdown', handler)
       window.removeEventListener('keydown', handler)
     }
-    if (!isMuted()) {
-      window.addEventListener('pointerdown', handler, { once: false })
-      window.addEventListener('keydown', handler, { once: false })
-    }
+    window.addEventListener('pointerdown', handler)
+    window.addEventListener('keydown', handler)
     return () => {
       window.removeEventListener('pointerdown', handler)
       window.removeEventListener('keydown', handler)
