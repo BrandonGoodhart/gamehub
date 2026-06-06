@@ -48,7 +48,7 @@ export default function CategoryPick({
       if (!resp.ok) {
         if (resp.status === 404) {
           setAiError(
-            "AI server isn't connected yet. The Netlify function needs to be deployed and ANTHROPIC_API_KEY set.",
+            "AI server isn't connected yet. The Netlify function needs to be deployed and GEMINI_API_KEY set.",
           )
         } else {
           setAiError(data.error ?? `Generation failed (${resp.status}).`)

@@ -1,5 +1,4 @@
 import type { Handler, HandlerEvent, HandlerResponse } from '@netlify/functions'
-import Anthropic from '@anthropic-ai/sdk'
 
 interface Question {
   q: string
@@ -92,37 +91,24 @@ If a topic is genuinely too narrow for the requested count at the target audienc
 
 The host has spent time setting up this game for their class. Your job is to ship a working set of questions on time. Take quality seriously, but always ship.`
 
+// Gemini uses uppercase OpenAPI type names in its responseSchema
 const QUESTION_SCHEMA = {
-  type: 'object',
+  type: 'OBJECT',
   properties: {
     questions: {
-      type: 'array',
-      description: 'The generated trivia questions',
+      type: 'ARRAY',
       items: {
-        type: 'object',
+        type: 'OBJECT',
         properties: {
-          q: {
-            type: 'string',
-            description: 'The question text, ending with a question mark',
-          },
-          choices: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Exactly four answer choices',
-          },
-          answer: {
-            type: 'integer',
-            enum: [0, 1, 2, 3],
-            description: 'Zero-indexed correct choice',
-          },
+          q: { type: 'STRING' },
+          choices: { type: 'ARRAY', items: { type: 'STRING' } },
+          answer: { type: 'INTEGER' },
         },
         required: ['q', 'choices', 'answer'],
-        additionalProperties: false,
       },
     },
   },
   required: ['questions'],
-  additionalProperties: false,
 }
 
 function corsHeaders() {
@@ -151,11 +137,11 @@ export const handler: Handler = async (
     return json(405, { error: 'Method not allowed' })
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
     return json(500, {
       error:
-        'Server is missing ANTHROPIC_API_KEY. Add it in Netlify → Site settings → Environment variables, then redeploy.',
+        'Server is missing GEMINI_API_KEY. Add it in Netlify → Site settings → Environment variables, then redeploy.',
     })
   }
 
@@ -172,85 +158,108 @@ export const handler: Handler = async (
     return json(400, { error: 'Category is required' })
   }
 
-  const client = new Anthropic({ apiKey })
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(apiKey)}`
+  const payload = {
+    system_instruction: {
+      parts: [{ text: SYSTEM_PROMPT }],
+    },
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { text: `Topic: ${category}\nNumber of questions: ${count}\n\nReturn the JSON object now.` },
+        ],
+      },
+    ],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: QUESTION_SCHEMA,
+      temperature: 0.7,
+      maxOutputTokens: 8000,
+    },
+  }
 
+  let resp: Response
   try {
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 8000,
-      system: [
-        {
-          type: 'text',
-          text: SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
-      messages: [
-        {
-          role: 'user',
-          content: `Topic: ${category}\nNumber of questions: ${count}\n\nReturn the JSON object now.`,
-        },
-      ],
-      output_config: {
-        format: { type: 'json_schema', schema: QUESTION_SCHEMA },
-      },
-    })
-
-    const textBlock = response.content.find((b) => b.type === 'text')
-    if (!textBlock || textBlock.type !== 'text') {
-      return json(500, { error: 'No text content in model response' })
-    }
-
-    let parsed: { questions?: Question[] }
-    try {
-      parsed = JSON.parse(textBlock.text)
-    } catch {
-      return json(500, { error: 'Model returned invalid JSON' })
-    }
-
-    const valid = (parsed.questions ?? []).filter(
-      (q) =>
-        q &&
-        typeof q.q === 'string' &&
-        q.q.trim().length > 0 &&
-        Array.isArray(q.choices) &&
-        q.choices.length === 4 &&
-        q.choices.every((c) => typeof c === 'string' && c.trim().length > 0) &&
-        typeof q.answer === 'number' &&
-        q.answer >= 0 &&
-        q.answer <= 3,
-    )
-
-    if (valid.length === 0) {
-      return json(500, {
-        error: 'Model did not return any valid questions. Try a different topic.',
-      })
-    }
-
-    return json(200, {
-      questions: valid,
-      usage: {
-        input_tokens: response.usage.input_tokens,
-        output_tokens: response.usage.output_tokens,
-        cache_read_input_tokens: response.usage.cache_read_input_tokens,
-        cache_creation_input_tokens: response.usage.cache_creation_input_tokens,
-      },
+    resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     })
   } catch (err) {
-    if (err instanceof Anthropic.RateLimitError) {
+    const msg = err instanceof Error ? err.message : 'Network error'
+    return json(502, { error: `Could not reach Gemini: ${msg}` })
+  }
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '')
+    if (resp.status === 400 && /API key/i.test(text)) {
+      return json(500, { error: 'GEMINI_API_KEY is invalid. Check it in Netlify env vars.' })
+    }
+    if (resp.status === 401 || resp.status === 403) {
+      return json(500, { error: 'GEMINI_API_KEY is missing or rejected. Check it in Netlify env vars.' })
+    }
+    if (resp.status === 429) {
       return json(429, { error: 'Rate limited. Try again in a moment.' })
     }
-    if (err instanceof Anthropic.AuthenticationError) {
-      return json(500, {
-        error: 'ANTHROPIC_API_KEY is invalid. Check it in Netlify env vars.',
-      })
-    }
-    if (err instanceof Anthropic.APIError) {
-      return json(err.status ?? 500, {
-        error: `Anthropic API error: ${err.message}`,
-      })
-    }
-    const msg = err instanceof Error ? err.message : 'Unknown error'
-    return json(500, { error: msg })
+    return json(resp.status, { error: `Gemini error (${resp.status}): ${text.slice(0, 300)}` })
   }
+
+  type GeminiResponse = {
+    candidates?: {
+      content?: { parts?: { text?: string }[] }
+    }[]
+    usageMetadata?: {
+      promptTokenCount?: number
+      candidatesTokenCount?: number
+      totalTokenCount?: number
+    }
+  }
+
+  let data: GeminiResponse
+  try {
+    data = (await resp.json()) as GeminiResponse
+  } catch {
+    return json(500, { error: 'Gemini returned non-JSON response' })
+  }
+
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) {
+    return json(500, { error: 'No text content in Gemini response' })
+  }
+
+  let parsed: { questions?: Question[] }
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return json(500, { error: 'Gemini returned invalid JSON' })
+  }
+
+  const valid = (parsed.questions ?? []).filter(
+    (q) =>
+      q &&
+      typeof q.q === 'string' &&
+      q.q.trim().length > 0 &&
+      Array.isArray(q.choices) &&
+      q.choices.length === 4 &&
+      q.choices.every((c) => typeof c === 'string' && c.trim().length > 0) &&
+      typeof q.answer === 'number' &&
+      q.answer >= 0 &&
+      q.answer <= 3,
+  )
+
+  if (valid.length === 0) {
+    return json(500, {
+      error: 'Gemini did not return any valid questions. Try a different topic.',
+    })
+  }
+
+  return json(200, {
+    questions: valid,
+    usage: {
+      input_tokens: data.usageMetadata?.promptTokenCount,
+      output_tokens: data.usageMetadata?.candidatesTokenCount,
+      total_tokens: data.usageMetadata?.totalTokenCount,
+    },
+  })
 }

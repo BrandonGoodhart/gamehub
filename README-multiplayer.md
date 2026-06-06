@@ -51,7 +51,9 @@ If you also want the "Ask AI to make questions" button to work, add:
 
 | Key | Value |
 |---|---|
-| `ANTHROPIC_API_KEY` | `sk-ant-...` (from console.anthropic.com) |
+| `GEMINI_API_KEY` | Your Google Gemini API key (from aistudio.google.com/apikey — free tier works) |
+
+The function uses `gemini-2.5-flash-lite` via the Google Generative Language API.
 
 ## Updating the room server
 
