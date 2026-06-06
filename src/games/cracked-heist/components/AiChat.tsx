@@ -15,9 +15,20 @@ interface Bubble {
   text: string
 }
 
+const STEP_LABELS: { key: Step; label: string }[] = [
+  { key: 'askTopic', label: '1. Topic' },
+  { key: 'askCount', label: '2. How many' },
+  { key: 'generating', label: '3. Writing' },
+  { key: 'success', label: '4. Edit' },
+]
+
 export default function AiChat({ onDone }: Props) {
   const [bubbles, setBubbles] = useState<Bubble[]>([
-    { id: 0, who: 'bot', text: "Hey — I'll write the questions for you. What topic should they be about?" },
+    {
+      id: 0,
+      who: 'bot',
+      text: "Hi! I'll write the trivia questions for you. First — what topic should they be about?",
+    },
   ])
   const [step, setStep] = useState<Step>('askTopic')
   const [topic, setTopic] = useState('')
@@ -25,11 +36,19 @@ export default function AiChat({ onDone }: Props) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [generated, setGenerated] = useState<Question[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const nextId = useRef(1)
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 9999, behavior: 'smooth' })
-  }, [bubbles])
+    scrollRef.current?.scrollTo({ top: 99999, behavior: 'smooth' })
+  }, [bubbles, step])
+
+  useEffect(() => {
+    if (step === 'askTopic') {
+      const t = setTimeout(() => inputRef.current?.focus(), 50)
+      return () => clearTimeout(t)
+    }
+  }, [step])
 
   function addBubble(who: 'bot' | 'me', text: string) {
     setBubbles((prev) => [...prev, { id: nextId.current++, who, text }])
@@ -40,18 +59,18 @@ export default function AiChat({ onDone }: Props) {
     if (!t) return
     addBubble('me', t)
     setTimeout(() => {
-      addBubble('bot', `Cool — "${t}". How many questions? Minimum is 4, max is 40.`)
+      addBubble('bot', `Got it — "${t}". How many questions do you want? (4 to 40)`)
       setStep('askCount')
-    }, 300)
+    }, 350)
   }
 
   function submitCount() {
-    addBubble('me', `${count} questions, please.`)
+    addBubble('me', `${count} please.`)
     setTimeout(() => {
-      addBubble('bot', `On it. Writing ${count} questions about "${topic}"…`)
+      addBubble('bot', `Writing ${count} questions about "${topic}" — give me a few seconds…`)
       setStep('generating')
       generate()
-    }, 300)
+    }, 350)
   }
 
   async function generate() {
@@ -88,7 +107,7 @@ export default function AiChat({ onDone }: Props) {
       setGenerated(qs)
       addBubble(
         'bot',
-        `Done — ${qs.length} questions ready. Tap continue to look them over (you can edit any of them).`,
+        `Done! I wrote ${qs.length} questions. Tap continue and you'll go to the editor — you can change anything you don't like before starting the game.`,
       )
       setStep('success')
     } catch (err) {
@@ -101,7 +120,7 @@ export default function AiChat({ onDone }: Props) {
 
   function retry() {
     setErrorMsg(null)
-    addBubble('bot', `Want me to try again? Hit retry or change the topic.`)
+    addBubble('bot', `Let's try again. Same topic and count, or pick new ones below.`)
     setStep('askCount')
   }
 
@@ -116,39 +135,69 @@ export default function AiChat({ onDone }: Props) {
 
   return (
     <div
-      className="rounded-2xl p-3 mt-4"
+      className="rounded-2xl mt-4 overflow-hidden"
       style={{
-        background: 'rgba(0,0,0,0.35)',
-        border: '1.5px solid rgba(74,222,128,0.18)',
+        background: 'rgba(0,0,0,0.45)',
+        border: '1.5px solid rgba(74,222,128,0.25)',
       }}
     >
+      {/* Step indicator */}
+      <div
+        className="px-3 py-2.5 flex items-center justify-between text-left"
+        style={{
+          background: 'rgba(74,222,128,0.08)',
+          borderBottom: '1px solid rgba(74,222,128,0.18)',
+        }}
+      >
+        {STEP_LABELS.map((s) => {
+          const active = s.key === step || (step === 'error' && s.key === 'generating')
+          const done =
+            STEP_LABELS.findIndex((x) => x.key === s.key) <
+            STEP_LABELS.findIndex((x) => x.key === step)
+          return (
+            <div
+              key={s.key}
+              className="text-[10px] font-extrabold uppercase tracking-wider"
+              style={{
+                color: active ? '#fbbf24' : done ? '#86efac' : 'rgba(255,255,255,0.35)',
+              }}
+            >
+              {s.label}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Bubbles */}
       <div
         ref={scrollRef}
-        className="space-y-2"
-        style={{ maxHeight: 280, overflowY: 'auto', paddingRight: 4 }}
+        className="space-y-2.5 px-3 py-4"
+        style={{ maxHeight: 320, overflowY: 'auto' }}
       >
         <AnimatePresence initial={false}>
           {bubbles.map((b) => (
             <motion.div
               key={b.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.18 }}
+              initial={{ opacity: 0, y: 10, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.22 }}
               className={`flex ${b.who === 'me' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className="rounded-2xl px-3 py-2 text-sm font-semibold leading-snug"
+                className="rounded-2xl px-3.5 py-2.5 leading-snug text-left"
                 style={{
-                  maxWidth: '85%',
+                  maxWidth: '88%',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
                   background:
                     b.who === 'bot'
-                      ? 'rgba(74,222,128,0.10)'
-                      : 'rgba(94,234,212,0.15)',
+                      ? 'rgba(74,222,128,0.14)'
+                      : 'rgba(94,234,212,0.18)',
                   border:
                     b.who === 'bot'
-                      ? '1px solid rgba(74,222,128,0.25)'
-                      : '1px solid rgba(94,234,212,0.35)',
-                  color: b.who === 'bot' ? '#86efac' : '#a5f3fc',
+                      ? '1px solid rgba(74,222,128,0.3)'
+                      : '1px solid rgba(94,234,212,0.4)',
+                  color: b.who === 'bot' ? '#bbf7d0' : '#cffafe',
                 }}
               >
                 {b.text}
@@ -164,10 +213,10 @@ export default function AiChat({ onDone }: Props) {
               className="flex justify-start"
             >
               <div
-                className="rounded-2xl px-3 py-2"
+                className="rounded-2xl px-4 py-3"
                 style={{
-                  background: 'rgba(74,222,128,0.10)',
-                  border: '1px solid rgba(74,222,128,0.25)',
+                  background: 'rgba(74,222,128,0.14)',
+                  border: '1px solid rgba(74,222,128,0.3)',
                 }}
               >
                 <Typing />
@@ -177,54 +226,88 @@ export default function AiChat({ onDone }: Props) {
         </AnimatePresence>
       </div>
 
-      {/* Input area changes by step */}
-      <div className="mt-3">
+      {/* Input area */}
+      <div
+        className="px-3 py-3"
+        style={{
+          background: 'rgba(0,0,0,0.55)',
+          borderTop: '1px solid rgba(74,222,128,0.18)',
+        }}
+      >
         {step === 'askTopic' && (
-          <div className="flex gap-2">
-            <input
-              autoFocus
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitTopic()
-              }}
-              placeholder="e.g. world capitals, ocean animals"
-              className="fg-inp flex-1"
-              style={{ padding: '10px 14px', fontSize: '0.95rem' }}
-            />
-            <button
-              onClick={submitTopic}
-              disabled={!topic.trim()}
-              className="fg-btn fg-btn-grad"
-              style={{ padding: '10px 16px', opacity: topic.trim() ? 1 : 0.5 }}
-            >
-              Send →
-            </button>
-          </div>
+          <>
+            <div className="fg-lbl mb-2 text-left">your topic</div>
+            <div className="flex gap-2">
+              <input
+                ref={inputRef}
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submitTopic()
+                }}
+                placeholder="Type here — e.g. ocean animals"
+                className="flex-1 rounded-xl"
+                style={{
+                  padding: '14px 16px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '2px solid rgba(74,222,128,0.35)',
+                  color: '#ffffff',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <button
+                onClick={submitTopic}
+                disabled={!topic.trim()}
+                className="fg-btn fg-btn-grad"
+                style={{
+                  padding: '14px 18px',
+                  fontSize: '1rem',
+                  opacity: topic.trim() ? 1 : 0.4,
+                  cursor: topic.trim() ? 'pointer' : 'not-allowed',
+                }}
+              >
+                Send →
+              </button>
+            </div>
+            <p className="fg-sub text-[11px] mt-2 text-left">
+              Tip: be specific. "Ancient Egypt" works better than "history".
+            </p>
+          </>
         )}
 
         {step === 'askCount' && (
-          <div className="space-y-3">
-            <NumberSpinner value={count} min={4} max={40} step={1} onChange={setCount} />
+          <>
+            <div className="fg-lbl mb-2 text-left">how many questions</div>
+            <div className="mb-3">
+              <NumberSpinner value={count} min={4} max={40} step={1} onChange={setCount} />
+            </div>
             <button
               onClick={submitCount}
               className="fg-btn fg-btn-grad w-full"
-              style={{ padding: '10px 16px' }}
+              style={{ padding: '14px 16px', fontSize: '1rem' }}
             >
               Make {count} questions →
             </button>
-          </div>
+            <p className="fg-sub text-[11px] mt-2 text-left">
+              Minimum 4. The more questions, the longer the AI takes (usually under 10 seconds).
+            </p>
+          </>
         )}
 
         {step === 'generating' && (
-          <div className="fg-sub text-xs text-center">writing your questions…</div>
+          <div className="fg-sub text-sm text-center py-2">
+            writing your questions…
+          </div>
         )}
 
         {step === 'success' && (
           <button
             onClick={() => onDone(topic.trim(), generated)}
             className="fg-btn fg-btn-grad w-full"
-            style={{ padding: '12px 16px' }}
+            style={{ padding: '16px 16px', fontSize: '1.05rem' }}
           >
             Continue to editor →
           </button>
@@ -234,10 +317,10 @@ export default function AiChat({ onDone }: Props) {
           <div className="space-y-2">
             {errorMsg && (
               <div
-                className="rounded-xl px-3 py-2 text-xs font-semibold"
+                className="rounded-xl px-3 py-2.5 text-sm font-semibold text-left"
                 style={{
-                  background: 'rgba(251,113,133,0.1)',
-                  border: '1px solid rgba(251,113,133,0.3)',
+                  background: 'rgba(251,113,133,0.12)',
+                  border: '1px solid rgba(251,113,133,0.35)',
                   color: '#fda4af',
                 }}
               >
@@ -248,7 +331,7 @@ export default function AiChat({ onDone }: Props) {
               <button
                 onClick={retry}
                 className="fg-btn fg-btn-grad flex-1"
-                style={{ padding: '10px 16px' }}
+                style={{ padding: '12px 16px', fontSize: '0.95rem' }}
               >
                 Try again
               </button>
@@ -256,10 +339,11 @@ export default function AiChat({ onDone }: Props) {
                 onClick={startOver}
                 className="fg-btn flex-1"
                 style={{
-                  padding: '10px 16px',
+                  padding: '12px 16px',
+                  fontSize: '0.95rem',
                   background: 'rgba(255,255,255,0.06)',
-                  border: '1.5px solid rgba(255,255,255,0.15)',
-                  color: 'rgba(255,255,255,0.85)',
+                  border: '1.5px solid rgba(255,255,255,0.18)',
+                  color: 'rgba(255,255,255,0.9)',
                 }}
               >
                 New topic
@@ -274,15 +358,15 @@ export default function AiChat({ onDone }: Props) {
 
 function Typing() {
   return (
-    <div className="flex gap-1.5 items-center" aria-label="typing">
+    <div className="flex gap-2 items-center" aria-label="typing">
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          animate={{ y: [0, -3, 0] }}
-          transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.12 }}
+          animate={{ y: [0, -4, 0], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.14 }}
           style={{
-            width: 6,
-            height: 6,
+            width: 8,
+            height: 8,
             borderRadius: '50%',
             background: '#86efac',
             display: 'inline-block',
