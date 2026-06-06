@@ -111,96 +111,125 @@ export function sfxWin() {
   setTimeout(() => beep(783.99, 0.3, 'sine', 0.25), 360)
 }
 
-// ---- Background music: slow sad-pop instrumental ----
-// ~70 bpm in A minor. A wandering Am - F - C - G chord loop with a soft
-// piano-ish melody on top, a sub bass note per chord, and a gentle kick
-// pulse. Original composition — vibe similar to slow melancholy pop.
+// ---- Background music: Cyber Pulse ----
+// Driving electronic with a steady four-on-the-floor kick, a syncopated
+// bassline, atmospheric pad, and bright square-wave stabs. ~100 bpm
+// in A minor. Original composition, hacker-terminal vibe.
 
-const BEAT_MS = 857 // ~70bpm
-const A2 = 110
-const F2 = 87.31
-const C3 = 130.81
-const G2 = 98.0
+const BEAT_MS = 600 // ~100 bpm
+const STEP_MS = BEAT_MS / 4 // 16th notes
 
-const CHORDS = [
-  { root: A2, triad: [220.0, 261.63, 329.63] }, // Am
-  { root: F2, triad: [174.61, 220.0, 261.63] }, // F
-  { root: C3, triad: [261.63, 329.63, 392.0] }, // C
-  { root: G2, triad: [196.0, 246.94, 293.66] }, // G
+// 16-step bass pattern in A minor. Notes are Hz; null = rest.
+// Pattern: 1-_-_-_-1-_-1-_-b6-_-_-_-b7-_-1-_  (kind of a "Stranger Things" pulse)
+const BASS_PATTERN: (number | null)[] = [
+  110.0, null,  null,  null,  110.0, null,  110.0, null,
+  87.31, null,  null,  null,  98.0,  null,  110.0, null,
 ]
 
-// 8 melody notes per chord (16th-ish), wandering A minor pentatonic.
-// Each row is one bar; nulls = rest.
-const MELODY: (number | null)[][] = [
-  // over Am
-  [659.25, null, 523.25, 440.0, null, 523.25, 587.33, null],
-  // over F
-  [523.25, null, 440.0, 349.23, null, 440.0, 523.25, null],
-  // over C
-  [659.25, null, 783.99, 659.25, null, 523.25, 587.33, null],
-  // over G
-  [587.33, null, 493.88, 440.0, null, 493.88, 587.33, 659.25],
+// Square-wave lead — minor pentatonic riff that loops every 4 bars
+const LEAD_PATTERN: (number | null)[] = [
+  // bar 1
+  null, null, 659.25, null,  null, null, 587.33, null,  523.25, null, 440.0,  null,  null, null, 523.25, null,
+  // bar 2
+  null, null, 587.33, null,  null, null, 659.25, null,  783.99, null, 659.25, null,  null, null, 587.33, null,
+  // bar 3
+  null, null, 440.0,  null,  null, null, 523.25, null,  587.33, null, 523.25, null,  null, null, 440.0,  null,
+  // bar 4
+  392.0, null, null, null,   523.25, null, null, null,  659.25, null, 587.33, null,  523.25, 440.0, 392.0, null,
 ]
 
-function playChord(c: AudioContext, out: GainNode, chord: number[], duration: number) {
-  // Soft piano-ish: triangle with quick attack, slow decay
-  chord.forEach((freq) => {
-    const osc = c.createOscillator()
-    osc.type = 'triangle'
-    osc.frequency.value = freq
-    const g = c.createGain()
-    const now = c.currentTime
-    g.gain.setValueAtTime(0, now)
-    g.gain.linearRampToValueAtTime(0.07, now + 0.04)
-    g.gain.exponentialRampToValueAtTime(0.0001, now + duration)
-    osc.connect(g).connect(out)
-    osc.start(now)
-    osc.stop(now + duration + 0.05)
-  })
-}
-
-function playBass(c: AudioContext, out: GainNode, freq: number, duration: number) {
-  const osc = c.createOscillator()
-  osc.type = 'sine'
-  osc.frequency.value = freq
-  const g = c.createGain()
-  const now = c.currentTime
-  g.gain.setValueAtTime(0, now)
-  g.gain.linearRampToValueAtTime(0.22, now + 0.04)
-  g.gain.exponentialRampToValueAtTime(0.0001, now + duration)
-  osc.connect(g).connect(out)
-  osc.start(now)
-  osc.stop(now + duration + 0.05)
-}
-
-function playMelodyNote(c: AudioContext, out: GainNode, freq: number, duration: number) {
-  // Sine-y piano top voice
-  const osc = c.createOscillator()
-  osc.type = 'sine'
-  osc.frequency.value = freq
-  const g = c.createGain()
-  const now = c.currentTime
-  g.gain.setValueAtTime(0, now)
-  g.gain.linearRampToValueAtTime(0.16, now + 0.02)
-  g.gain.exponentialRampToValueAtTime(0.0001, now + duration)
-  osc.connect(g).connect(out)
-  osc.start(now)
-  osc.stop(now + duration + 0.05)
-}
+// Atmospheric pad — sustained minor chord that shifts every 4 bars
+const PAD_CHORDS = [
+  [220.0, 261.63, 329.63], // Am
+  [196.0, 246.94, 293.66], // G
+  [174.61, 220.0, 261.63], // F
+  [196.0, 246.94, 293.66], // G
+]
 
 function playKick(c: AudioContext, out: GainNode) {
   const osc = c.createOscillator()
   osc.type = 'sine'
   const g = c.createGain()
   const now = c.currentTime
-  osc.frequency.setValueAtTime(120, now)
-  osc.frequency.exponentialRampToValueAtTime(40, now + 0.18)
+  osc.frequency.setValueAtTime(140, now)
+  osc.frequency.exponentialRampToValueAtTime(45, now + 0.12)
   g.gain.setValueAtTime(0, now)
-  g.gain.linearRampToValueAtTime(0.35, now + 0.005)
-  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.28)
+  g.gain.linearRampToValueAtTime(0.5, now + 0.003)
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.22)
   osc.connect(g).connect(out)
   osc.start(now)
-  osc.stop(now + 0.32)
+  osc.stop(now + 0.25)
+}
+
+function playHat(c: AudioContext, out: GainNode) {
+  const buf = c.createBuffer(1, 2200, c.sampleRate)
+  const data = buf.getChannelData(0)
+  for (let j = 0; j < data.length; j++) data[j] = (Math.random() * 2 - 1) * 0.4
+  const noise = c.createBufferSource()
+  noise.buffer = buf
+  const hp = c.createBiquadFilter()
+  hp.type = 'highpass'
+  hp.frequency.value = 6000
+  const g = c.createGain()
+  const now = c.currentTime
+  g.gain.setValueAtTime(0, now)
+  g.gain.linearRampToValueAtTime(0.08, now + 0.002)
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.05)
+  noise.connect(hp).connect(g).connect(out)
+  noise.start(now)
+  noise.stop(now + 0.08)
+}
+
+function playBassNote(c: AudioContext, out: GainNode, freq: number) {
+  const osc = c.createOscillator()
+  osc.type = 'sawtooth'
+  osc.frequency.value = freq
+  const lp = c.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 800
+  lp.Q.value = 6
+  const g = c.createGain()
+  const now = c.currentTime
+  g.gain.setValueAtTime(0, now)
+  g.gain.linearRampToValueAtTime(0.22, now + 0.005)
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.22)
+  osc.connect(lp).connect(g).connect(out)
+  osc.start(now)
+  osc.stop(now + 0.25)
+}
+
+function playLeadNote(c: AudioContext, out: GainNode, freq: number) {
+  const osc = c.createOscillator()
+  osc.type = 'square'
+  osc.frequency.value = freq
+  const g = c.createGain()
+  const now = c.currentTime
+  g.gain.setValueAtTime(0, now)
+  g.gain.linearRampToValueAtTime(0.08, now + 0.005)
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.18)
+  osc.connect(g).connect(out)
+  osc.start(now)
+  osc.stop(now + 0.2)
+}
+
+function playPadChord(c: AudioContext, out: GainNode, chord: number[], durationSec: number) {
+  chord.forEach((freq) => {
+    const osc = c.createOscillator()
+    osc.type = 'sawtooth'
+    osc.frequency.value = freq
+    const lp = c.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 1200
+    const g = c.createGain()
+    const now = c.currentTime
+    g.gain.setValueAtTime(0, now)
+    g.gain.linearRampToValueAtTime(0.05, now + 0.4)
+    g.gain.setValueAtTime(0.05, now + durationSec - 0.4)
+    g.gain.exponentialRampToValueAtTime(0.0001, now + durationSec)
+    osc.connect(lp).connect(g).connect(out)
+    osc.start(now)
+    osc.stop(now + durationSec + 0.05)
+  })
 }
 
 export function startMusic() {
@@ -209,53 +238,43 @@ export function startMusic() {
   if (c.state === 'suspended') c.resume()
   if (musicStop) return
 
-  let bar = 0 // index into CHORDS / MELODY
+  let step = 0 // 16th-note step counter (within a bar, 0..15)
+  let leadStep = 0 // step within the 4-bar lead pattern (0..63)
+  let bar = 0 // bar counter
 
-  // Chord + bass every 4 beats
-  const chordTimer = setInterval(() => {
+  const stepTimer = setInterval(() => {
     if (!ctx || !master) return
-    const idx = bar % CHORDS.length
-    const ch = CHORDS[idx]
-    const dur = (BEAT_MS * 4) / 1000
-    playChord(ctx, master, ch.triad, dur)
-    playBass(ctx, master, ch.root, dur)
-    bar++
-  }, BEAT_MS * 4)
 
-  // Fire first chord immediately so we don't wait 3.4s for music to start
-  const firstIdx = 0
-  const firstDur = (BEAT_MS * 4) / 1000
-  playChord(c, master, CHORDS[firstIdx].triad, firstDur)
-  playBass(c, master, CHORDS[firstIdx].root, firstDur)
-  bar = 1
+    // Kick on every beat (steps 0, 4, 8, 12)
+    if (step % 4 === 0) playKick(ctx, master)
+    // Hat on off-beats (steps 2, 6, 10, 14)
+    if (step % 4 === 2) playHat(ctx, master)
 
-  // Soft kick every 2 beats (beats 1 and 3 of each bar)
-  const kickTimer = setInterval(() => {
+    // Bass pattern
+    const bassNote = BASS_PATTERN[step]
+    if (bassNote != null) playBassNote(ctx, master, bassNote)
+
+    // Lead pattern (loops over 4 bars = 64 steps)
+    const leadNote = LEAD_PATTERN[leadStep]
+    if (leadNote != null) playLeadNote(ctx, master, leadNote)
+
+    step = (step + 1) % 16
+    leadStep = (leadStep + 1) % LEAD_PATTERN.length
+    if (step === 0) bar++
+  }, STEP_MS)
+
+  // Pad chord every 4 bars (16 beats = 64 steps)
+  const padDuration = (STEP_MS * 16) / 1000
+  const playNextPad = () => {
     if (!ctx || !master) return
-    playKick(ctx, master)
-  }, BEAT_MS * 2)
-  // First kick now
-  playKick(c, master)
-
-  // Melody — fire one note every half-beat (16 notes per bar, but we
-  // only have 8 in MELODY[bar] so play one every half-beat aligned).
-  let melStep = 0
-  const noteInterval = BEAT_MS / 2 // half-beat
-  const melTimer = setInterval(() => {
-    if (!ctx || !master) return
-    const barIdx = Math.floor(melStep / 8) % MELODY.length
-    const posInBar = melStep % 8
-    const note = MELODY[barIdx][posInBar]
-    if (note != null) {
-      playMelodyNote(ctx, master, note, 0.55)
-    }
-    melStep++
-  }, noteInterval)
+    playPadChord(ctx, master, PAD_CHORDS[bar % PAD_CHORDS.length], padDuration)
+  }
+  playNextPad() // first pad immediately
+  const padTimer = setInterval(playNextPad, STEP_MS * 16)
 
   musicStop = () => {
-    clearInterval(chordTimer)
-    clearInterval(kickTimer)
-    clearInterval(melTimer)
+    clearInterval(stepTimer)
+    clearInterval(padTimer)
   }
 }
 
