@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { RISK_COST, RISK_OUTCOMES, type RiskOutcome } from '../types'
 
@@ -16,13 +16,15 @@ const LABEL: Record<RiskOutcome, string> = {
   plus10: '+10',
   minus5: '−5',
   minus10: '−10',
+  zero: '+0',
 }
 
-const TONE: Record<RiskOutcome, { color: string; bg: string; border: string; good: boolean }> = {
+const TONE: Record<RiskOutcome, { color: string; bg: string; border: string; good: boolean | null }> = {
   x3:      { color: '#fde047', bg: 'rgba(253,224,71,0.12)',   border: 'rgba(253,224,71,0.55)',   good: true  },
   x2:      { color: '#86efac', bg: 'rgba(134,239,172,0.10)',  border: 'rgba(134,239,172,0.45)',  good: true  },
   plus10:  { color: '#86efac', bg: 'rgba(134,239,172,0.10)',  border: 'rgba(134,239,172,0.45)',  good: true  },
   plus5:   { color: '#86efac', bg: 'rgba(134,239,172,0.10)',  border: 'rgba(134,239,172,0.45)',  good: true  },
+  zero:    { color: '#cbd5e1', bg: 'rgba(203,213,225,0.08)',  border: 'rgba(203,213,225,0.35)',  good: null  },
   half:    { color: '#fda4af', bg: 'rgba(253,164,175,0.10)',  border: 'rgba(253,164,175,0.45)',  good: false },
   minus5:  { color: '#fda4af', bg: 'rgba(253,164,175,0.10)',  border: 'rgba(253,164,175,0.45)',  good: false },
   minus10: { color: '#fda4af', bg: 'rgba(253,164,175,0.10)',  border: 'rgba(253,164,175,0.45)',  good: false },
@@ -38,6 +40,7 @@ function computePreview(coins: number, outcome: RiskOutcome): number {
     case 'plus10':  return after + 10
     case 'minus5':  return Math.max(0, after - 5)
     case 'minus10': return Math.max(0, after - 10)
+    case 'zero':    return after
   }
 }
 
@@ -46,28 +49,38 @@ export default function RiskGame({ coins, onClose, onResult }: Props) {
   const [final, setFinal] = useState<RiskOutcome | null>(null)
   const [tickIndex, setTickIndex] = useState(0)
 
-  // Slot-machine cycle while spinning
+  // Keep onResult in a ref so it doesn't retrigger the spinning effect
+  const onResultRef = useRef(onResult)
+  useEffect(() => {
+    onResultRef.current = onResult
+  }, [onResult])
+
+  // Slot-machine cycle — runs once when stage becomes 'spinning'
   useEffect(() => {
     if (stage !== 'spinning') return
+    let cancelled = false
     const start = performance.now()
     let timer: ReturnType<typeof setTimeout>
     const tick = () => {
+      if (cancelled) return
       const elapsed = performance.now() - start
-      // Slow down over ~2s
       const delay = 60 + Math.pow(elapsed / 2000, 2) * 350
       setTickIndex((i) => (i + 1) % RISK_OUTCOMES.length)
       if (elapsed >= 2000) {
         const picked = RISK_OUTCOMES[Math.floor(Math.random() * RISK_OUTCOMES.length)]
         setFinal(picked)
         setStage('result')
-        onResult(picked)
+        onResultRef.current(picked)
         return
       }
       timer = setTimeout(tick, delay)
     }
     timer = setTimeout(tick, 60)
-    return () => clearTimeout(timer)
-  }, [stage, onResult])
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [stage])
 
   const canAfford = coins >= RISK_COST
 
@@ -134,7 +147,6 @@ export default function RiskGame({ coins, onClose, onResult }: Props) {
     )
   }
 
-  // result stage
   if (!final) return null
   const t = TONE[final]
   const preview = computePreview(coins, final)
@@ -167,7 +179,13 @@ export default function RiskGame({ coins, onClose, onResult }: Props) {
         <span className="fg-sub text-xs mr-2">coins:</span>
         <span className="tabular-nums font-extrabold text-white">{coins}</span>
         <span className="fg-sub text-xs mx-2">→</span>
-        <span className="tabular-nums font-extrabold" style={{ color: t.good ? '#86efac' : '#fda4af' }}>
+        <span
+          className="tabular-nums font-extrabold"
+          style={{
+            color:
+              t.good === true ? '#86efac' : t.good === false ? '#fda4af' : '#cbd5e1',
+          }}
+        >
           {preview}
         </span>
       </div>

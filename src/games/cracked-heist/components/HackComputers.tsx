@@ -160,6 +160,7 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
 
   const [stage, setStage] = useState<'usernames' | 'passwords' | 'result'>('usernames')
   const [pickedTarget, setPickedTarget] = useState<Player | null>(null)
+  const [pickedColor, setPickedColor] = useState<string>(STAGE1_COLORS[0])
   const [pickedPwIdx, setPickedPwIdx] = useState<number | null>(null)
   const [outcome, setOutcome] = useState<'correct' | 'wrong' | null>(null)
 
@@ -187,8 +188,9 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
     )
   }
 
-  function pickTarget(p: Player) {
+  function pickTarget(p: Player, color: string) {
     setPickedTarget(p)
+    setPickedColor(color)
     setStage('passwords')
   }
 
@@ -288,13 +290,13 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
               style={{
                 padding: '5px 18px',
                 borderRadius: 999,
-                background: 'linear-gradient(135deg,#22c55e,#4ade80)',
-                color: '#052e16',
+                background: pickedColor,
+                color: '#0a0a0a',
                 fontWeight: 800,
                 fontSize: '0.85rem',
                 fontFamily: 'JetBrains Mono, ui-monospace, monospace',
                 letterSpacing: '0.04em',
-                boxShadow: '0 0 18px rgba(74,222,128,0.5)',
+                boxShadow: `0 0 18px ${pickedColor}99`,
               }}
             >
               {pickedTarget.handle}
@@ -315,15 +317,18 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
               className="grid grid-cols-3 gap-4 px-1"
             >
-              {targets.map((p, i) => (
-                <ComputerTile
-                  key={p.id}
-                  label={p.handle}
-                  glowColor={STAGE1_COLORS[i % STAGE1_COLORS.length]}
-                  state="idle"
-                  onClick={() => pickTarget(p)}
-                />
-              ))}
+              {targets.map((p, i) => {
+                const color = STAGE1_COLORS[i % STAGE1_COLORS.length]
+                return (
+                  <ComputerTile
+                    key={p.id}
+                    label={p.handle}
+                    glowColor={color}
+                    state="idle"
+                    onClick={() => pickTarget(p, color)}
+                  />
+                )
+              })}
             </motion.div>
           )}
           {(stage === 'passwords' || stage === 'result') && (
@@ -345,7 +350,7 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
                   <ComputerTile
                     key={i}
                     label={c.label}
-                    glowColor="#f97316"
+                    glowColor={pickedColor}
                     state={tileState}
                     onClick={stage === 'passwords' ? () => pickPassword(i) : undefined}
                     disabled={stage === 'result'}

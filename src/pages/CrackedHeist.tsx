@@ -160,6 +160,17 @@ export default function CrackedHeist() {
     setLocalPhase('viewShared')
   }
 
+  // If the URL has ?share=..., jump straight to the leaderboard view on load
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const share = params.get('share')
+    if (share && share.length >= 6) {
+      viewShared(share)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const close = () => setFlow({ kind: 'none' })
 
   // --- Render guards for pre-connection states ---

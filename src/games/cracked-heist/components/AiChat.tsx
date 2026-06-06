@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Question } from '../types'
-import NumberSpinner from './NumberSpinner'
+
+const COUNT_OPTIONS = [4, 6, 8, 10, 12, 15, 20, 25, 30, 40]
 
 interface Props {
   onDone: (topic: string, questions: Question[]) => void
@@ -280,9 +281,33 @@ export default function AiChat({ onDone }: Props) {
 
         {step === 'askCount' && (
           <>
-            <div className="fg-lbl mb-2 text-left">how many questions</div>
-            <div className="mb-3">
-              <NumberSpinner value={count} min={4} max={40} step={1} onChange={setCount} />
+            <div className="fg-lbl mb-2 text-left">how many questions — tap to pick</div>
+            <div className="grid grid-cols-5 gap-2 mb-3">
+              {COUNT_OPTIONS.map((n) => {
+                const active = count === n
+                return (
+                  <button
+                    key={n}
+                    onClick={() => setCount(n)}
+                    className="rounded-xl font-extrabold tabular-nums"
+                    style={{
+                      padding: '12px 0',
+                      fontSize: '1.05rem',
+                      cursor: 'pointer',
+                      background: active
+                        ? 'linear-gradient(135deg,#4ade80,#a3e635)'
+                        : 'rgba(255,255,255,0.06)',
+                      color: active ? '#052e16' : '#d1d5db',
+                      border: active
+                        ? '2px solid #86efac'
+                        : '2px solid rgba(74,222,128,0.18)',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {n}
+                  </button>
+                )
+              })}
             </div>
             <button
               onClick={submitCount}
@@ -292,7 +317,7 @@ export default function AiChat({ onDone }: Props) {
               Make {count} questions →
             </button>
             <p className="fg-sub text-[11px] mt-2 text-left">
-              Minimum 4. The more questions, the longer the AI takes (usually under 10 seconds).
+              Minimum 4. More questions take longer (usually under 15 seconds).
             </p>
           </>
         )}

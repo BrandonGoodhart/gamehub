@@ -359,6 +359,7 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
         case 'plus10':  next = afterCost + 10;                 label = '+10';  break
         case 'minus5':  next = Math.max(0, afterCost - 5);     label = '−5';   break
         case 'minus10': next = Math.max(0, afterCost - 10);    label = '−10';  break
+        case 'zero':    next = afterCost;                       label = 'nothing'; break
       }
       const s1 = updatePlayer(state, p.id, { coins: Math.max(0, next) })
       return addEvent(s1, `${p.handle} risked it — ${label}.`, 'neutral')

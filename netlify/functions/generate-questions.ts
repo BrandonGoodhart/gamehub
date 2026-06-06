@@ -28,6 +28,18 @@ Aim for questions that an attentive student in the topic's target grade band cou
 
 Never make the question or its choices longer than necessary. Shorter is better. A great question often fits in fifteen words. Long, multi-clause questions with parenthetical qualifications are bad in a real-time game where players have ten seconds to read and choose.
 
+# Critical rule: never give the answer away in the question
+
+This is the most common quality failure and you must audit every question for it before committing:
+
+- Do NOT name the correct answer (or a synonym, translation, or trivial paraphrase of it) anywhere in the question stem. "Which planet, also called the Red Planet, is fourth from the sun?" is broken — "Red Planet" gives away Mars. Rewrite as "Which planet is fourth from the sun?".
+- Do NOT define the correct answer inside the question. "What is the largest cat in the world, weighing up to 660 pounds?" is broken — the weight is a definition of "tiger". Rewrite as "Which is the largest wild cat species?".
+- Do NOT embed any answer choice (correct or distractor) in the question stem.
+- Do NOT have one distractor that reveals the answer to a previous question, and vice versa (no cross-question leakage in the set).
+- Do NOT phrase questions where the grammar of the stem only matches one of the four choices (e.g., singular/plural mismatch eliminates three options on sight).
+
+Before producing each question, mentally cover the four choices and ask: could a student who has never studied this topic guess the correct answer just by reading the stem? If yes, rewrite the stem.
+
 # Question quality
 
 Every question must have one and only one defensibly correct answer. The other three choices (the "distractors") must be clearly wrong on inspection, but plausible enough that an inattentive student could be tempted by them. Bad distractors are the single biggest quality problem in machine-generated trivia. Audit each one before committing:

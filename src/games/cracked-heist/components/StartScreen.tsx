@@ -7,14 +7,28 @@ interface Props {
   onViewShared: (code: string) => void
 }
 
+// If the user pasted a full share URL, pull out just the share token.
+function extractCode(input: string): string {
+  const t = input.trim()
+  if (!t) return ''
+  try {
+    const u = new URL(t)
+    const fromQuery = u.searchParams.get('share')
+    if (fromQuery) return fromQuery
+  } catch {
+    // not a URL — fall through
+  }
+  return t
+}
+
 export default function StartScreen({ onHost, onJoin, onViewShared }: Props) {
   const [shareCode, setShareCode] = useState('')
   const [shareError, setShareError] = useState('')
 
   function submitShare() {
-    const c = shareCode.trim().toUpperCase()
-    if (c.length !== 6) {
-      setShareError('Code must be 6 characters.')
+    const c = extractCode(shareCode)
+    if (c.length < 6) {
+      setShareError('Paste the full share link or code.')
       return
     }
     onViewShared(c)
@@ -66,30 +80,27 @@ export default function StartScreen({ onHost, onJoin, onViewShared }: Props) {
       >
         <div className="fg-lbl mb-2">view a leaderboard</div>
         <p className="fg-sub text-xs mb-3">
-          Paste a 6-character code from a finished game to see who won.
+          Paste a share link or code from a finished game to see who won.
         </p>
         <div className="flex gap-2">
           <input
             value={shareCode}
             onChange={(e) => {
               setShareError('')
-              setShareCode(e.target.value.toUpperCase().slice(0, 6))
+              setShareCode(e.target.value)
             }}
             onKeyDown={(e) => e.key === 'Enter' && submitShare()}
-            placeholder="------"
-            className="fg-inp text-center"
+            placeholder="paste link or code"
+            className="fg-inp"
             style={{
-              fontFamily: 'JetBrains Mono, SF Mono, ui-monospace, monospace',
-              fontWeight: 700,
-              letterSpacing: '0.3em',
               padding: '12px 14px',
-              fontSize: '1rem',
+              fontSize: '0.9rem',
               flex: 1,
             }}
           />
           <button
             onClick={submitShare}
-            disabled={shareCode.length !== 6}
+            disabled={shareCode.trim().length < 6}
             className="fg-btn fg-btn-grad"
             style={{ width: 'auto', padding: '12px 20px', fontSize: '0.9rem' }}
           >

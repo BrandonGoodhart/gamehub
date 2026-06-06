@@ -15,9 +15,9 @@ export type Phase =
 
 export type ActionKind = 'spy' | 'hack' | 'password' | 'risk'
 
-export type RiskOutcome = 'x2' | 'x3' | 'half' | 'plus5' | 'plus10' | 'minus5' | 'minus10'
+export type RiskOutcome = 'x2' | 'x3' | 'half' | 'plus5' | 'plus10' | 'minus5' | 'minus10' | 'zero'
 
-export const RISK_OUTCOMES: RiskOutcome[] = ['x2', 'x3', 'half', 'plus5', 'plus10', 'minus5', 'minus10']
+export const RISK_OUTCOMES: RiskOutcome[] = ['x2', 'x3', 'half', 'plus5', 'plus10', 'minus5', 'minus10', 'zero']
 
 export const RISK_COST = 3
 
