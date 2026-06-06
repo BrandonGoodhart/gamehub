@@ -1,6 +1,5 @@
 import MuteButton from './MuteButton'
 import InfoButton from './InfoButton'
-import MusicPicker from './MusicPicker'
 
 interface Props {
   onHelp?: () => void
@@ -29,7 +28,6 @@ export default function AmbientBg({ onHelp }: Props) {
         }}
       >
         {onHelp && <InfoButton onClick={onHelp} />}
-        <MusicPicker />
         <MuteButton />
       </div>
     </>
