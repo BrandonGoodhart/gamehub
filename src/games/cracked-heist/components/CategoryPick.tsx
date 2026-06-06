@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import type { Question, Settings } from '../types'
 import NumberSpinner from './NumberSpinner'
+import AiChat from './AiChat'
 
 interface Props {
   settings: Settings
@@ -19,55 +20,6 @@ export default function CategoryPick({
   onBack,
 }: Props) {
   const [aiOpen, setAiOpen] = useState(false)
-  const [aiTopic, setAiTopic] = useState('')
-  const [aiCount, setAiCount] = useState(10)
-  const [aiBusy, setAiBusy] = useState(false)
-  const [aiError, setAiError] = useState<string | null>(null)
-
-  async function generate() {
-    const topic = aiTopic.trim()
-    if (!topic) {
-      setAiError('Type a topic first.')
-      return
-    }
-    setAiBusy(true)
-    setAiError(null)
-    try {
-      const resp = await fetch('/api/generate-questions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category: topic, count: aiCount }),
-      })
-      const text = await resp.text()
-      let data: { questions?: Question[]; error?: string } = {}
-      try {
-        data = text ? JSON.parse(text) : {}
-      } catch {
-        // non-JSON response (usually a 404 HTML page when the function isn't deployed)
-      }
-      if (!resp.ok) {
-        if (resp.status === 404) {
-          setAiError(
-            "AI server isn't connected yet. The Netlify function needs to be deployed and GEMINI_API_KEY set.",
-          )
-        } else {
-          setAiError(data.error ?? `Generation failed (${resp.status}).`)
-        }
-        return
-      }
-      const qs: Question[] = data.questions ?? []
-      if (qs.length === 0) {
-        setAiError('No questions returned. Try a different topic.')
-        return
-      }
-      onAiGenerated(topic, qs)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Network error'
-      setAiError(`Couldn't reach the AI server: ${msg}`)
-    } finally {
-      setAiBusy(false)
-    }
-  }
 
   return (
     <div className="max-w-[440px] mx-auto w-full space-y-5 pb-5">
@@ -133,10 +85,7 @@ export default function CategoryPick({
           >
             <div className="fg-lbl mb-2">ai assistant</div>
             <button
-              onClick={() => {
-                setAiOpen((o) => !o)
-                setAiError(null)
-              }}
+              onClick={() => setAiOpen((o) => !o)}
               className="text-white text-center"
               style={{
                 fontWeight: 800,
@@ -150,62 +99,16 @@ export default function CategoryPick({
               Ask AI to make questions
             </button>
             <div className="fg-sub mt-1" style={{ fontSize: '0.78rem' }}>
-              {aiOpen
-                ? 'Tell the AI a topic. You can edit what it gives you.'
-                : 'Tap to open the chat.'}
+              {aiOpen ? 'Chat with the AI to make a set.' : 'Tap to open the chat.'}
             </div>
 
             {aiOpen && (
-              <div className="mt-4 space-y-3 text-left">
-                <div>
-                  <div className="fg-lbl mb-1.5">topic</div>
-                  <input
-                    value={aiTopic}
-                    onChange={(e) => {
-                      setAiTopic(e.target.value)
-                      setAiError(null)
-                    }}
-                    placeholder="e.g. world capitals, ocean animals, ancient Egypt"
-                    className="fg-inp"
-                    style={{ padding: '12px 14px', fontSize: '0.95rem' }}
-                    disabled={aiBusy}
-                  />
-                </div>
-                <div>
-                  <div className="fg-lbl mb-1.5">how many questions</div>
-                  <NumberSpinner
-                    value={aiCount}
-                    min={4}
-                    max={40}
-                    step={1}
-                    onChange={setAiCount}
-                  />
-                </div>
-                {aiError && (
-                  <div
-                    className="rounded-xl px-3 py-2 text-xs font-semibold"
-                    style={{
-                      background: 'rgba(251,113,133,0.1)',
-                      border: '1px solid rgba(251,113,133,0.3)',
-                      color: '#fda4af',
-                    }}
-                  >
-                    {aiError}
-                  </div>
-                )}
-                <button
-                  onClick={generate}
-                  disabled={aiBusy}
-                  className="fg-btn fg-btn-grad"
-                  style={{ width: '100%', opacity: aiBusy ? 0.6 : 1 }}
-                >
-                  {aiBusy ? 'Generating...' : 'Generate Questions →'}
-                </button>
-                <p className="fg-sub text-[11px] italic">
-                  AI questions land in the editor — you can change them before
-                  starting the game.
-                </p>
-              </div>
+              <AiChat
+                onDone={(topic, qs) => {
+                  setAiOpen(false)
+                  onAiGenerated(topic, qs)
+                }}
+              />
             )}
           </motion.div>
         </div>
