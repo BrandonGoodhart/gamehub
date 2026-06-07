@@ -66,8 +66,7 @@ export default function GameOver({ state, meId, onReset }: Props) {
     const { origin, pathname } = window.location
     return `${origin}${pathname}?share=${code}`
   }, [code])
-  const [copied, setCopied] = useState<'none' | 'link' | 'code'>('none')
-  const [showCode, setShowCode] = useState(false)
+  const [copied, setCopied] = useState<'none' | 'link'>('none')
 
   useEffect(() => {
     if (myRank >= 1 && myRank <= 3) {
@@ -79,16 +78,6 @@ export default function GameOver({ state, meId, onReset }: Props) {
     try {
       navigator.clipboard.writeText(shareUrl)
       setCopied('link')
-      setTimeout(() => setCopied('none'), 1500)
-    } catch {
-      // ignore
-    }
-  }
-
-  function copyCode() {
-    try {
-      navigator.clipboard.writeText(code)
-      setCopied('code')
       setTimeout(() => setCopied('none'), 1500)
     } catch {
       // ignore
@@ -191,51 +180,6 @@ export default function GameOver({ state, meId, onReset }: Props) {
         <p className="fg-sub text-xs mt-2">
           Paste the link into any messaging app — anyone who opens it sees this leaderboard.
         </p>
-        <button
-          onClick={() => setShowCode((s) => !s)}
-          className="fg-sub text-[11px] mt-2"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            textDecoration: 'underline',
-          }}
-        >
-          {showCode ? 'hide raw code' : 'or copy raw code instead'}
-        </button>
-        {showCode && (
-          <div className="mt-2 space-y-2">
-            <div
-              className="rounded-lg p-2 text-left"
-              style={{
-                background: 'rgba(0,0,0,0.4)',
-                border: '1px solid rgba(74,222,128,0.18)',
-                maxHeight: 60,
-                overflowY: 'auto',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: '0.62rem',
-                color: '#86efac',
-                wordBreak: 'break-all',
-                lineHeight: 1.3,
-              }}
-            >
-              {code}
-            </div>
-            <button
-              onClick={copyCode}
-              className="fg-btn"
-              style={{
-                padding: '6px 14px',
-                fontSize: '0.78rem',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                color: '#d1d5db',
-              }}
-            >
-              {copied === 'code' ? 'Code copied ✓' : 'Copy code'}
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="fg-lbl mb-2">your stats</div>

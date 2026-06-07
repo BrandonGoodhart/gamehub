@@ -12,6 +12,7 @@ import SharedView from '../games/cracked-heist/components/SharedView'
 import PregameSplash from '../games/cracked-heist/components/PregameSplash'
 import PasswordPickPhase from '../games/cracked-heist/components/PasswordPickPhase'
 import Countdown from '../games/cracked-heist/components/Countdown'
+import WaitingForHost from '../games/cracked-heist/components/WaitingForHost'
 import HUD from '../games/cracked-heist/components/HUD'
 import QuestionCard from '../games/cracked-heist/components/QuestionCard'
 import ActionPanel from '../games/cracked-heist/components/ActionPanel'
@@ -297,53 +298,71 @@ export default function CrackedHeist() {
           />
         )}
 
-        {state.phase === 'pickCategory' && (
-          <CategoryPick
-            settings={state.settings}
-            onChange={(patch) => dispatch({ type: 'setSettings', patch })}
-            onBack={() => dispatch({ type: 'setPhase', phase: 'hostLobby' })}
-            onCustom={() => {
-              setEditorSeed(null)
-              dispatch({ type: 'setPhase', phase: 'customQuestions' })
-            }}
-            onAiGenerated={(topic, qs) => {
-              setEditorSeed({ topic, questions: qs })
-              dispatch({ type: 'setPhase', phase: 'customQuestions' })
-            }}
-          />
-        )}
+        {state.phase === 'pickCategory' &&
+          (isHost ? (
+            <CategoryPick
+              settings={state.settings}
+              onChange={(patch) => dispatch({ type: 'setSettings', patch })}
+              onBack={() => dispatch({ type: 'setPhase', phase: 'hostLobby' })}
+              onCustom={() => {
+                setEditorSeed(null)
+                dispatch({ type: 'setPhase', phase: 'customQuestions' })
+              }}
+              onAiGenerated={(topic, qs) => {
+                setEditorSeed({ topic, questions: qs })
+                dispatch({ type: 'setPhase', phase: 'customQuestions' })
+              }}
+            />
+          ) : (
+            <WaitingForHost
+              state={state}
+              detail="The host is picking the topic and game length."
+            />
+          ))}
 
-        {state.phase === 'customQuestions' && (
-          <CustomQuestions
-            initial={editorSeed?.questions}
-            title={editorSeed ? `AI: ${editorSeed.topic}` : 'Custom Questions'}
-            subtitle={
-              editorSeed
-                ? 'AI made these. Edit anything you want, then start the game.'
-                : 'Minimum 4. No maximum. Tap the correct choice to mark it.'
-            }
-            onBack={() => {
-              setEditorSeed(null)
-              dispatch({ type: 'setPhase', phase: 'pickCategory' })
-            }}
-            onSubmit={(qs) => {
-              dispatch({
-                type: 'pickCustomQuestions',
-                questions: qs,
-                label: editorSeed?.topic,
-              })
-              setEditorSeed(null)
-              dispatch({ type: 'setPhase', phase: 'pregame' })
-            }}
-          />
-        )}
+        {state.phase === 'customQuestions' &&
+          (isHost ? (
+            <CustomQuestions
+              initial={editorSeed?.questions}
+              title={editorSeed ? `AI: ${editorSeed.topic}` : 'Custom Questions'}
+              subtitle={
+                editorSeed
+                  ? 'AI made these. Edit anything you want, then start the game.'
+                  : 'Minimum 4. No maximum. Tap the correct choice to mark it.'
+              }
+              onBack={() => {
+                setEditorSeed(null)
+                dispatch({ type: 'setPhase', phase: 'pickCategory' })
+              }}
+              onSubmit={(qs) => {
+                dispatch({
+                  type: 'pickCustomQuestions',
+                  questions: qs,
+                  label: editorSeed?.topic,
+                })
+                setEditorSeed(null)
+                dispatch({ type: 'setPhase', phase: 'pregame' })
+              }}
+            />
+          ) : (
+            <WaitingForHost
+              state={state}
+              detail="The host is writing the trivia questions."
+            />
+          ))}
 
-        {state.phase === 'pregame' && (
-          <PregameSplash
-            state={state}
-            onPlay={() => dispatch({ type: 'setPhase', phase: 'pickPassword' })}
-          />
-        )}
+        {state.phase === 'pregame' &&
+          (isHost ? (
+            <PregameSplash
+              state={state}
+              onPlay={() => dispatch({ type: 'setPhase', phase: 'pickPassword' })}
+            />
+          ) : (
+            <WaitingForHost
+              state={state}
+              detail="Almost ready — the host is about to start."
+            />
+          ))}
 
         {state.phase === 'pickPassword' && me && (
           <PasswordPickPhase
