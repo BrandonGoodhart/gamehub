@@ -124,6 +124,9 @@ function useLocalGame() {
           passwordLocked: false,
           passwordOptions: makePasswordOptions(3, new Set()),
           alive: true,
+          currentQuestion: null,
+          questionQueue: [],
+          questionTick: 0,
         },
       })
       dispatchLocal({ type: 'addBots', count: 3 })
@@ -176,31 +179,40 @@ function useLocalGame() {
     }
   }, [state.timeLeft, state.phase])
 
+  // Load each player's first question when 'playing' starts
   useEffect(() => {
     if (state.phase !== 'playing') return
-    if (!state.currentQuestion) {
-      const t = setTimeout(() => dispatchLocal({ type: 'nextQuestion' } as GameAction), 400)
-      return () => clearTimeout(t)
-    }
-  }, [state.phase, state.currentQuestion])
+    const needsQuestion = state.players.filter((p) => p.alive && !p.currentQuestion)
+    if (needsQuestion.length === 0) return
+    const t = setTimeout(() => {
+      needsQuestion.forEach((p) =>
+        dispatchLocal({ type: 'nextQuestion', playerId: p.id } as GameAction),
+      )
+    }, 400)
+    return () => clearTimeout(t)
+  }, [state.phase, state.players])
 
+  // Bots answer their own current question, then advance
   useEffect(() => {
-    if (state.phase !== 'playing' || !state.currentQuestion) return
-    const q: Question = state.currentQuestion
-    const bots = state.players.filter((p) => !p.isHuman && p.alive)
+    if (state.phase !== 'playing') return
+    const bots = state.players.filter((p) => !p.isHuman && p.alive && p.currentQuestion)
     const timers: number[] = []
     bots.forEach((bot) => {
+      const q: Question | null = bot.currentQuestion
+      if (!q) return
       const skill = botSkill(bot)
       const delay = 1800 + Math.random() * 7000
       const t = window.setTimeout(() => {
-        if (stateRef.current.currentQuestion !== q || stateRef.current.phase !== 'playing') return
+        const botNow = stateRef.current.players.find((p) => p.id === bot.id)
+        if (!botNow || botNow.currentQuestion !== q || stateRef.current.phase !== 'playing') return
         const choice = botAnswer(q, skill)
         dispatchLocal({ type: 'answerQuestion', playerId: bot.id, choice })
+        dispatchLocal({ type: 'nextQuestion', playerId: bot.id })
       }, delay)
       timers.push(t)
     })
     return () => timers.forEach((t) => clearTimeout(t))
-  }, [state.currentQuestion, state.phase, state.players])
+  }, [state.phase, state.players])
 
   useEffect(() => {
     if (state.phase !== 'playing') return
@@ -310,6 +322,9 @@ function useSupabaseGame() {
         passwordLocked: false,
         passwordOptions: makePasswordOptions(3, taken),
         alive: true,
+        currentQuestion: null,
+        questionQueue: [],
+        questionTick: 0,
       },
     })
     broadcast({ type: 'WELCOME', meId: msg.clientId, state: hostStateRef.current! })
@@ -382,6 +397,9 @@ function useSupabaseGame() {
             passwordLocked: false,
             passwordOptions: makePasswordOptions(3, taken),
             alive: true,
+            currentQuestion: null,
+            questionQueue: [],
+            questionTick: 0,
           },
         ],
       }
@@ -511,39 +529,42 @@ function useSupabaseGame() {
     }
   }, [state?.timeLeft, state?.phase])
 
+  // Load every player's first question once 'playing' starts
   useEffect(() => {
     if (!isHostRef.current || !state) return
     if (state.phase !== 'playing') return
-    if (!state.currentQuestion) {
-      const t = setTimeout(() => hostApply({ type: 'nextQuestion' } as GameAction), 400)
-      return () => clearTimeout(t)
-    }
-  }, [state?.phase, state?.currentQuestion])
+    const needs = state.players.filter((p) => p.alive && !p.currentQuestion)
+    if (needs.length === 0) return
+    const t = setTimeout(() => {
+      needs.forEach((p) => hostApply({ type: 'nextQuestion', playerId: p.id } as GameAction))
+    }, 400)
+    return () => clearTimeout(t)
+  }, [state?.phase, state?.players])
 
-  // Bots answer (host only)
+  // Bots answer their own current question, then advance (host only)
   useEffect(() => {
     if (!isHostRef.current || !state) return
-    if (state.phase !== 'playing' || !state.currentQuestion) return
-    const q: Question = state.currentQuestion
-    const bots = state.players.filter((p) => !p.isHuman && p.alive)
+    if (state.phase !== 'playing') return
+    const bots = state.players.filter((p) => !p.isHuman && p.alive && p.currentQuestion)
     const timers: number[] = []
     bots.forEach((bot) => {
+      const q: Question | null = bot.currentQuestion
+      if (!q) return
       const skill = botSkill(bot)
       const delay = 1800 + Math.random() * 7000
       const t = window.setTimeout(() => {
-        if (
-          !hostStateRef.current ||
-          hostStateRef.current.currentQuestion !== q ||
-          hostStateRef.current.phase !== 'playing'
-        )
-          return
+        const cur = hostStateRef.current
+        if (!cur || cur.phase !== 'playing') return
+        const botNow = cur.players.find((p) => p.id === bot.id)
+        if (!botNow || botNow.currentQuestion !== q) return
         const choice = botAnswer(q, skill)
         hostApply({ type: 'answerQuestion', playerId: bot.id, choice })
+        hostApply({ type: 'nextQuestion', playerId: bot.id })
       }, delay)
       timers.push(t)
     })
     return () => timers.forEach((t) => clearTimeout(t))
-  }, [state?.currentQuestion, state?.phase])
+  }, [state?.phase, state?.players])
 
   // Bot side-actions (host only)
   useEffect(() => {

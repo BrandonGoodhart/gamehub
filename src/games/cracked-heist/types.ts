@@ -42,6 +42,10 @@ export interface Player {
   passwordLocked: boolean
   passwordOptions: string[]
   alive: boolean
+  // Per-player question stream — each player advances at their own pace
+  currentQuestion: Question | null
+  questionQueue: Question[]
+  questionTick: number
 }
 
 export interface Question {
@@ -77,9 +81,6 @@ export interface RoomState {
   hostId: string
   category: string | null
   customQuestions: Question[] | null
-  questionQueue: Question[]
-  currentQuestion: Question | null
-  questionTick: number
   events: EventLog[]
   fullLog: EventLog[]
   settings: Settings

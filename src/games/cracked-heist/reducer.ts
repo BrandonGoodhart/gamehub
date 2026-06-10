@@ -50,6 +50,9 @@ export function makeBotPlayer(handle: string, taken: Set<string> = new Set()): P
     passwordLocked: true,
     passwordOptions: options,
     alive: true,
+    currentQuestion: null,
+    questionQueue: [],
+    questionTick: 0,
   }
 }
 
@@ -63,9 +66,6 @@ export function makeInitialState(code: string): RoomState {
     hostId: '',
     category: null,
     customQuestions: null,
-    questionQueue: [],
-    currentQuestion: null,
-    questionTick: 0,
     events: [],
     fullLog: [],
     settings: { ...DEFAULT_SETTINGS },
@@ -88,7 +88,7 @@ export type GameAction =
   | { type: 'beginCountdown' }
   | { type: 'tickCountdown' }
   | { type: 'tickTimer' }
-  | { type: 'nextQuestion' }
+  | { type: 'nextQuestion'; playerId: string }
   | { type: 'answerQuestion'; playerId: string; choice: number }
   | { type: 'event'; event: EventLog }
   | { type: 'doSpy'; spyId: string; targetId: string; correct: boolean }
@@ -144,6 +144,9 @@ export function makePlayer(
     passwordLocked: false,
     passwordOptions: makePasswordOptions(3, taken),
     alive: true,
+    currentQuestion: null,
+    questionQueue: [],
+    questionTick: 0,
   }
 }
 
@@ -210,15 +213,12 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
         ...state,
         category: action.category,
         customQuestions: null,
-        questionQueue: shuffledQs(action.category),
       }
     case 'pickCustomQuestions': {
-      const shuffled = [...action.questions].sort(() => Math.random() - 0.5)
       return {
         ...state,
         category: action.label ?? 'Custom',
         customQuestions: action.questions,
-        questionQueue: shuffled,
       }
     }
     case 'lockPassword': {
@@ -234,23 +234,24 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
     case 'tickTimer':
       return { ...state, timeLeft: Math.max(0, state.timeLeft - 1) }
     case 'nextQuestion': {
+      const me = state.players.find((p) => p.id === action.playerId)
+      if (!me) return state
       const refill = state.customQuestions
         ? [...state.customQuestions].sort(() => Math.random() - 0.5)
         : shuffledQs(state.category ?? CATEGORIES[0])
-      const queueSrc = state.questionQueue.length > 0 ? state.questionQueue : refill
+      const queueSrc = me.questionQueue.length > 0 ? me.questionQueue : refill
       const [next, ...rest] = queueSrc
-      return {
-        ...state,
+      return updatePlayer(state, action.playerId, {
         currentQuestion: next,
         questionQueue: rest,
-        questionTick: state.questionTick + 1,
-      }
+        questionTick: me.questionTick + 1,
+      })
     }
     case 'answerQuestion': {
-      const q = state.currentQuestion
-      if (!q) return state
       const me = state.players.find((p) => p.id === action.playerId)
       if (!me) return state
+      const q = me.currentQuestion
+      if (!q) return state
       const correct = action.choice === q.answer
       const coins = state.settings.rewards.correctAnswerCoins
       const tokens = state.settings.rewards.correctAnswerTokens
@@ -379,7 +380,7 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
       return {
         ...state,
         phase: 'gameOver',
-        currentQuestion: null,
+        players: state.players.map((p) => ({ ...p, currentQuestion: null })),
         events: [ev, ...state.events],
         fullLog: [...state.fullLog, ev],
       }

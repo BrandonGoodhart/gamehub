@@ -389,14 +389,12 @@ export default function CrackedHeist() {
                   <div className="fg-codebg" />
                   <div className="relative z-[1]">
                     <QuestionCard
-                      question={state.currentQuestion}
-                      tick={state.questionTick}
+                      question={me.currentQuestion}
+                      tick={me.questionTick}
                       onAnswer={(choice) => {
                         dispatch({ type: 'answerQuestion', playerId: me.id, choice })
                         // QuestionCard already waited (fast on correct, 3s on wrong)
-                        if (isHost) {
-                          dispatch({ type: 'nextQuestion' })
-                        }
+                        dispatch({ type: 'nextQuestion', playerId: me.id })
                       }}
                     />
                   </div>
