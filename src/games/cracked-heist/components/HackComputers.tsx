@@ -157,9 +157,16 @@ const stageVariants = {
 
 export default function HackComputers({ hackCost, tokens, targets, onResult, onClose }: Props) {
   const canHack = tokens >= hackCost && targets.length >= 1
+  const isSolo = targets.length === 1
 
-  const [stage, setStage] = useState<'usernames' | 'passwords' | 'result'>('usernames')
-  const [pickedTarget, setPickedTarget] = useState<Player | null>(null)
+  // With a single target, skip the "pick a computer" stage and jump straight
+  // to picking a password for that one target.
+  const [stage, setStage] = useState<'usernames' | 'passwords' | 'result'>(
+    isSolo ? 'passwords' : 'usernames',
+  )
+  const [pickedTarget, setPickedTarget] = useState<Player | null>(
+    isSolo ? targets[0] : null,
+  )
   const [pickedColor, setPickedColor] = useState<string>(STAGE1_COLORS[0])
   const [pickedPwIdx, setPickedPwIdx] = useState<number | null>(null)
   const [outcome, setOutcome] = useState<'correct' | 'wrong' | null>(null)
@@ -215,7 +222,7 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
     <div className="space-y-5">
       <div className="flex items-start gap-3 min-h-[2.5rem]">
         <AnimatePresence mode="wait">
-          {stage === 'passwords' && (
+          {stage === 'passwords' && !isSolo && (
             <motion.button
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
@@ -249,13 +256,14 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
           >
             {stage === 'usernames' && (
               <>
-                Three computers. Choose a player to hack. Costs{' '}
+                {targets.length === 2 ? 'Two computers' : 'Three computers'}.
+                Choose a player to hack. Costs{' '}
                 <b className="text-[#5eead4]">{hackCost} tokens</b>.
               </>
             )}
             {stage === 'passwords' && (
               <>
-                Three possible passwords for{' '}
+                {isSolo ? "Here are " : 'Three possible '}passwords for{' '}
                 <span className="font-bold text-[var(--green-l)]">
                   {pickedTarget?.handle}
                 </span>
@@ -315,9 +323,10 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
               animate="center"
               exit="exit"
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="grid gap-4 px-1 justify-center"
+              className="grid gap-4 px-1 mx-auto"
               style={{
-                gridTemplateColumns: `repeat(${Math.min(targets.length, 3)}, minmax(0, 1fr))`,
+                gridTemplateColumns: `repeat(${Math.min(targets.length, 3)}, minmax(0, 140px))`,
+                width: 'fit-content',
               }}
             >
               {targets.map((p, i) => {
