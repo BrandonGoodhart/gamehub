@@ -156,7 +156,7 @@ const stageVariants = {
 }
 
 export default function HackComputers({ hackCost, tokens, targets, onResult, onClose }: Props) {
-  const canHack = tokens >= hackCost && targets.length >= 3
+  const canHack = tokens >= hackCost && targets.length >= 1
 
   const [stage, setStage] = useState<'usernames' | 'passwords' | 'result'>('usernames')
   const [pickedTarget, setPickedTarget] = useState<Player | null>(null)
@@ -315,7 +315,10 @@ export default function HackComputers({ hackCost, tokens, targets, onResult, onC
               animate="center"
               exit="exit"
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="grid grid-cols-3 gap-4 px-1"
+              className="grid gap-4 px-1 justify-center"
+              style={{
+                gridTemplateColumns: `repeat(${Math.min(targets.length, 3)}, minmax(0, 1fr))`,
+              }}
             >
               {targets.map((p, i) => {
                 const color = STAGE1_COLORS[i % STAGE1_COLORS.length]
