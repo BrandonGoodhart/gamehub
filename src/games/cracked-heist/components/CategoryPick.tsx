@@ -1,8 +1,13 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import type { Question, Settings } from '../types'
-import NumberSpinner from './NumberSpinner'
 import AiChat from './AiChat'
+
+const LENGTH_OPTIONS: { mins: number; label: string }[] = [
+  { mins: 2, label: '2 min' },
+  { mins: 7, label: '7 min' },
+  { mins: 12, label: '12 min' },
+]
 
 interface Props {
   settings: Settings
@@ -42,16 +47,37 @@ export default function CategoryPick({
       </div>
 
       <div className="fg-panel p-5">
-        <div className="fg-lbl mb-2 text-center">game length (seconds)</div>
-        <NumberSpinner
-          value={settings.roundSeconds}
-          min={60}
-          max={600}
-          step={5}
-          onChange={(v) => onChange({ roundSeconds: v })}
-        />
+        <div className="fg-lbl mb-3 text-center">game length</div>
+        <div className="grid grid-cols-3 gap-2">
+          {LENGTH_OPTIONS.map(({ mins, label }) => {
+            const secs = mins * 60
+            const active = settings.roundSeconds === secs
+            return (
+              <button
+                key={mins}
+                onClick={() => onChange({ roundSeconds: secs })}
+                className="rounded-xl font-extrabold tabular-nums"
+                style={{
+                  padding: '14px 0',
+                  fontSize: '1rem',
+                  cursor: 'pointer',
+                  background: active
+                    ? 'linear-gradient(135deg,#4ade80,#a3e635)'
+                    : 'rgba(255,255,255,0.06)',
+                  color: active ? '#052e16' : '#d1d5db',
+                  border: active
+                    ? '2px solid #86efac'
+                    : '2px solid rgba(74,222,128,0.18)',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
         <p className="fg-sub text-[11px] mt-3 text-center">
-          One round per game. Minimum 60 seconds. Everyone starts at 0 coins and 0 tokens.
+          One round per game. Everyone starts at 0 coins and 0 tokens.
         </p>
       </div>
 
