@@ -7,9 +7,10 @@ interface Props {
   isHost: boolean
   onKick: (id: string) => void
   onStart: () => void
+  onAddBots: () => void
 }
 
-export default function HostLobby({ state, isHost, onKick, onStart }: Props) {
+export default function HostLobby({ state, isHost, onKick, onStart, onAddBots }: Props) {
   return (
     <div className="max-w-[440px] mx-auto w-full space-y-5 pb-5">
       <div className="text-center">
@@ -109,14 +110,29 @@ export default function HostLobby({ state, isHost, onKick, onStart }: Props) {
       </div>
 
       {isHost ? (
-        <motion.button
-          whileHover={{ y: -2 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={onStart}
-          className="fg-btn fg-btn-grad"
-        >
-          Start Game →
-        </motion.button>
+        <div className="space-y-2">
+          <motion.button
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={onStart}
+            className="fg-btn fg-btn-grad"
+          >
+            Start Game →
+          </motion.button>
+          <button
+            onClick={onAddBots}
+            className="fg-btn w-full"
+            style={{
+              padding: '10px 14px',
+              fontSize: '0.85rem',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1.5px solid rgba(255,255,255,0.15)',
+              color: '#d1d5db',
+            }}
+          >
+            + Add 3 practice bots
+          </button>
+        </div>
       ) : (
         <div className="text-center fg-sub py-3 animate-pulse text-sm">
           waiting for host to start...

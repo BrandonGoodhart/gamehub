@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePartyGame } from '../games/cracked-heist/usePartyGame'
 import AmbientBg from '../games/cracked-heist/components/AmbientBg'
 import LoadingSplash from '../games/cracked-heist/components/LoadingSplash'
@@ -64,6 +64,8 @@ export default function CrackedHeist() {
   const [flow, setFlow] = useState<ActionFlow>({ kind: 'none' })
   const [sharedView, setSharedView] = useState<{ code: string; game: SharedGame | null } | null>(null)
   const [editorSeed, setEditorSeed] = useState<{ topic: string; questions: Question[] } | null>(null)
+  const [wasKicked, setWasKicked] = useState(false)
+  const sawSelfInRoomRef = useRef(false)
 
   const { state, meId, connected, error, connect, disconnect, dispatch } = usePartyGame()
 
@@ -157,6 +159,25 @@ export default function CrackedHeist() {
   function viewShared(code: string) {
     setSharedView({ code, game: getShared(code) })
     setLocalPhase('viewShared')
+  }
+
+  // Detect being kicked: I was a player, then suddenly I'm not in the room.
+  useEffect(() => {
+    if (!connected || !state || !meId) return
+    const inRoom = state.players.some((p) => p.id === meId)
+    if (inRoom) {
+      sawSelfInRoomRef.current = true
+      return
+    }
+    if (sawSelfInRoomRef.current && !inRoom && state.phase !== 'gameOver') {
+      setWasKicked(true)
+    }
+  }, [connected, state, meId])
+
+  function dismissKicked() {
+    setWasKicked(false)
+    sawSelfInRoomRef.current = false
+    backToStart()
   }
 
   // If the URL has ?share=..., jump straight to the leaderboard view on load
@@ -287,14 +308,8 @@ export default function CrackedHeist() {
             state={state}
             isHost={isHost}
             onKick={(id) => dispatch({ type: 'kickPlayer', id })}
-            onStart={() => {
-              // If solo, fill with bots
-              const humanCount = state.players.filter((p) => p.isHuman).length
-              if (humanCount < 2) {
-                dispatch({ type: 'addBots', count: 3 })
-              }
-              dispatch({ type: 'setPhase', phase: 'pickCategory' })
-            }}
+            onAddBots={() => dispatch({ type: 'addBots', count: 3 })}
+            onStart={() => dispatch({ type: 'setPhase', phase: 'pickCategory' })}
           />
         )}
 
@@ -649,6 +664,18 @@ export default function CrackedHeist() {
               <li>Most coins at the end wins</li>
             </ul>
           </div>
+        </div>
+      </Modal>
+
+      <Modal open={wasKicked} onClose={dismissKicked} title="You've been kicked">
+        <div className="space-y-3 text-center">
+          <p className="fg-sub text-sm">
+            The host removed you from this room. You can host your own game or
+            join a different room with a new code.
+          </p>
+          <button onClick={dismissKicked} className="fg-btn fg-btn-grad w-full">
+            Back to start
+          </button>
         </div>
       </Modal>
     </div>
