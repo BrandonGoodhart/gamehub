@@ -28,6 +28,21 @@ Aim for questions that an attentive student in the topic's target grade band cou
 
 Never make the question or its choices longer than necessary. Shorter is better. A great question often fits in fifteen words. Long, multi-clause questions with parenthetical qualifications are bad in a real-time game where players have ten seconds to read and choose.
 
+# Critical rule: factual accuracy over coverage
+
+Every question and its labeled correct answer must be a verifiable, widely accepted fact. This game runs in a classroom and a wrong "correct answer" misleads a real student. Apply a strict accuracy filter to every question before committing it:
+
+1. Only use facts you can confidently source to mainstream reference material — standard K-12 textbooks, encyclopedia entries, government/educational sites, peer-reviewed science. Treat anything you only "kind of remember" as a hallucination risk and DROP that question.
+2. Prefer slightly easier, definitively-known facts over impressive-sounding harder ones. "What is the capital of Japan?" beats "Which Japanese emperor commissioned the Heian-kyo capital?" every time, because the second one is the kind of question models get subtly wrong.
+3. Round numbers, dates, and quantities to widely cited values. Avoid specific population counts, exact distances in miles vs km, or precise dates of events with multiple historiographies. If the textbook answer is "around X", do not pretend it is exactly X.
+4. Stay away from "first to do X" and "only X to ever Y" framings — those are notorious hallucination magnets because the model invents plausible-sounding superlatives that don't quite hold up. Reframe to a different fact about the same topic.
+5. For science, stick to settled K-12 curriculum. No bleeding-edge research, no contested taxonomy ("is X a planet?"), no contested medical claims.
+6. For history, anchor on widely-taught dates (moon landing 1969, French Revolution 1789, etc.). Avoid lesser-known battles, treaties, or individuals where you might confuse details.
+7. For named people, double-check the spelling and role. "Who painted the Mona Lisa?" is fine; specific second-tier artists, authors, and inventors are where the model conflates names. If unsure, swap the question.
+8. If you find yourself reaching for an obscure fact to fill the count, STOP. Better to return fewer accurate questions than to ship one wrong one. Use the (Note: ran out of distinct angles) fallback documented later in this prompt.
+
+When in doubt, drop the question. A 9-question set of solid facts is better than a 10-question set with one wrong answer. The model's confidence is not evidence; concrete grounding in well-known reference material is.
+
 # Critical rule: never give the answer away in the question
 
 This is the most common quality failure and you must audit every question for it before committing:
@@ -186,7 +201,9 @@ export const handler: Handler = async (
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: QUESTION_SCHEMA,
-      temperature: 0.7,
+      // Low temperature pushes the model toward well-known, frequently-seen
+      // facts and away from inventive but unverifiable claims.
+      temperature: 0.2,
       maxOutputTokens: 8000,
     },
   }

@@ -12,7 +12,7 @@ import Countdown from './Countdown'
 import confetti from 'canvas-confetti'
 import { sfxCountdown } from '../audio'
 
-const COINS_PER_CORRECT = 5
+const COINS_PER_CORRECT = 1
 
 type Mode = 'timed' | 'score'
 
@@ -32,8 +32,9 @@ export default function StudyMode({ onExit }: Props) {
   const [phase, setPhase] = useState<LocalPhase>('setup')
   const [mode, setMode] = useState<Mode>('timed')
   const [minutes, setMinutes] = useState(7) // for timed mode
-  const [scoreTarget, setScoreTarget] = useState(50) // for score mode
+  const [scoreTarget, setScoreTarget] = useState(10) // for score mode
   const [source, setSource] = useState<'write' | 'ai'>('write')
+  const [hardMode, setHardMode] = useState(false) // lose 1 coin per wrong answer
 
   const [questions, setQuestions] = useState<Question[]>([])
   const [topic, setTopic] = useState<string>('')
@@ -130,6 +131,7 @@ export default function StudyMode({ onExit }: Props) {
       setCorrectCount((c) => c + 1)
     } else {
       setWrongCount((c) => c + 1)
+      if (hardMode) setCoins((c) => Math.max(0, c - 1))
     }
     // Advance to next question
     let nextQueue = queue
@@ -155,6 +157,8 @@ export default function StudyMode({ onExit }: Props) {
         setScoreTarget={setScoreTarget}
         source={source}
         setSource={setSource}
+        hardMode={hardMode}
+        setHardMode={setHardMode}
         onChooseAi={() => setPhase('aiChat')}
         onChooseWrite={() => setPhase('questionEditor')}
         onBack={onExit}
@@ -262,6 +266,8 @@ function SetupScreen({
   setScoreTarget,
   source,
   setSource,
+  hardMode,
+  setHardMode,
   onChooseAi,
   onChooseWrite,
   onBack,
@@ -274,6 +280,8 @@ function SetupScreen({
   setScoreTarget: (n: number) => void
   source: 'write' | 'ai'
   setSource: (s: 'write' | 'ai') => void
+  hardMode: boolean
+  setHardMode: (h: boolean) => void
   onChooseAi: () => void
   onChooseWrite: () => void
   onBack: () => void
@@ -335,11 +343,57 @@ function SetupScreen({
           <NumStepper
             label="coin target"
             value={scoreTarget}
-            min={5}
-            step={5}
+            min={1}
+            step={1}
             onChange={setScoreTarget}
           />
         )}
+
+        <button
+          onClick={() => setHardMode(!hardMode)}
+          className="w-full rounded-2xl p-3 text-left flex items-center gap-3"
+          style={{
+            background: hardMode
+              ? 'rgba(251,113,133,0.10)'
+              : 'rgba(255,255,255,0.04)',
+            border: hardMode
+              ? '2px solid rgba(251,113,133,0.45)'
+              : '2px solid rgba(74,222,128,0.18)',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            color: '#fff',
+            transition: 'all 0.15s',
+          }}
+        >
+          <div
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 6,
+              flexShrink: 0,
+              background: hardMode ? '#fb7185' : 'transparent',
+              border: hardMode
+                ? '2px solid #fb7185'
+                : '2px solid rgba(255,255,255,0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#450a0a',
+              fontWeight: 900,
+              fontSize: '0.95rem',
+            }}
+          >
+            {hardMode ? '✓' : ''}
+          </div>
+          <div>
+            <div className="font-extrabold text-sm">
+              Hard mode — lose 1 coin per wrong answer
+            </div>
+            <div className="fg-sub text-[11px] mt-0.5">
+              Coins still can't go below 0.
+            </div>
+          </div>
+        </button>
       </div>
 
       <div className="fg-panel p-5">
