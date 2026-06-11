@@ -454,7 +454,19 @@ export default function CrackedHeist() {
 
         {state.phase === 'countdown' && <Countdown value={state.countdownValue} />}
 
-        {state.phase === 'playing' && me && (
+        {/* Late-joiner password pick: phase is already 'playing' but this player
+            hasn't locked one yet. Reuse the same picker; the host already
+            triggered countdown long ago so we don't dispatch beginCountdown. */}
+        {state.phase === 'playing' && me && !me.passwordLocked && (
+          <PasswordPickPhase
+            options={me.passwordOptions ?? []}
+            onLock={(pw) => {
+              dispatch({ type: 'lockPassword', playerId: me.id, password: pw })
+            }}
+          />
+        )}
+
+        {state.phase === 'playing' && me && me.passwordLocked && (
           <div className="max-w-5xl mx-auto space-y-4">
             <HUD state={state} me={me} onViewOptions={() => setFlow({ kind: 'viewOptions' })} />
 

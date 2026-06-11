@@ -324,11 +324,6 @@ function useSupabaseGame() {
       for (const opt of p.passwordOptions) taken.add(opt)
     }
     const options = makePasswordOptions(3, taken)
-    // For late joiners, lock a random password automatically so they can play.
-    const isLateJoin = !isPreGame
-    const autoLockedPassword = isLateJoin
-      ? options[Math.floor(Math.random() * options.length)] ?? ''
-      : ''
     hostApply({
       type: 'addPlayer',
       player: {
@@ -344,8 +339,8 @@ function useSupabaseGame() {
         hacksDone: 0,
         spiesDone: 0,
         passwordsGuessed: 0,
-        password: autoLockedPassword,
-        passwordLocked: isLateJoin,
+        password: '',
+        passwordLocked: false,
         passwordOptions: options,
         alive: true,
         currentQuestion: null,
