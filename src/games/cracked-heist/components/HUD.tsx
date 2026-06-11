@@ -5,10 +5,38 @@ import AvatarSvg from './AvatarSvg'
 interface Props {
   state: RoomState
   me: Player
+  isHost?: boolean
   onViewOptions?: () => void
+  onEndGame?: () => void
 }
 
-export default function HUD({ state, me, onViewOptions }: Props) {
+function FinishFlagIcon({ size = 16 }: { size?: number }) {
+  // Pole + flag with a 2x3 checker pattern. Stroke is the current color.
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <line x1={5} y1={3} x2={5} y2={21} />
+      <rect x={5} y={4} width={14} height={9} fill="currentColor" stroke="none" opacity={0.18} />
+      <rect x={5} y={4} width={14} height={9} />
+      <rect x={5} y={4} width={4.66} height={3} fill="currentColor" stroke="none" />
+      <rect x={14.33} y={4} width={4.66} height={3} fill="currentColor" stroke="none" />
+      <rect x={9.66} y={7} width={4.66} height={3} fill="currentColor" stroke="none" />
+      <rect x={5} y={10} width={4.66} height={3} fill="currentColor" stroke="none" />
+      <rect x={14.33} y={10} width={4.66} height={3} fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+export default function HUD({ state, me, isHost, onViewOptions, onEndGame }: Props) {
   const total = state.settings.roundSeconds
   const remaining = state.timeLeft
   const danger = remaining <= 10
@@ -91,6 +119,26 @@ export default function HUD({ state, me, onViewOptions }: Props) {
             {me.tokens}
           </div>
         </div>
+        {isHost && onEndGame && (
+          <button
+            onClick={onEndGame}
+            title="End game early"
+            aria-label="End game early"
+            className="flex items-center justify-center rounded-full"
+            style={{
+              width: 38,
+              height: 38,
+              background: 'rgba(251,113,133,0.10)',
+              border: '1.5px solid rgba(251,113,133,0.45)',
+              color: '#fb7185',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              fontFamily: 'inherit',
+            }}
+          >
+            <FinishFlagIcon size={18} />
+          </button>
+        )}
       </div>
     </div>
   )

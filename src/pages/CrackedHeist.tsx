@@ -55,6 +55,7 @@ type ActionFlow =
   | { kind: 'phishing' }
   | { kind: 'risk' }
   | { kind: 'viewOptions' }
+  | { kind: 'endConfirm' }
 
 type EntryRole = 'host' | 'player' | null
 
@@ -484,7 +485,13 @@ export default function CrackedHeist() {
 
         {state.phase === 'playing' && me && me.passwordLocked && (
           <div className="max-w-5xl mx-auto space-y-4">
-            <HUD state={state} me={me} onViewOptions={() => setFlow({ kind: 'viewOptions' })} />
+            <HUD
+              state={state}
+              me={me}
+              isHost={isHost}
+              onViewOptions={() => setFlow({ kind: 'viewOptions' })}
+              onEndGame={() => setFlow({ kind: 'endConfirm' })}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
               <div className="space-y-4">
@@ -655,6 +662,46 @@ export default function CrackedHeist() {
             }}
           />
         )}
+      </Modal>
+
+      <Modal open={flow.kind === 'endConfirm'} onClose={close} title="End the game now?">
+        <div className="space-y-4">
+          <p className="fg-sub text-sm">
+            This ends the round for everyone right now. The leaderboard will
+            show whoever has the most coins as the winner.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={close}
+              className="fg-btn flex-1"
+              style={{
+                padding: '12px 16px',
+                fontSize: '0.95rem',
+                background: 'rgba(255,255,255,0.06)',
+                border: '1.5px solid rgba(255,255,255,0.18)',
+                color: '#d1d5db',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                dispatch({ type: 'endGame' })
+                close()
+              }}
+              className="fg-btn flex-1"
+              style={{
+                padding: '12px 16px',
+                fontSize: '0.95rem',
+                background: 'linear-gradient(135deg,#fb7185,#e11d48)',
+                border: '1.5px solid rgba(251,113,133,0.6)',
+                color: '#fff',
+              }}
+            >
+              End the game
+            </button>
+          </div>
+        </div>
       </Modal>
 
       <Modal open={flow.kind === 'viewOptions'} onClose={close} title="Your game options">
