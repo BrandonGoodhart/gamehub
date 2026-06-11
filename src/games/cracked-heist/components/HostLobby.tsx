@@ -195,14 +195,32 @@ export default function HostLobby({
               </div>
             </div>
           </button>
-          <motion.button
-            whileHover={{ y: -2 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={onStart}
-            className="fg-btn fg-btn-grad"
-          >
-            Start Game →
-          </motion.button>
+          {(() => {
+            const canStart = state.players.length >= 2
+            return (
+              <>
+                <motion.button
+                  whileHover={canStart ? { y: -2 } : {}}
+                  whileTap={canStart ? { scale: 0.97 } : {}}
+                  onClick={canStart ? onStart : undefined}
+                  disabled={!canStart}
+                  className="fg-btn fg-btn-grad"
+                  style={{
+                    opacity: canStart ? 1 : 0.45,
+                    cursor: canStart ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  {canStart ? 'Start Game →' : 'Need at least 2 players'}
+                </motion.button>
+                {!canStart && (
+                  <p className="fg-sub text-[11px] text-center">
+                    Share the code with a friend, or tap "Add 3 practice bots".
+                    For solo, use Study Mode on the home screen.
+                  </p>
+                )}
+              </>
+            )
+          })()}
           <button
             onClick={onAddBots}
             className="fg-btn w-full"
