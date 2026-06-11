@@ -442,27 +442,29 @@ export default function CrackedHeist() {
         {state.phase === 'pickPassword' && me && (
           <PasswordPickPhase
             options={me.passwordOptions ?? []}
-            onLock={(pw) => {
+            lockedPassword={me.passwordLocked ? me.password : null}
+            players={state.players}
+            isHost={isHost}
+            showStart
+            onLock={(pw) =>
               dispatch({ type: 'lockPassword', playerId: me.id, password: pw })
-              // Only the host can trigger countdown — everyone else just waits.
-              if (isHost) {
-                dispatch({ type: 'beginCountdown' })
-              }
-            }}
+            }
+            onStart={() => dispatch({ type: 'beginCountdown' })}
           />
         )}
 
         {state.phase === 'countdown' && <Countdown value={state.countdownValue} />}
 
         {/* Late-joiner password pick: phase is already 'playing' but this player
-            hasn't locked one yet. Reuse the same picker; the host already
-            triggered countdown long ago so we don't dispatch beginCountdown. */}
+            hasn't locked one yet. Reuse the same picker without the host's
+            Start button — the round is already running. */}
         {state.phase === 'playing' && me && !me.passwordLocked && (
           <PasswordPickPhase
             options={me.passwordOptions ?? []}
-            onLock={(pw) => {
+            lockedPassword={null}
+            onLock={(pw) =>
               dispatch({ type: 'lockPassword', playerId: me.id, password: pw })
-            }}
+            }
           />
         )}
 
