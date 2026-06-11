@@ -9,7 +9,8 @@ interface Props {
   onDone: (topic: string, questions: Question[]) => void
 }
 
-type Step = 'askTopic' | 'askCount' | 'generating' | 'success' | 'error'
+type Step = 'askTopic' | 'askCount' | 'askDifficulty' | 'generating' | 'success' | 'error'
+export type Difficulty = 'easy' | 'medium' | 'hard'
 
 interface Bubble {
   id: number
@@ -20,8 +21,15 @@ interface Bubble {
 const STEP_LABELS: { key: Step; label: string }[] = [
   { key: 'askTopic', label: '1. Topic' },
   { key: 'askCount', label: '2. How many' },
-  { key: 'generating', label: '3. Writing' },
-  { key: 'success', label: '4. Edit' },
+  { key: 'askDifficulty', label: '3. Difficulty' },
+  { key: 'generating', label: '4. Writing' },
+  { key: 'success', label: '5. Edit' },
+]
+
+const DIFFICULTY_OPTIONS: { key: Difficulty; label: string; desc: string }[] = [
+  { key: 'easy', label: 'Easy', desc: 'Anyone can get most of them.' },
+  { key: 'medium', label: 'Medium', desc: 'Mix of warm-up and tougher.' },
+  { key: 'hard', label: 'Hard', desc: 'Stretch the best students.' },
 ]
 
 export default function AiChat({ onDone }: Props) {
@@ -35,6 +43,7 @@ export default function AiChat({ onDone }: Props) {
   const [step, setStep] = useState<Step>('askTopic')
   const [topic, setTopic] = useState('')
   const [count, setCount] = useState(10)
+  const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [generated, setGenerated] = useState<Question[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -69,18 +78,31 @@ export default function AiChat({ onDone }: Props) {
   function submitCount() {
     addBubble('me', `${count} please.`)
     setTimeout(() => {
-      addBubble('bot', `Writing ${count} questions about "${topic}" — give me a few seconds…`)
-      setStep('generating')
-      generate()
+      addBubble(
+        'bot',
+        'How tough should they be? Easy is warm-up level, hard stretches the strongest student.',
+      )
+      setStep('askDifficulty')
     }, 350)
   }
 
-  async function generate() {
+  function submitDifficulty(d: Difficulty) {
+    setDifficulty(d)
+    const label = DIFFICULTY_OPTIONS.find((o) => o.key === d)?.label ?? d
+    addBubble('me', `${label}.`)
+    setTimeout(() => {
+      addBubble('bot', `Writing ${count} ${label.toLowerCase()} questions about "${topic}" — give me a few seconds…`)
+      setStep('generating')
+      generate(d)
+    }, 350)
+  }
+
+  async function generate(d: Difficulty = difficulty) {
     try {
       const resp = await fetch('/api/generate-questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category: topic.trim(), count }),
+        body: JSON.stringify({ category: topic.trim(), count, difficulty: d }),
       })
       const text = await resp.text()
       let data: { questions?: Question[]; error?: string } = {}
@@ -345,6 +367,38 @@ export default function AiChat({ onDone }: Props) {
             </button>
             <p className="fg-sub text-[11px] mt-2 text-left">
               Minimum 4, max 40. More questions take longer (usually under 15 seconds).
+            </p>
+          </>
+        )}
+
+        {step === 'askDifficulty' && (
+          <>
+            <div className="fg-lbl mb-2 text-left">pick the difficulty</div>
+            <div className="grid grid-cols-1 gap-2">
+              {DIFFICULTY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => submitDifficulty(opt.key)}
+                  className="rounded-xl text-left"
+                  style={{
+                    padding: '12px 14px',
+                    cursor: 'pointer',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '2px solid rgba(74,222,128,0.18)',
+                    color: '#fff',
+                    fontFamily: 'inherit',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <div className="font-extrabold text-sm" style={{ color: '#86efac' }}>
+                    {opt.label}
+                  </div>
+                  <div className="fg-sub text-[11px] mt-0.5">{opt.desc}</div>
+                </button>
+              ))}
+            </div>
+            <p className="fg-sub text-[11px] mt-2 text-left">
+              Tap one to start writing.
             </p>
           </>
         )}

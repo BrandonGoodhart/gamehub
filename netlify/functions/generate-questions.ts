@@ -172,7 +172,7 @@ export const handler: Handler = async (
     })
   }
 
-  let body: { category?: string; count?: number }
+  let body: { category?: string; count?: number; difficulty?: string }
   try {
     body = JSON.parse(event.body || '{}')
   } catch {
@@ -181,9 +181,21 @@ export const handler: Handler = async (
 
   const category = (body.category || '').toString().trim().slice(0, 120)
   const count = Math.max(4, Math.min(40, Number(body.count) || 10))
+  const rawDifficulty = (body.difficulty || 'medium').toString().toLowerCase()
+  const difficulty: 'easy' | 'medium' | 'hard' =
+    rawDifficulty === 'easy' || rawDifficulty === 'hard' ? rawDifficulty : 'medium'
   if (!category) {
     return json(400, { error: 'Category is required' })
   }
+
+  const difficultyInstruction = {
+    easy:
+      'Target an EASY mix: 80% warm-up questions an attentive student in the youngest grade band could answer with confidence, 20% core difficulty. Avoid stretch questions.',
+    medium:
+      'Target a MEDIUM mix: 50% warm-up, 35% core difficulty, 15% stretch. This is the default classroom calibration described in the system prompt.',
+    hard:
+      'Target a HARD mix: 20% warm-up, 40% core, 40% stretch. Lean on details the strongest student in the room would know but everyone else can plausibly miss. Never compromise on factual accuracy to make a question harder.',
+  }[difficulty]
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(apiKey)}`
   const payload = {
@@ -194,7 +206,9 @@ export const handler: Handler = async (
       {
         role: 'user',
         parts: [
-          { text: `Topic: ${category}\nNumber of questions: ${count}\n\nReturn the JSON object now.` },
+          {
+            text: `Topic: ${category}\nNumber of questions: ${count}\nDifficulty: ${difficulty}\n\n${difficultyInstruction}\n\nReturn the JSON object now.`,
+          },
         ],
       },
     ],

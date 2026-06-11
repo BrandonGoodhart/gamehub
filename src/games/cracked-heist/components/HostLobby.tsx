@@ -46,6 +46,38 @@ export default function HostLobby({
         <div className="fg-sub text-xs mt-3">
           students enter this on their device
         </div>
+
+        <div
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 mt-3 rounded-full"
+          style={{
+            background: 'rgba(74,222,128,0.08)',
+            border: '1px solid rgba(74,222,128,0.25)',
+          }}
+        >
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#86efac"
+            strokeWidth={2.4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <circle cx={12} cy={8} r={4} />
+            <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+          </svg>
+          <span
+            className="font-extrabold text-sm tabular-nums"
+            style={{ color: '#86efac' }}
+          >
+            {state.players.length}
+          </span>
+          <span className="fg-sub text-xs">
+            {state.players.length === 1 ? 'player' : 'players'}
+          </span>
+        </div>
       </motion.div>
 
       <div className="fg-panel p-5">
