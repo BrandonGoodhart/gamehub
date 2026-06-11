@@ -3,11 +3,8 @@ import { motion } from 'framer-motion'
 import type { Question, Settings } from '../types'
 import AiChat from './AiChat'
 
-const LENGTH_OPTIONS: { mins: number; label: string }[] = [
-  { mins: 2, label: '2 min' },
-  { mins: 7, label: '7 min' },
-  { mins: 12, label: '12 min' },
-]
+const MIN_MIN = 2
+const STEP_MIN = 5
 
 interface Props {
   settings: Settings
@@ -48,36 +45,81 @@ export default function CategoryPick({
 
       <div className="fg-panel p-5">
         <div className="fg-lbl mb-3 text-center">game length</div>
-        <div className="grid grid-cols-3 gap-2">
-          {LENGTH_OPTIONS.map(({ mins, label }) => {
-            const secs = mins * 60
-            const active = settings.roundSeconds === secs
-            return (
-              <button
-                key={mins}
-                onClick={() => onChange({ roundSeconds: secs })}
-                className="rounded-xl font-extrabold tabular-nums"
-                style={{
-                  padding: '14px 0',
-                  fontSize: '1rem',
-                  cursor: 'pointer',
-                  background: active
-                    ? 'linear-gradient(135deg,#4ade80,#a3e635)'
-                    : 'rgba(255,255,255,0.06)',
-                  color: active ? '#052e16' : '#d1d5db',
-                  border: active
-                    ? '2px solid #86efac'
-                    : '2px solid rgba(74,222,128,0.18)',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {label}
-              </button>
-            )
-          })}
+        <div
+          className="flex items-stretch rounded-2xl overflow-hidden"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '2px solid rgba(74,222,128,0.35)',
+          }}
+        >
+          <button
+            aria-label="decrease"
+            onClick={() => {
+              const curMin = Math.max(MIN_MIN, Math.round(settings.roundSeconds / 60))
+              const nextMin = Math.max(MIN_MIN, curMin - STEP_MIN)
+              onChange({ roundSeconds: nextMin * 60 })
+            }}
+            disabled={Math.round(settings.roundSeconds / 60) <= MIN_MIN}
+            style={{
+              width: 72,
+              fontSize: '2rem',
+              fontWeight: 900,
+              background:
+                Math.round(settings.roundSeconds / 60) <= MIN_MIN
+                  ? 'rgba(255,255,255,0.02)'
+                  : 'rgba(74,222,128,0.18)',
+              color:
+                Math.round(settings.roundSeconds / 60) <= MIN_MIN
+                  ? 'rgba(255,255,255,0.2)'
+                  : '#4ade80',
+              border: 'none',
+              cursor:
+                Math.round(settings.roundSeconds / 60) <= MIN_MIN
+                  ? 'not-allowed'
+                  : 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            −
+          </button>
+          <div
+            className="flex-1 flex flex-col items-center justify-center tabular-nums"
+            style={{ padding: '14px 0' }}
+          >
+            <div
+              style={{
+                color: '#ffffff',
+                fontSize: '2rem',
+                fontWeight: 900,
+                lineHeight: 1,
+              }}
+            >
+              {Math.round(settings.roundSeconds / 60)}
+            </div>
+            <div className="fg-sub text-[11px] mt-1">minutes</div>
+          </div>
+          <button
+            aria-label="increase"
+            onClick={() => {
+              const curMin = Math.max(MIN_MIN, Math.round(settings.roundSeconds / 60))
+              onChange({ roundSeconds: (curMin + STEP_MIN) * 60 })
+            }}
+            style={{
+              width: 72,
+              fontSize: '2rem',
+              fontWeight: 900,
+              background: 'rgba(74,222,128,0.18)',
+              color: '#4ade80',
+              border: 'none',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            +
+          </button>
         </div>
         <p className="fg-sub text-[11px] mt-3 text-center">
-          One round per game. Everyone starts at 0 coins and 0 tokens.
+          Starts at 7 minutes. ± 5 minutes each tap. Minimum 2.
         </p>
       </div>
 
