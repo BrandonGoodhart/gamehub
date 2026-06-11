@@ -3,8 +3,9 @@ import { motion } from 'framer-motion'
 import type { Question, Settings } from '../types'
 import AiChat from './AiChat'
 
-const MIN_MIN = 2
-const STEP_MIN = 5
+const QUICK_PICKS = [2, 7, 12] as const
+const STEPPER_MIN = 5
+const STEPPER_STEP = 5
 
 interface Props {
   settings: Settings
@@ -22,6 +23,24 @@ export default function CategoryPick({
   onBack,
 }: Props) {
   const [aiOpen, setAiOpen] = useState(false)
+
+  const currentMin = Math.round(settings.roundSeconds / 60)
+  // Stepper has its own value so jumping to a chip doesn't lose your place
+  const [stepperMin, setStepperMin] = useState(() =>
+    (QUICK_PICKS as readonly number[]).includes(currentMin)
+      ? STEPPER_MIN
+      : Math.max(STEPPER_MIN, currentMin),
+  )
+
+  function setStepper(nextStepperMin: number) {
+    const clamped = Math.max(STEPPER_MIN, nextStepperMin)
+    setStepperMin(clamped)
+    onChange({ roundSeconds: clamped * 60 })
+  }
+
+  function pickQuick(mins: number) {
+    onChange({ roundSeconds: mins * 60 })
+  }
 
   return (
     <div className="max-w-[440px] mx-auto w-full space-y-5 pb-5">
@@ -44,9 +63,28 @@ export default function CategoryPick({
       </div>
 
       <div className="fg-panel p-5">
-        <div className="fg-lbl mb-3 text-center">game length</div>
+        <div className="fg-lbl mb-2 text-center">game length</div>
+
+        {/* Current total at the top */}
+        <div className="text-center mb-3">
+          <span
+            className="font-extrabold tabular-nums"
+            style={{
+              color: '#ffffff',
+              fontSize: '2.4rem',
+              lineHeight: 1,
+            }}
+          >
+            {currentMin}
+          </span>
+          <span className="fg-sub ml-2" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+            min
+          </span>
+        </div>
+
+        {/* Stepper: multiples of 5, default 5 */}
         <div
-          className="flex items-stretch rounded-2xl overflow-hidden"
+          className="flex items-stretch rounded-2xl overflow-hidden mb-3"
           style={{
             background: 'rgba(255,255,255,0.04)',
             border: '2px solid rgba(74,222,128,0.35)',
@@ -54,59 +92,50 @@ export default function CategoryPick({
         >
           <button
             aria-label="decrease"
-            onClick={() => {
-              const curMin = Math.max(MIN_MIN, Math.round(settings.roundSeconds / 60))
-              const nextMin = Math.max(MIN_MIN, curMin - STEP_MIN)
-              onChange({ roundSeconds: nextMin * 60 })
-            }}
-            disabled={Math.round(settings.roundSeconds / 60) <= MIN_MIN}
+            onClick={() => setStepper(stepperMin - STEPPER_STEP)}
+            disabled={stepperMin <= STEPPER_MIN}
             style={{
-              width: 72,
-              fontSize: '2rem',
+              width: 64,
+              fontSize: '1.6rem',
               fontWeight: 900,
               background:
-                Math.round(settings.roundSeconds / 60) <= MIN_MIN
+                stepperMin <= STEPPER_MIN
                   ? 'rgba(255,255,255,0.02)'
                   : 'rgba(74,222,128,0.18)',
               color:
-                Math.round(settings.roundSeconds / 60) <= MIN_MIN
-                  ? 'rgba(255,255,255,0.2)'
-                  : '#4ade80',
+                stepperMin <= STEPPER_MIN ? 'rgba(255,255,255,0.2)' : '#4ade80',
               border: 'none',
-              cursor:
-                Math.round(settings.roundSeconds / 60) <= MIN_MIN
-                  ? 'not-allowed'
-                  : 'pointer',
+              cursor: stepperMin <= STEPPER_MIN ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit',
             }}
           >
             −
           </button>
-          <div
-            className="flex-1 flex flex-col items-center justify-center tabular-nums"
-            style={{ padding: '14px 0' }}
+          <button
+            onClick={() => setStepper(stepperMin)}
+            className="flex-1 tabular-nums"
+            style={{
+              fontSize: '1.1rem',
+              fontWeight: 800,
+              background:
+                currentMin === stepperMin
+                  ? 'rgba(74,222,128,0.18)'
+                  : 'transparent',
+              color: currentMin === stepperMin ? '#86efac' : '#d1d5db',
+              border: 'none',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              padding: '14px 0',
+            }}
           >
-            <div
-              style={{
-                color: '#ffffff',
-                fontSize: '2rem',
-                fontWeight: 900,
-                lineHeight: 1,
-              }}
-            >
-              {Math.round(settings.roundSeconds / 60)}
-            </div>
-            <div className="fg-sub text-[11px] mt-1">minutes</div>
-          </div>
+            {stepperMin} min
+          </button>
           <button
             aria-label="increase"
-            onClick={() => {
-              const curMin = Math.max(MIN_MIN, Math.round(settings.roundSeconds / 60))
-              onChange({ roundSeconds: (curMin + STEP_MIN) * 60 })
-            }}
+            onClick={() => setStepper(stepperMin + STEPPER_STEP)}
             style={{
-              width: 72,
-              fontSize: '2rem',
+              width: 64,
+              fontSize: '1.6rem',
               fontWeight: 900,
               background: 'rgba(74,222,128,0.18)',
               color: '#4ade80',
@@ -118,8 +147,38 @@ export default function CategoryPick({
             +
           </button>
         </div>
+
+        {/* Quick-pick chips */}
+        <div className="grid grid-cols-3 gap-2">
+          {QUICK_PICKS.map((mins) => {
+            const active = currentMin === mins
+            return (
+              <button
+                key={mins}
+                onClick={() => pickQuick(mins)}
+                className="rounded-xl font-extrabold tabular-nums"
+                style={{
+                  padding: '12px 0',
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  background: active
+                    ? 'linear-gradient(135deg,#4ade80,#a3e635)'
+                    : 'rgba(255,255,255,0.06)',
+                  color: active ? '#052e16' : '#d1d5db',
+                  border: active
+                    ? '2px solid #86efac'
+                    : '2px solid rgba(74,222,128,0.18)',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {mins} min
+              </button>
+            )
+          })}
+        </div>
+
         <p className="fg-sub text-[11px] mt-3 text-center">
-          Starts at 7 minutes. ± 5 minutes each tap. Minimum 2.
+          Stepper goes 5, 10, 15, 20… Quick picks are 2, 7, or 12.
         </p>
       </div>
 
