@@ -10,28 +10,54 @@ interface Props {
   onEndGame?: () => void
 }
 
-function FinishFlagIcon({ size = 16 }: { size?: number }) {
-  // Pole + flag with a 2x3 checker pattern. Stroke is the current color.
+function FinishFlagIcon({ size = 18 }: { size?: number }) {
+  // Black-and-white checkered racing flag with a small black pole.
+  // 4x3 checker grid so it reads at small sizes.
+  const cell = 4
+  const rows = 3
+  const cols = 4
+  const flagX = 6
+  const flagY = 4
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <line x1={5} y1={3} x2={5} y2={21} />
-      <rect x={5} y={4} width={14} height={9} fill="currentColor" stroke="none" opacity={0.18} />
-      <rect x={5} y={4} width={14} height={9} />
-      <rect x={5} y={4} width={4.66} height={3} fill="currentColor" stroke="none" />
-      <rect x={14.33} y={4} width={4.66} height={3} fill="currentColor" stroke="none" />
-      <rect x={9.66} y={7} width={4.66} height={3} fill="currentColor" stroke="none" />
-      <rect x={5} y={10} width={4.66} height={3} fill="currentColor" stroke="none" />
-      <rect x={14.33} y={10} width={4.66} height={3} fill="currentColor" stroke="none" />
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      {/* pole */}
+      <line
+        x1={5}
+        y1={3}
+        x2={5}
+        y2={21}
+        stroke="#111"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+      {/* flag background (white) */}
+      <rect x={flagX} y={flagY} width={cols * cell} height={rows * cell} fill="#fff" />
+      {/* checker squares */}
+      {Array.from({ length: rows }).map((_, r) =>
+        Array.from({ length: cols }).map((_, c) => {
+          if ((r + c) % 2 !== 0) return null
+          return (
+            <rect
+              key={`${r}-${c}`}
+              x={flagX + c * cell}
+              y={flagY + r * cell}
+              width={cell}
+              height={cell}
+              fill="#111"
+            />
+          )
+        }),
+      )}
+      {/* flag outline */}
+      <rect
+        x={flagX}
+        y={flagY}
+        width={cols * cell}
+        height={rows * cell}
+        fill="none"
+        stroke="#111"
+        strokeWidth={1}
+      />
     </svg>
   )
 }
@@ -126,17 +152,17 @@ export default function HUD({ state, me, isHost, onViewOptions, onEndGame }: Pro
             aria-label="End game early"
             className="flex items-center justify-center rounded-full"
             style={{
-              width: 38,
-              height: 38,
-              background: 'rgba(251,113,133,0.10)',
-              border: '1.5px solid rgba(251,113,133,0.45)',
-              color: '#fb7185',
+              width: 34,
+              height: 34,
+              background: 'rgba(255,255,255,0.92)',
+              border: '1.5px solid rgba(255,255,255,0.5)',
               cursor: 'pointer',
               transition: 'all 0.15s',
               fontFamily: 'inherit',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
             }}
           >
-            <FinishFlagIcon size={18} />
+            <FinishFlagIcon size={20} />
           </button>
         )}
       </div>
