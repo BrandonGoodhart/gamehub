@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import { usePartyGame } from '../games/cracked-heist/usePartyGame'
 import AmbientBg from '../games/cracked-heist/components/AmbientBg'
 import LoadingSplash from '../games/cracked-heist/components/LoadingSplash'
@@ -194,6 +195,45 @@ export default function CrackedHeist() {
   const close = () => setFlow({ kind: 'none' })
 
   // --- Render guards for pre-connection states ---
+
+  // Kicked — full-screen takeover. Comes before any other guards so it
+  // shows up even though `me` is no longer in state.players.
+  if (wasKicked) {
+    return (
+      <div className="fg-root min-h-screen relative">
+        <AmbientBg onHelp={() => setHelpOpen(true)} />
+        <div className="relative z-10 max-w-md mx-auto p-6 mt-24 text-center">
+          <motion.div
+            initial={{ scale: 0.85, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 280, damping: 18 }}
+            className="fg-panel fg-panel-lg"
+            style={{
+              border: '2px solid rgba(251,113,133,0.45)',
+              background: 'rgba(251,113,133,0.06)',
+            }}
+          >
+            <div
+              className="fg-lbl mb-2"
+              style={{ color: '#fda4af' }}
+            >
+              removed from room
+            </div>
+            <h2 className="fg-display text-3xl mb-3" style={{ color: '#fda4af' }}>
+              You've been kicked
+            </h2>
+            <p className="fg-sub text-sm mb-5">
+              The host removed you from this room. You can host your own game or
+              join a different room with a new code.
+            </p>
+            <button onClick={dismissKicked} className="fg-btn fg-btn-grad w-full">
+              Back to start
+            </button>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
 
   if (localPhase === 'loading') {
     return (
@@ -667,17 +707,6 @@ export default function CrackedHeist() {
         </div>
       </Modal>
 
-      <Modal open={wasKicked} onClose={dismissKicked} title="You've been kicked">
-        <div className="space-y-3 text-center">
-          <p className="fg-sub text-sm">
-            The host removed you from this room. You can host your own game or
-            join a different room with a new code.
-          </p>
-          <button onClick={dismissKicked} className="fg-btn fg-btn-grad w-full">
-            Back to start
-          </button>
-        </div>
-      </Modal>
     </div>
   )
 }
