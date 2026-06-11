@@ -327,6 +327,7 @@ export default function CrackedHeist() {
 
   // localPhase is 'connecting' or 'connected'
   if (!state || !connected || !me) {
+    const isNameError = !!error && error.toLowerCase().includes('name')
     return (
       <div className="fg-root min-h-screen relative">
         <AmbientBg onHelp={() => setHelpOpen(true)} />
@@ -334,7 +335,7 @@ export default function CrackedHeist() {
           <div className="fg-panel fg-panel-lg">
             <h2 className="fg-display text-2xl mb-2">
               {error
-                ? error.toLowerCase().includes('name')
+                ? isNameError
                   ? 'Name taken'
                   : 'Connection problem'
                 : 'Connecting…'}
@@ -342,9 +343,22 @@ export default function CrackedHeist() {
             <p className="fg-sub text-sm">
               {error ?? `Room ${pendingCode}. Joining as ${pendingHandle || 'player'}.`}
             </p>
-            <button onClick={backToStart} className="fg-back mt-5 w-full justify-center">
-              Back
-            </button>
+            {isNameError && role === 'player' ? (
+              <button
+                onClick={() => {
+                  disconnect()
+                  setPendingHandle('')
+                  setLocalPhase('pickAvatar')
+                }}
+                className="fg-btn fg-btn-grad mt-5 w-full"
+              >
+                Pick a different name
+              </button>
+            ) : (
+              <button onClick={backToStart} className="fg-back mt-5 w-full justify-center">
+                Back
+              </button>
+            )}
           </div>
         </div>
       </div>
