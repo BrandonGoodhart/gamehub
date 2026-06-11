@@ -8,9 +8,17 @@ interface Props {
   onKick: (id: string) => void
   onStart: () => void
   onAddBots: () => void
+  onToggleLateJoin: () => void
 }
 
-export default function HostLobby({ state, isHost, onKick, onStart, onAddBots }: Props) {
+export default function HostLobby({
+  state,
+  isHost,
+  onKick,
+  onStart,
+  onAddBots,
+  onToggleLateJoin,
+}: Props) {
   return (
     <div className="max-w-[440px] mx-auto w-full space-y-5 pb-5">
       <div className="text-center">
@@ -111,6 +119,50 @@ export default function HostLobby({ state, isHost, onKick, onStart, onAddBots }:
 
       {isHost ? (
         <div className="space-y-2">
+          <button
+            onClick={onToggleLateJoin}
+            className="w-full rounded-2xl p-3 text-left flex items-center gap-3"
+            style={{
+              background: state.settings.allowLateJoin
+                ? 'rgba(74,222,128,0.10)'
+                : 'rgba(255,255,255,0.04)',
+              border: state.settings.allowLateJoin
+                ? '2px solid rgba(74,222,128,0.45)'
+                : '2px solid rgba(255,255,255,0.15)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              color: '#fff',
+              transition: 'all 0.15s',
+            }}
+          >
+            <div
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 6,
+                flexShrink: 0,
+                background: state.settings.allowLateJoin ? '#4ade80' : 'transparent',
+                border: state.settings.allowLateJoin
+                  ? '2px solid #4ade80'
+                  : '2px solid rgba(255,255,255,0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#052e16',
+                fontWeight: 900,
+                fontSize: '0.95rem',
+              }}
+            >
+              {state.settings.allowLateJoin ? '✓' : ''}
+            </div>
+            <div>
+              <div className="font-extrabold text-sm">Allow players to join late</div>
+              <div className="fg-sub text-[11px] mt-0.5">
+                People with the code can join after the game starts. They get a
+                random password and 0 coins.
+              </div>
+            </div>
+          </button>
           <motion.button
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.97 }}

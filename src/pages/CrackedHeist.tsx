@@ -363,6 +363,12 @@ export default function CrackedHeist() {
             isHost={isHost}
             onKick={(id) => dispatch({ type: 'kickPlayer', id })}
             onAddBots={() => dispatch({ type: 'addBots', count: 3 })}
+            onToggleLateJoin={() =>
+              dispatch({
+                type: 'setSettings',
+                patch: { allowLateJoin: !state.settings.allowLateJoin },
+              })
+            }
             onStart={() => dispatch({ type: 'setPhase', phase: 'pickCategory' })}
           />
         )}

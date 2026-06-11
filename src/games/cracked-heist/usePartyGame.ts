@@ -284,6 +284,26 @@ function useSupabaseGame() {
       broadcast({ type: 'WELCOME', meId: msg.clientId, state: hostStateRef.current })
       return
     }
+    const phase = hostStateRef.current.phase
+    const isPreGame = phase === 'hostLobby' || phase === 'pickCategory' || phase === 'customQuestions' || phase === 'pregame' || phase === 'pickPassword'
+    const allowLateJoin = hostStateRef.current.settings.allowLateJoin
+    // Block late-joiners once the game is past setup unless the host allowed it
+    if (!isPreGame && !allowLateJoin) {
+      broadcast({
+        type: 'ERROR',
+        toClientId: msg.clientId,
+        message: 'The host already started this game and late joining is turned off.',
+      })
+      return
+    }
+    if (phase === 'gameOver') {
+      broadcast({
+        type: 'ERROR',
+        toClientId: msg.clientId,
+        message: 'This game is over. Ask the host to start a new one.',
+      })
+      return
+    }
     // Reject duplicate handles
     const wantedLower = msg.handle.trim().toLowerCase()
     const dup = hostStateRef.current.players.some(
@@ -303,6 +323,12 @@ function useSupabaseGame() {
       if (p.password) taken.add(p.password)
       for (const opt of p.passwordOptions) taken.add(opt)
     }
+    const options = makePasswordOptions(3, taken)
+    // For late joiners, lock a random password automatically so they can play.
+    const isLateJoin = !isPreGame
+    const autoLockedPassword = isLateJoin
+      ? options[Math.floor(Math.random() * options.length)] ?? ''
+      : ''
     hostApply({
       type: 'addPlayer',
       player: {
@@ -318,9 +344,9 @@ function useSupabaseGame() {
         hacksDone: 0,
         spiesDone: 0,
         passwordsGuessed: 0,
-        password: '',
-        passwordLocked: false,
-        passwordOptions: makePasswordOptions(3, taken),
+        password: autoLockedPassword,
+        passwordLocked: isLateJoin,
+        passwordOptions: options,
         alive: true,
         currentQuestion: null,
         questionQueue: [],

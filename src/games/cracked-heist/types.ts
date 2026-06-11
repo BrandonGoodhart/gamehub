@@ -63,6 +63,7 @@ export interface EventLog {
 
 export interface Settings {
   roundSeconds: number
+  allowLateJoin: boolean
   costs: { spy: number; hack: number; password: number }
   rewards: {
     spyCatch: number

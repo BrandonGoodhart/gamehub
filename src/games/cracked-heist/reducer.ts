@@ -16,6 +16,7 @@ function allTakenPasswords(state: RoomState): Set<string> {
 
 export const DEFAULT_SETTINGS: Settings = {
   roundSeconds: 420,
+  allowLateJoin: false,
   costs: { spy: 10, hack: 15, password: 15 },
   rewards: {
     spyCatch: 5,
