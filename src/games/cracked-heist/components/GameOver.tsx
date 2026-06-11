@@ -84,21 +84,12 @@ export default function GameOver({ state, meId, onReset }: Props) {
     }
   }
 
-  if (!me) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="max-w-xl mx-auto fg-panel fg-panel-lg text-center"
-      >
-        <div className="fg-display text-3xl mb-4">Game Over</div>
-        <p className="fg-sub text-sm">Loading your stats…</p>
-      </motion.div>
-    )
-  }
-
-  const headerLabel =
-    myRank === 1
+  // For observer hosts, me is undefined. We skip the "your stats" section and
+  // use neutral game-over framing instead of "You Won!".
+  const isObserver = !me
+  const headerLabel = isObserver
+    ? 'game over'
+    : myRank === 1
       ? isMultiwayTieAtTop
         ? `tied for first place`
         : 'first place'
@@ -112,15 +103,17 @@ export default function GameOver({ state, meId, onReset }: Props) {
             : 'third place'
           : 'game over'
 
-  const bigTitle = youWon
-    ? isMultiwayTieAtTop
-      ? "It's a Tie!"
-      : 'You Won!'
-    : myRank === 2
-      ? 'Silver!'
-      : myRank === 3
-        ? 'Bronze!'
-        : 'Cracked.'
+  const bigTitle = isObserver
+    ? 'Game Over'
+    : youWon
+      ? isMultiwayTieAtTop
+        ? "It's a Tie!"
+        : 'You Won!'
+      : myRank === 2
+        ? 'Silver!'
+        : myRank === 3
+          ? 'Bronze!'
+          : 'Cracked.'
 
   return (
     <motion.div
@@ -182,18 +175,22 @@ export default function GameOver({ state, meId, onReset }: Props) {
         </p>
       </div>
 
-      <div className="fg-lbl mb-2">your stats</div>
-      <div className="grid grid-cols-3 gap-2 mb-5">
-        <Stat label="coins" value={`${me.coins}c`} />
-        <Stat label="hacks" value={me.hacksDone} />
-        <Stat label="caught" value={me.caughtCount} />
-        <Stat label="spies" value={me.spiesDone} />
-        <Stat label="cracks" value={me.passwordsGuessed} />
-        <Stat
-          label="rank"
-          value={`${tiedCount(myRank) > 1 ? 'T' : ''}#${myRank}`}
-        />
-      </div>
+      {me && (
+        <>
+          <div className="fg-lbl mb-2">your stats</div>
+          <div className="grid grid-cols-3 gap-2 mb-5">
+            <Stat label="coins" value={`${me.coins}c`} />
+            <Stat label="hacks" value={me.hacksDone} />
+            <Stat label="caught" value={me.caughtCount} />
+            <Stat label="spies" value={me.spiesDone} />
+            <Stat label="cracks" value={me.passwordsGuessed} />
+            <Stat
+              label="rank"
+              value={`${tiedCount(myRank) > 1 ? 'T' : ''}#${myRank}`}
+            />
+          </div>
+        </>
+      )}
 
       <div className="fg-lbl mb-2">final standings</div>
       <div className="space-y-1.5 mb-5">

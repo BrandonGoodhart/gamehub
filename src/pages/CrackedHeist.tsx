@@ -26,6 +26,10 @@ import RiskGame from '../games/cracked-heist/components/RiskGame'
 import PasswordReveal from '../games/cracked-heist/components/PasswordReveal'
 import GameOver from '../games/cracked-heist/components/GameOver'
 import StudyMode from '../games/cracked-heist/components/StudyMode'
+import HostModeChoice from '../games/cracked-heist/components/HostModeChoice'
+import ObserverView from '../games/cracked-heist/components/ObserverView'
+import { DEFAULT_SETTINGS } from '../games/cracked-heist/reducer'
+import type { Settings } from '../games/cracked-heist/types'
 import { initAudio, startMusic } from '../games/cracked-heist/audio'
 import { defaultAvatar } from '../games/cracked-heist/avatar'
 import { getShared } from '../games/cracked-heist/shareStore'
@@ -43,6 +47,9 @@ type LocalPhase =
   | 'connected'
   | 'viewShared'
   | 'studyMode'
+  | 'hostQuestionSetup'
+  | 'hostCustomQuestions'
+  | 'hostModeChoice'
 
 // Pull in saved mute state at module load
 initAudio()
@@ -71,10 +78,19 @@ export default function CrackedHeist() {
   const [wasKicked, setWasKicked] = useState(false)
   const sawSelfInRoomRef = useRef(false)
 
+  // Host pre-room setup state — gathered before the room is opened so the
+  // host can pick "play" or "observe" with everything already in place.
+  const [hostSettings, setHostSettings] = useState<Settings>(DEFAULT_SETTINGS)
+  const [hostCategory, setHostCategory] = useState<string | null>(null)
+  const [hostCustomQuestions, setHostCustomQuestions] = useState<Question[] | null>(null)
+  const [, setHostObserveMode] = useState(false)
+
   const { state, meId, connected, error, connect, disconnect, dispatch } = usePartyGame()
 
   const me = state?.players.find((p) => p.id === meId)
-  const isHost = !!me?.isHost
+  // Observer host: I'm the host but don't have a player entry.
+  const isObserverHost = !!state && !!meId && meId === state.hostId && !me
+  const isHost = !!me?.isHost || isObserverHost
   const others = useMemo(
     () => (state?.players ?? []).filter((p) => p.id !== meId && p.alive),
     [state?.players, meId],
@@ -103,7 +119,13 @@ export default function CrackedHeist() {
   function startHostFlow() {
     setRole('host')
     setPendingCode(generateRoomCode())
-    setLocalPhase('pickAvatar')
+    // Reset host setup buffers
+    setHostSettings({ ...DEFAULT_SETTINGS })
+    setHostCategory(null)
+    setHostCustomQuestions(null)
+    setEditorSeed(null)
+    setHostObserveMode(false)
+    setLocalPhase('hostQuestionSetup')
   }
 
   function startJoinFlow() {
@@ -115,6 +137,7 @@ export default function CrackedHeist() {
     setRole(null)
     setPendingCode('')
     setPendingHandle('')
+    setHostObserveMode(false)
     disconnect()
     setLocalPhase('start')
   }
@@ -122,11 +145,39 @@ export default function CrackedHeist() {
   function onAvatarConfirmed(handle: string, avatar: Avatar) {
     setPendingHandle(handle)
     setLocalPhase('connecting')
+    if (role === 'host') {
+      connect({
+        code: pendingCode,
+        handle,
+        avatar,
+        isHost: true,
+        initialSettings: hostSettings,
+        initialCategory: hostCategory,
+        initialCustomQuestions: hostCustomQuestions,
+      })
+    } else {
+      connect({
+        code: pendingCode,
+        handle,
+        avatar,
+        isHost: false,
+      })
+    }
+    setLocalPhase('connected')
+  }
+
+  function connectAsObserver() {
+    setHostObserveMode(true)
+    setLocalPhase('connecting')
     connect({
       code: pendingCode,
-      handle,
-      avatar,
-      isHost: role === 'host',
+      handle: 'Host',
+      avatar: defaultAvatar(),
+      isHost: true,
+      isObserver: true,
+      initialSettings: hostSettings,
+      initialCategory: hostCategory,
+      initialCustomQuestions: hostCustomQuestions,
     })
     setLocalPhase('connected')
   }
@@ -289,8 +340,75 @@ export default function CrackedHeist() {
         <div className="relative z-10 px-4 py-5">
           <AvatarPicker
             initialAvatar={defaultAvatar()}
-            onBack={backToStart}
+            onBack={role === 'host' ? () => setLocalPhase('hostModeChoice') : backToStart}
             onConfirm={onAvatarConfirmed}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (localPhase === 'hostQuestionSetup') {
+    return (
+      <div className="fg-root min-h-screen relative">
+        <AmbientBg onHelp={() => setHelpOpen(true)} />
+        <div className="relative z-10 px-4 py-5">
+          <CategoryPick
+            settings={hostSettings}
+            onChange={(patch) => setHostSettings({ ...hostSettings, ...patch })}
+            onBack={backToStart}
+            onCustom={() => {
+              setEditorSeed(null)
+              setLocalPhase('hostCustomQuestions')
+            }}
+            onAiGenerated={(topic, qs) => {
+              setEditorSeed({ topic, questions: qs })
+              setLocalPhase('hostCustomQuestions')
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (localPhase === 'hostCustomQuestions') {
+    return (
+      <div className="fg-root min-h-screen relative">
+        <AmbientBg onHelp={() => setHelpOpen(true)} />
+        <div className="relative z-10 px-4 py-5">
+          <CustomQuestions
+            initial={editorSeed?.questions ?? hostCustomQuestions ?? undefined}
+            title={editorSeed ? `AI: ${editorSeed.topic}` : 'Custom Questions'}
+            subtitle={
+              editorSeed
+                ? 'AI made these. Edit anything you want, then continue.'
+                : 'Minimum 4. No maximum. Tap the correct choice to mark it.'
+            }
+            onBack={() => {
+              setEditorSeed(null)
+              setLocalPhase('hostQuestionSetup')
+            }}
+            onSubmit={(qs) => {
+              setHostCustomQuestions(qs)
+              setHostCategory(editorSeed?.topic ?? 'Custom')
+              setEditorSeed(null)
+              setLocalPhase('hostModeChoice')
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (localPhase === 'hostModeChoice') {
+    return (
+      <div className="fg-root min-h-screen relative">
+        <AmbientBg onHelp={() => setHelpOpen(true)} />
+        <div className="relative z-10 px-4 py-5">
+          <HostModeChoice
+            onPlay={() => setLocalPhase('pickAvatar')}
+            onObserve={connectAsObserver}
+            onBack={() => setLocalPhase('hostCustomQuestions')}
           />
         </div>
       </div>
@@ -327,7 +445,7 @@ export default function CrackedHeist() {
   }
 
   // localPhase is 'connecting' or 'connected'
-  if (!state || !connected || !me) {
+  if (!state || !connected || (!me && !isObserverHost)) {
     const isNameError = !!error && error.toLowerCase().includes('name')
     return (
       <div className="fg-root min-h-screen relative">
@@ -384,7 +502,7 @@ export default function CrackedHeist() {
                 patch: { allowLateJoin: !state.settings.allowLateJoin },
               })
             }
-            onStart={() => dispatch({ type: 'setPhase', phase: 'pickCategory' })}
+            onStart={() => dispatch({ type: 'setPhase', phase: 'pickPassword' })}
           />
         )}
 
@@ -453,6 +571,25 @@ export default function CrackedHeist() {
               detail="Almost ready — the host is about to start."
             />
           ))}
+
+        {state.phase === 'pickPassword' && isObserverHost && (
+          <PasswordPickPhase
+            options={[]}
+            lockedPassword={'observer'}
+            players={state.players}
+            isHost
+            showStart
+            onLock={() => {}}
+            onStart={() => dispatch({ type: 'beginCountdown' })}
+          />
+        )}
+
+        {state.phase === 'playing' && isObserverHost && (
+          <ObserverView
+            state={state}
+            onEndGame={() => setFlow({ kind: 'endConfirm' })}
+          />
+        )}
 
         {state.phase === 'pickPassword' && me && (
           <PasswordPickPhase
@@ -544,7 +681,10 @@ export default function CrackedHeist() {
         )}
       </div>
 
-      {/* Modals */}
+      {/* Modals — player-action modals only apply when there's a `me` (i.e.
+          you're playing, not observing). Observer hosts have no actions so
+          these blocks are skipped entirely for them. */}
+      {me && (<>
       <Modal
         open={flow.kind === 'spyPick' || flow.kind === 'spyResult'}
         onClose={close}
@@ -663,6 +803,7 @@ export default function CrackedHeist() {
           />
         )}
       </Modal>
+      </>)}
 
       <Modal open={flow.kind === 'endConfirm'} onClose={close} title="End the game now?">
         <div className="space-y-4">

@@ -39,6 +39,15 @@ interface ConnectArgs {
   handle: string
   avatar: Avatar
   isHost: boolean
+  // Host-only: when true, the host doesn't join as a player. They get a
+  // controller-style view (leaderboard + event feed) instead.
+  isObserver?: boolean
+  // Host-only: seed the room with pre-configured settings and questions so
+  // joiners arrive after the host has already chosen the round length and
+  // written the trivia.
+  initialSettings?: Partial<import('./types').Settings>
+  initialCategory?: string | null
+  initialCustomQuestions?: Question[] | null
 }
 
 interface WireJoin {
@@ -100,11 +109,32 @@ function useLocalGame() {
     stateRef.current = state
   }, [state])
 
-  const connect = useCallback(({ code, handle, avatar, isHost }: ConnectArgs) => {
+  const connect = useCallback((args: ConnectArgs) => {
+    const { code, handle, avatar, isHost, isObserver, initialSettings, initialCategory, initialCustomQuestions } = args
     const id = uid()
     dispatchLocal({ type: '__SET_ME_ID', id })
     dispatchLocal({ type: '__SET_CODE', code })
+    if (initialSettings) {
+      dispatchLocal({ type: 'setSettings', patch: initialSettings })
+    }
+    if (initialCustomQuestions && initialCustomQuestions.length > 0) {
+      dispatchLocal({
+        type: 'pickCustomQuestions',
+        questions: initialCustomQuestions,
+        label: initialCategory ?? 'Custom',
+      })
+    } else if (initialCategory) {
+      dispatchLocal({ type: 'pickCategory', category: initialCategory })
+    }
     setTimeout(() => {
+      // Observer host: don't create a player entry for them.
+      if (isHost && isObserver) {
+        // Track host id by adding a phantom player? No — just leave players
+        // empty for local mode. (Local mode is mostly used for offline solo;
+        // observer mode is meaningful only with real joiners.)
+        setConnected(true)
+        return
+      }
       dispatchLocal({
         type: 'addPlayer',
         player: {
@@ -378,7 +408,8 @@ function useSupabaseGame() {
     hostApply(a)
   }
 
-  const connect = useCallback(({ code, handle, avatar, isHost }: ConnectArgs) => {
+  const connect = useCallback((args: ConnectArgs) => {
+    const { code, handle, avatar, isHost, isObserver, initialSettings, initialCategory, initialCustomQuestions } = args
     setError(null)
     const sb = getSupabase()
     if (!sb) {
@@ -394,14 +425,20 @@ function useSupabaseGame() {
     codeRef.current = code.toUpperCase()
 
     if (isHost) {
-      // Seed authoritative state
+      // Seed authoritative state with any pre-set settings/questions from the
+      // host's offline setup, plus the host's own player entry unless they're
+      // observing.
       const initial = makeInitialState(codeRef.current)
       const taken = new Set<string>()
-      const seeded: RoomState = {
-        ...initial,
-        hostId: myClientId,
-        players: [
-          {
+      const seededSettings = { ...initial.settings, ...(initialSettings ?? {}) }
+      const seededCategory = initialCategory ?? null
+      const seededCustomQuestions =
+        initialCustomQuestions && initialCustomQuestions.length > 0
+          ? initialCustomQuestions
+          : null
+      const hostPlayer = isObserver
+        ? null
+        : {
             id: myClientId,
             handle: handle.trim(),
             isHuman: true,
@@ -421,8 +458,14 @@ function useSupabaseGame() {
             currentQuestion: null,
             questionQueue: [],
             questionTick: 0,
-          },
-        ],
+          }
+      const seeded: RoomState = {
+        ...initial,
+        hostId: myClientId,
+        settings: seededSettings,
+        category: seededCategory,
+        customQuestions: seededCustomQuestions,
+        players: hostPlayer ? [hostPlayer] : [],
       }
       hostStateRef.current = seeded
       joinedClientIdsRef.current = new Set([myClientId])
