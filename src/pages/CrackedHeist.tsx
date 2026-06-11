@@ -25,6 +25,7 @@ import PhishingGame from '../games/cracked-heist/components/PhishingGame'
 import RiskGame from '../games/cracked-heist/components/RiskGame'
 import PasswordReveal from '../games/cracked-heist/components/PasswordReveal'
 import GameOver from '../games/cracked-heist/components/GameOver'
+import StudyMode from '../games/cracked-heist/components/StudyMode'
 import { initAudio, startMusic } from '../games/cracked-heist/audio'
 import { defaultAvatar } from '../games/cracked-heist/avatar'
 import { getShared } from '../games/cracked-heist/shareStore'
@@ -41,6 +42,7 @@ type LocalPhase =
   | 'connecting'
   | 'connected'
   | 'viewShared'
+  | 'studyMode'
 
 // Pull in saved mute state at module load
 initAudio()
@@ -254,6 +256,7 @@ export default function CrackedHeist() {
           <StartScreen
             onHost={startHostFlow}
             onJoin={startJoinFlow}
+            onStudy={() => setLocalPhase('studyMode')}
             onViewShared={viewShared}
           />
         </div>
@@ -288,6 +291,17 @@ export default function CrackedHeist() {
             onBack={backToStart}
             onConfirm={onAvatarConfirmed}
           />
+        </div>
+      </div>
+    )
+  }
+
+  if (localPhase === 'studyMode') {
+    return (
+      <div className="fg-root min-h-screen relative">
+        <AmbientBg onHelp={() => setHelpOpen(true)} />
+        <div className="relative z-10 px-4 py-5">
+          <StudyMode onExit={() => setLocalPhase('start')} />
         </div>
       </div>
     )

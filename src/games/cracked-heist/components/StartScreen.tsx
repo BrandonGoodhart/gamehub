@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 interface Props {
   onHost: () => void
   onJoin: () => void
+  onStudy: () => void
   onViewShared: (code: string) => void
 }
 
@@ -21,7 +22,7 @@ function extractCode(input: string): string {
   return t
 }
 
-export default function StartScreen({ onHost, onJoin, onViewShared }: Props) {
+export default function StartScreen({ onHost, onJoin, onStudy, onViewShared }: Props) {
   const [shareCode, setShareCode] = useState('')
   const [shareError, setShareError] = useState('')
 
@@ -70,6 +71,31 @@ export default function StartScreen({ onHost, onJoin, onViewShared }: Props) {
           onClick={onJoin}
         />
       </div>
+
+      <motion.button
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.28 }}
+        whileHover={{ y: -2 }}
+        whileTap={{ scale: 0.97 }}
+        onClick={onStudy}
+        className="fg-mode-card mt-4"
+        style={{
+          maxWidth: 380,
+          margin: '16px auto 0',
+          padding: '18px 16px',
+          display: 'block',
+          width: '100%',
+        }}
+      >
+        <div className="fg-lbl mb-1">solo</div>
+        <div className="text-white" style={{ fontWeight: 800, fontSize: '1.05rem' }}>
+          Study Mode
+        </div>
+        <div className="fg-sub mt-1" style={{ fontSize: '0.74rem' }}>
+          Practice on your own. Answer questions for coins. No actions, no joining.
+        </div>
+      </motion.button>
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}
