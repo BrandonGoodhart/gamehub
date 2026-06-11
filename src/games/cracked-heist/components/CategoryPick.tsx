@@ -1,11 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { Question, Settings } from '../types'
 import AiChat from './AiChat'
 
 const QUICK_PICKS = [2, 7, 12] as const
-const STEPPER_MIN = 5
-const STEPPER_STEP = 5
+const MIN_MIN = 2
 
 interface Props {
   settings: Settings
@@ -25,21 +24,25 @@ export default function CategoryPick({
   const [aiOpen, setAiOpen] = useState(false)
 
   const currentMin = Math.round(settings.roundSeconds / 60)
-  // Stepper has its own value so jumping to a chip doesn't lose your place
-  const [stepperMin, setStepperMin] = useState(() =>
-    (QUICK_PICKS as readonly number[]).includes(currentMin)
-      ? STEPPER_MIN
-      : Math.max(STEPPER_MIN, currentMin),
-  )
+  // Draft string so partial input ("", "1" while typing "12") stays on-screen
+  const [draft, setDraft] = useState(String(currentMin))
+  useEffect(() => {
+    setDraft(String(currentMin))
+  }, [currentMin])
 
-  function setStepper(nextStepperMin: number) {
-    const clamped = Math.max(STEPPER_MIN, nextStepperMin)
-    setStepperMin(clamped)
+  function commitMinutes(mins: number) {
+    const clamped = Math.max(MIN_MIN, Math.floor(mins))
     onChange({ roundSeconds: clamped * 60 })
   }
 
-  function pickQuick(mins: number) {
-    onChange({ roundSeconds: mins * 60 })
+  function commitDraft() {
+    const parsed = parseInt(draft, 10)
+    if (Number.isFinite(parsed) && parsed >= MIN_MIN) {
+      commitMinutes(parsed)
+    } else {
+      // Revert if invalid
+      setDraft(String(currentMin))
+    }
   }
 
   return (
@@ -63,26 +66,9 @@ export default function CategoryPick({
       </div>
 
       <div className="fg-panel p-5">
-        <div className="fg-lbl mb-2 text-center">game length</div>
+        <div className="fg-lbl mb-3 text-center">game length</div>
 
-        {/* Current total at the top */}
-        <div className="text-center mb-3">
-          <span
-            className="font-extrabold tabular-nums"
-            style={{
-              color: '#ffffff',
-              fontSize: '2.4rem',
-              lineHeight: 1,
-            }}
-          >
-            {currentMin}
-          </span>
-          <span className="fg-sub ml-2" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
-            min
-          </span>
-        </div>
-
-        {/* Stepper: multiples of 5, default 5 */}
+        {/* Stepper with editable number in the middle */}
         <div
           className="flex items-stretch rounded-2xl overflow-hidden mb-3"
           style={{
@@ -92,50 +78,63 @@ export default function CategoryPick({
         >
           <button
             aria-label="decrease"
-            onClick={() => setStepper(stepperMin - STEPPER_STEP)}
-            disabled={stepperMin <= STEPPER_MIN}
+            onClick={() => commitMinutes(currentMin - 1)}
+            disabled={currentMin <= MIN_MIN}
             style={{
               width: 64,
-              fontSize: '1.6rem',
+              fontSize: '2rem',
               fontWeight: 900,
               background:
-                stepperMin <= STEPPER_MIN
+                currentMin <= MIN_MIN
                   ? 'rgba(255,255,255,0.02)'
                   : 'rgba(74,222,128,0.18)',
-              color:
-                stepperMin <= STEPPER_MIN ? 'rgba(255,255,255,0.2)' : '#4ade80',
+              color: currentMin <= MIN_MIN ? 'rgba(255,255,255,0.2)' : '#4ade80',
               border: 'none',
-              cursor: stepperMin <= STEPPER_MIN ? 'not-allowed' : 'pointer',
+              cursor: currentMin <= MIN_MIN ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit',
             }}
           >
             −
           </button>
-          <button
-            onClick={() => setStepper(stepperMin)}
-            className="flex-1 tabular-nums"
-            style={{
-              fontSize: '1.1rem',
-              fontWeight: 800,
-              background:
-                currentMin === stepperMin
-                  ? 'rgba(74,222,128,0.18)'
-                  : 'transparent',
-              color: currentMin === stepperMin ? '#86efac' : '#d1d5db',
-              border: 'none',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              padding: '14px 0',
-            }}
+          <div
+            className="flex-1 flex items-baseline justify-center"
+            style={{ padding: '14px 0', gap: 6 }}
           >
-            {stepperMin} min
-          </button>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ''))}
+              onBlur={commitDraft}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+              }}
+              onFocus={(e) => e.currentTarget.select()}
+              className="tabular-nums"
+              style={{
+                width: 80,
+                textAlign: 'center',
+                background: 'transparent',
+                border: 'none',
+                color: '#ffffff',
+                fontSize: '2rem',
+                fontWeight: 900,
+                fontFamily: 'inherit',
+                outline: 'none',
+                padding: 0,
+              }}
+            />
+            <span className="fg-sub" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+              min
+            </span>
+          </div>
           <button
             aria-label="increase"
-            onClick={() => setStepper(stepperMin + STEPPER_STEP)}
+            onClick={() => commitMinutes(currentMin + 1)}
             style={{
               width: 64,
-              fontSize: '1.6rem',
+              fontSize: '2rem',
               fontWeight: 900,
               background: 'rgba(74,222,128,0.18)',
               color: '#4ade80',
@@ -155,7 +154,7 @@ export default function CategoryPick({
             return (
               <button
                 key={mins}
-                onClick={() => pickQuick(mins)}
+                onClick={() => commitMinutes(mins)}
                 className="rounded-xl font-extrabold tabular-nums"
                 style={{
                   padding: '12px 0',
@@ -178,7 +177,7 @@ export default function CategoryPick({
         </div>
 
         <p className="fg-sub text-[11px] mt-3 text-center">
-          Stepper goes 5, 10, 15, 20… Quick picks are 2, 7, or 12.
+          Tap a quick pick, type the number, or use ± to step by 1 minute. Minimum 2 minutes.
         </p>
       </div>
 
