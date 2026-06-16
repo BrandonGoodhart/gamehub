@@ -157,7 +157,8 @@ export default function Poker() {
 
     // Reset bets for new round
     const players = state.players.map((p) => ({ ...p, currentBet: 0 }))
-    let { deckIndex, communityCards, deck } = state
+    const { deck } = state
+    let { deckIndex, communityCards } = state
 
     if (nextPhase === 'flop') {
       communityCards = [deck[deckIndex], deck[deckIndex + 1], deck[deckIndex + 2]]

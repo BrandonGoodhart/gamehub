@@ -14,6 +14,12 @@ const games = [
     path: '/poker',
     emoji: '$',
   },
+  {
+    title: 'Buzzered',
+    description: 'A board of 3D buzzer buttons that play sound effects',
+    path: '/buzzered',
+    emoji: '!',
+  },
 ]
 
 export default function Home() {
