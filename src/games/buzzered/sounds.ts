@@ -20,6 +20,25 @@ function getCtx(): AudioContext {
   return ctx
 }
 
+// iOS/Safari keeps audio muted until a buffer is played inside a real user
+// gesture. On the first press we resume the context and fire a one-sample
+// silent buffer to unlock output; without this, iPads stay silent.
+let unlocked = false
+function unlock(c: AudioContext): void {
+  if (unlocked) return
+  unlocked = true
+  const buf = c.createBuffer(1, 1, 22050)
+  const src = c.createBufferSource()
+  src.buffer = buf
+  src.connect(c.destination)
+  try {
+    src.start(0)
+  } catch {
+    /* some browsers throw on a zero-length start; safe to ignore */
+  }
+  void c.resume()
+}
+
 function getMaster(c: AudioContext): DynamicsCompressorNode {
   if (!master) {
     master = c.createDynamicsCompressor()
@@ -419,6 +438,9 @@ export function playSound(id: string): void {
   const def = SOUNDS.find((s) => s.id === id)
   if (!def) return
   const c = getCtx()
+  unlock(c)
   const dest = getMaster(c)
-  def.play(c, dest, c.currentTime)
+  // Small lead so events aren't scheduled in the past while the context is
+  // still spinning up from a suspended state (another iOS quirk).
+  def.play(c, dest, c.currentTime + 0.02)
 }
