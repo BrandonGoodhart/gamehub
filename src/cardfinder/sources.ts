@@ -66,9 +66,11 @@ export function certVerificationLink(q: CardQuery): FindLink | null {
   }
 }
 
-/** All the marketplaces we can point the user to for this card. */
-export function buildFindLinks(q: CardQuery): FindLink[] {
-  const term = buildSearchTerm(q)
+/** All the marketplaces we can point the user to for this card.
+ *  Pass `termOverride` to use an AI-refined search phrase instead of the
+ *  one built from the raw form fields. */
+export function buildFindLinks(q: CardQuery, termOverride?: string): FindLink[] {
+  const term = termOverride?.trim() || buildSearchTerm(q)
   const t = enc(term)
   const links: FindLink[] = []
 

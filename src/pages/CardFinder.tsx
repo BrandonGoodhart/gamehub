@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router'
 import {
@@ -8,6 +8,14 @@ import {
   type CardQuery,
   type Grader,
 } from '../cardfinder/sources'
+import {
+  parseCardText,
+  identifyCardImage,
+  estimateValue,
+  fileToBase64,
+  type AiCard,
+  type AiValue,
+} from '../cardfinder/ai'
 
 const GRADERS: Grader[] = ['PSA', 'BGS', 'SGC']
 
@@ -22,6 +30,13 @@ export default function CardFinder() {
   const [location, setLocation] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
+  // AI state
+  const [aiCard, setAiCard] = useState<AiCard | null>(null)
+  const [aiValue, setAiValue] = useState<AiValue | null>(null)
+  const [aiBusy, setAiBusy] = useState<null | 'parse' | 'identify' | 'estimate'>(null)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
   const query: CardQuery = useMemo(
     () => ({
       description,
@@ -33,17 +48,81 @@ export default function CardFinder() {
     [description, mode, grader, cert, grade, location],
   )
 
-  const term = buildSearchTerm(query)
+  const effectiveTerm = aiCard?.searchTerm?.trim() || buildSearchTerm(query)
   const certLink = certVerificationLink(query)
-  const links = buildFindLinks(query)
+  const links = buildFindLinks(query, aiCard?.searchTerm)
 
   const canSearch = description.trim().length > 0 || (mode === 'graded' && cert.trim().length > 0)
+
+  const applyAiCard = (card: AiCard) => {
+    setAiCard(card)
+    setAiValue(null)
+    // Fold the AI's reading back into the description so the form reflects it.
+    const rebuilt = [card.year, card.set, card.player, card.cardNumber && `#${card.cardNumber}`, card.variation]
+      .filter(Boolean)
+      .join(' ')
+      .trim()
+    if (rebuilt) setDescription(rebuilt)
+  }
+
+  const handleSmartParse = async () => {
+    if (!description.trim()) return
+    setAiError(null)
+    setAiBusy('parse')
+    try {
+      applyAiCard(await parseCardText(description))
+      setSubmitted(true)
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : 'Something went wrong.')
+    } finally {
+      setAiBusy(null)
+    }
+  }
+
+  const handlePhoto = async (file: File | undefined) => {
+    if (!file) return
+    setAiError(null)
+    setAiBusy('identify')
+    try {
+      const { mimeType, data } = await fileToBase64(file)
+      applyAiCard(await identifyCardImage(mimeType, data))
+      setSubmitted(true)
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : 'Could not identify the card.')
+    } finally {
+      setAiBusy(null)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const handleEstimate = async () => {
+    setAiError(null)
+    setAiBusy('estimate')
+    try {
+      setAiValue(await estimateValue(aiCard ?? {}, effectiveTerm))
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : 'Could not estimate value.')
+    } finally {
+      setAiBusy(null)
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSearch) return
     setSubmitted(true)
   }
+
+  const aiFields: Array<[string, string | undefined]> = aiCard
+    ? [
+        ['Player', aiCard.player],
+        ['Year', aiCard.year],
+        ['Set', aiCard.set],
+        ['Card #', aiCard.cardNumber],
+        ['Variation', aiCard.variation],
+        ['Sport', aiCard.sport],
+      ]
+    : []
 
   return (
     <div className="flex flex-col items-center min-h-screen px-4 py-10 gap-8">
@@ -68,8 +147,8 @@ export default function CardFinder() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        Enter a graded slab’s cert number, or just describe the card. We’ll jump you
-        straight to live listings on eBay, Amazon, and shops near you.
+        Snap a photo, enter a graded slab’s cert number, or just describe the card. We’ll
+        jump you straight to live listings on eBay, Amazon, and shops near you.
       </motion.p>
 
       <motion.form
@@ -79,6 +158,25 @@ export default function CardFinder() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
+        {/* Photo identify */}
+        <div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handlePhoto(e.target.files?.[0])}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={aiBusy !== null}
+            className="w-full py-3 rounded-xl font-medium border border-dashed border-purple-500/50 text-purple-200 hover:bg-purple-950/30 transition-colors disabled:opacity-40 cursor-pointer"
+          >
+            {aiBusy === 'identify' ? 'Identifying…' : '📷 Identify a card from a photo'}
+          </button>
+        </div>
+
         {/* Mode toggle */}
         <div className="grid grid-cols-2 gap-2 p-1 bg-gray-950 rounded-xl">
           {(['raw', 'graded'] as Mode[]).map((m) => (
@@ -87,9 +185,7 @@ export default function CardFinder() {
               type="button"
               onClick={() => setMode(m)}
               className={`py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                mode === m
-                  ? 'bg-purple-600 text-white'
-                  : 'text-gray-400 hover:text-white'
+                mode === m ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'
               }`}
             >
               {m === 'raw' ? 'Describe a card' : 'Graded (cert #)'}
@@ -147,14 +243,28 @@ export default function CardFinder() {
           <span className="text-gray-400">
             {mode === 'graded' ? 'Describe the card (helps find listings)' : 'Describe the card'}
           </span>
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="2018 Topps Chrome Shohei Ohtani RC #150"
-            className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 focus:border-purple-500 outline-none"
-          />
+          <div className="flex gap-2">
+            <input
+              value={description}
+              onChange={(e) => {
+                setDescription(e.target.value)
+                setAiCard(null)
+              }}
+              placeholder="that shiny Ohtani rookie from a few years back"
+              className="flex-1 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 focus:border-purple-500 outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleSmartParse}
+              disabled={!description.trim() || aiBusy !== null}
+              className="px-3 rounded-lg text-sm font-medium bg-purple-600/80 hover:bg-purple-600 transition-colors disabled:opacity-40 whitespace-nowrap cursor-pointer"
+            >
+              {aiBusy === 'parse' ? '…' : '✨ Smart'}
+            </button>
+          </div>
           <span className="text-xs text-gray-600">
-            Tip: include year, set, player, and card number for the best matches.
+            Tip: “✨ Smart” lets AI turn plain English into the exact card. Or include year, set,
+            player, and number yourself.
           </span>
         </label>
 
@@ -176,6 +286,12 @@ export default function CardFinder() {
         >
           Find this card
         </button>
+
+        {aiError && (
+          <p className="text-sm text-amber-400/90 bg-amber-950/30 border border-amber-500/30 rounded-lg px-3 py-2">
+            {aiError}
+          </p>
+        )}
       </motion.form>
 
       {/* Results */}
@@ -187,10 +303,60 @@ export default function CardFinder() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
           >
-            {term && (
-              <p className="text-sm text-gray-500">
-                Searching for <span className="text-gray-300 font-medium">“{term}”</span>
-              </p>
+            {/* What the AI understood */}
+            {aiCard && aiFields.some(([, v]) => v) && (
+              <div className="p-5 rounded-2xl bg-purple-950/30 border border-purple-500/30">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h3 className="font-semibold text-purple-200">✨ Here’s what I found</h3>
+                  {aiCard.confidence && (
+                    <span className="text-xs text-purple-300/80 uppercase tracking-wide">
+                      {aiCard.confidence} confidence
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {aiFields
+                    .filter(([, v]) => v)
+                    .map(([k, v]) => (
+                      <span key={k} className="text-xs bg-gray-900 border border-gray-700 rounded-full px-3 py-1">
+                        <span className="text-gray-500">{k}:</span> <span className="text-gray-200">{v}</span>
+                      </span>
+                    ))}
+                </div>
+                {aiCard.notes && <p className="text-sm text-gray-400 mt-3">{aiCard.notes}</p>}
+              </div>
+            )}
+
+            {effectiveTerm && (
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-sm text-gray-500">
+                  Searching for <span className="text-gray-300 font-medium">“{effectiveTerm}”</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={handleEstimate}
+                  disabled={aiBusy !== null}
+                  className="text-sm px-3 py-1.5 rounded-lg border border-gray-700 hover:border-purple-500/60 text-gray-300 transition-colors disabled:opacity-40 cursor-pointer"
+                >
+                  {aiBusy === 'estimate' ? 'Estimating…' : '💰 Estimate value'}
+                </button>
+              </div>
+            )}
+
+            {/* Value estimate */}
+            {aiValue && (
+              <div className="p-5 rounded-2xl bg-gray-900 border border-emerald-500/30">
+                <div className="flex items-baseline gap-2">
+                  <h3 className="font-semibold text-emerald-300">Rough value</h3>
+                  <span className="text-2xl font-bold text-emerald-200">
+                    ${Math.round(aiValue.lowUsd ?? 0)}–${Math.round(aiValue.highUsd ?? 0)}
+                  </span>
+                </div>
+                {aiValue.rationale && <p className="text-sm text-gray-400 mt-1">{aiValue.rationale}</p>}
+                <p className="text-xs text-gray-600 mt-2">
+                  AI estimate only — check the eBay sold comps below for real numbers.
+                </p>
+              </div>
             )}
 
             {certLink && (

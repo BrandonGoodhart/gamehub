@@ -2,6 +2,25 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Card Finder (AI features)
+
+The **Card Finder** page (`/card-finder`) finds any sports card across eBay, Amazon,
+Google Shopping, COMC, and local shops. It also has optional AI features powered by
+Google Gemini — identify a card from a photo, turn plain-English descriptions into
+precise searches, and get a rough value estimate.
+
+The AI runs in a Netlify serverless function (`netlify/functions/gemini.mts`) so the
+API key stays server-side. To enable it:
+
+1. Get a Gemini API key at https://aistudio.google.com/apikey
+2. **Production:** in the Netlify dashboard, set `GEMINI_API_KEY` under
+   Site settings → Environment variables.
+3. **Local dev:** copy `.env.example` to `.env`, add your key, and run `netlify dev`
+   (the function isn't served by plain `vite dev`).
+
+Without a key, the non-AI search (cert lookup + marketplace deep-links) works fully;
+the AI buttons just show a friendly "not configured" message.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
