@@ -20,6 +20,12 @@ const games = [
     path: '/buzzered',
     emoji: '!',
   },
+  {
+    title: 'Card Finder',
+    description: 'Find any sports card on eBay, Amazon, or shops near you',
+    path: '/card-finder',
+    emoji: '?',
+  },
 ]
 
 export default function Home() {

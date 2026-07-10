@@ -3,6 +3,7 @@ import Home from './pages/Home'
 import TicTacToe from './pages/TicTacToe'
 import Poker from './pages/Poker'
 import Buzzered from './pages/Buzzered'
+import CardFinder from './pages/CardFinder'
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/tic-tac-toe" element={<TicTacToe />} />
         <Route path="/poker" element={<Poker />} />
         <Route path="/buzzered" element={<Buzzered />} />
+        <Route path="/card-finder" element={<CardFinder />} />
       </Routes>
     </div>
   )
