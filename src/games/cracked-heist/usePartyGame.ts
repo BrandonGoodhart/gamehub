@@ -317,6 +317,11 @@ function useSupabaseGame() {
   // Joiner-only: fires if we don't get a WELCOME back within a few seconds,
   // meaning the room code doesn't correspond to a live host.
   const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Joiner-only: if the user confirms their avatar before the peek channel
+  // finishes subscribing, we stash the join info here and send it as soon
+  // as the channel is ready.
+  const pendingJoinRef = useRef<{ handle: string; avatar: Avatar } | null>(null)
+  const subscribedRef = useRef(false)
 
   // Host-only state (kept in refs so timers see the latest)
   const hostStateRef = useRef<RoomState | null>(null)
@@ -576,18 +581,37 @@ function useSupabaseGame() {
 
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
+        subscribedRef.current = true
         setConnected(true)
         if (!isHost) {
           if (peekOnly) {
             // Just ask the host for the current roster so the picker can
-            // gray out taken names/colors. Don't commit to joining yet.
+            // gray out taken names/colors. Fire-and-forget — if we don't
+            // get a ROSTER back it just means the AvatarPicker won't know
+            // what's taken, and the real "does this code exist" check
+            // happens when sendJoin runs after the user confirms.
             broadcast({ type: 'PEEK', clientId: myClientId })
-            if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current)
-            welcomeTimerRef.current = setTimeout(() => {
-              setError(
-                `No game found with code "${codeRef.current}". Check the code with the host — the room may not exist or the game may already be over.`,
-              )
-            }, 4000)
+            // If the user already confirmed their avatar while the channel
+            // was still subscribing, flush that queued JOIN now.
+            if (pendingJoinRef.current) {
+              const { handle: pHandle, avatar: pAvatar } = pendingJoinRef.current
+              pendingJoinRef.current = null
+              myHandleRef.current = pHandle
+              myAvatarRef.current = pAvatar
+              broadcast({
+                type: 'JOIN',
+                clientId: myClientId,
+                handle: pHandle,
+                avatar: pAvatar,
+                isHost: false,
+              })
+              if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current)
+              welcomeTimerRef.current = setTimeout(() => {
+                setError(
+                  `No game found with code "${codeRef.current}". Check the code with the host — the room may not exist or the game may already be over.`,
+                )
+              }, 4000)
+            }
           } else {
             // Send a JOIN so the host can welcome us
             broadcast({
@@ -608,6 +632,7 @@ function useSupabaseGame() {
           }
         }
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        subscribedRef.current = false
         setConnected(false)
       }
     })
@@ -617,10 +642,16 @@ function useSupabaseGame() {
 
   // Send the JOIN broadcast on an already-subscribed peek channel. Called by
   // the joiner after they've picked a name + color they see is available.
+  // If the channel hasn't finished subscribing yet, we queue the join and
+  // the subscribe callback will flush it as soon as it's ready.
   const sendJoin = useCallback((handle: string, avatar: Avatar) => {
     if (!channelRef.current || !myClientIdRef.current) return
     setError(null)
     setRoster({ handles: [], colors: [] })
+    if (!subscribedRef.current) {
+      pendingJoinRef.current = { handle, avatar }
+      return
+    }
     myHandleRef.current = handle
     myAvatarRef.current = avatar
     broadcast({
@@ -647,6 +678,8 @@ function useSupabaseGame() {
     isHostRef.current = false
     hostStateRef.current = null
     joinedClientIdsRef.current = new Set()
+    subscribedRef.current = false
+    pendingJoinRef.current = null
     if (welcomeTimerRef.current) {
       clearTimeout(welcomeTimerRef.current)
       welcomeTimerRef.current = null
@@ -655,6 +688,7 @@ function useSupabaseGame() {
     setMeId('')
     setConnected(false)
     setError(null)
+    setRoster({ handles: [], colors: [] })
   }, [])
 
   const dispatch = useCallback((action: GameAction) => {
