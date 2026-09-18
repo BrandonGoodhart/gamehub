@@ -286,6 +286,9 @@ function useSupabaseGame() {
   const myAvatarRef = useRef<Avatar | null>(null)
   const isHostRef = useRef(false)
   const codeRef = useRef<string>('')
+  // Joiner-only: fires if we don't get a WELCOME back within a few seconds,
+  // meaning the room code doesn't correspond to a live host.
+  const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Host-only state (kept in refs so timers see the latest)
   const hostStateRef = useRef<RoomState | null>(null)
@@ -494,11 +497,19 @@ function useSupabaseGame() {
         case 'WELCOME':
           if (!isHostRef.current && msg.meId === myClientIdRef.current) {
             setState(msg.state)
+            if (welcomeTimerRef.current) {
+              clearTimeout(welcomeTimerRef.current)
+              welcomeTimerRef.current = null
+            }
           }
           break
         case 'ERROR':
           if (msg.toClientId === myClientIdRef.current) {
             setError(msg.message)
+            if (welcomeTimerRef.current) {
+              clearTimeout(welcomeTimerRef.current)
+              welcomeTimerRef.current = null
+            }
           }
           break
       }
@@ -516,6 +527,14 @@ function useSupabaseGame() {
             avatar,
             isHost: false,
           })
+          // If no host is subscribed to this channel, our JOIN goes nowhere.
+          // Start a timer — if no WELCOME comes back, the code is dead.
+          if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current)
+          welcomeTimerRef.current = setTimeout(() => {
+            setError(
+              `No game found with code "${codeRef.current}". Check the code with the host — the room may not exist or the game may already be over.`,
+            )
+          }, 4000)
         }
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         setConnected(false)
@@ -534,9 +553,14 @@ function useSupabaseGame() {
     isHostRef.current = false
     hostStateRef.current = null
     joinedClientIdsRef.current = new Set()
+    if (welcomeTimerRef.current) {
+      clearTimeout(welcomeTimerRef.current)
+      welcomeTimerRef.current = null
+    }
     setState(null)
     setMeId('')
     setConnected(false)
+    setError(null)
   }, [])
 
   const dispatch = useCallback((action: GameAction) => {
