@@ -15,10 +15,10 @@ const games = [
     emoji: '$',
   },
   {
-    title: 'Buzzered',
-    description: 'A board of 3D buzzer buttons that play sound effects',
-    path: '/buzzered',
-    emoji: '!',
+    title: 'Cracked-Heist',
+    description: 'Hack, spy, and crack passwords to steal coins in a 6-digit room',
+    path: '/cracked-heist',
+    emoji: '>_',
   },
 ]
 
