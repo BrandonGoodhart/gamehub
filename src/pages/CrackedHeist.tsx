@@ -445,7 +445,11 @@ export default function CrackedHeist() {
   }
 
   // localPhase is 'connecting' or 'connected'
-  if (!state || !connected || (!me && !isObserverHost)) {
+  // Hosts seed their own state locally, so they don't need to wait for the
+  // Supabase channel to subscribe before they can see their lobby with the
+  // big join code. Only joiners need `connected` to reach the game.
+  const needsConnected = role !== 'host'
+  if (!state || (needsConnected && !connected) || (!me && !isObserverHost)) {
     const isNameError = !!error && error.toLowerCase().includes('name')
     const isNoRoomError = !!error && error.toLowerCase().includes('no game found')
     const isHostRole = role === 'host'
