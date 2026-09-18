@@ -447,18 +447,20 @@ export default function CrackedHeist() {
   // localPhase is 'connecting' or 'connected'
   if (!state || !connected || (!me && !isObserverHost)) {
     const isNameError = !!error && error.toLowerCase().includes('name')
+    const isNoRoomError = !!error && error.toLowerCase().includes('no game found')
+    const heading = error
+      ? isNameError
+        ? 'Name taken'
+        : isNoRoomError
+          ? 'Room not found'
+          : 'Connection problem'
+      : 'Connecting…'
     return (
       <div className="fg-root min-h-screen relative">
         <AmbientBg onHelp={() => setHelpOpen(true)} />
         <div className="relative z-10 max-w-md mx-auto p-6 mt-16 text-center">
           <div className="fg-panel fg-panel-lg">
-            <h2 className="fg-display text-2xl mb-2">
-              {error
-                ? isNameError
-                  ? 'Name taken'
-                  : 'Connection problem'
-                : 'Connecting…'}
-            </h2>
+            <h2 className="fg-display text-2xl mb-2">{heading}</h2>
             <p className="fg-sub text-sm">
               {error ?? `Room ${pendingCode}. Joining as ${pendingHandle || 'player'}.`}
             </p>
@@ -472,6 +474,18 @@ export default function CrackedHeist() {
                 className="fg-btn fg-btn-grad mt-5 w-full"
               >
                 Pick a different name
+              </button>
+            ) : isNoRoomError && role === 'player' ? (
+              <button
+                onClick={() => {
+                  disconnect()
+                  setPendingCode('')
+                  setPendingHandle('')
+                  setLocalPhase('joinPrompt')
+                }}
+                className="fg-btn fg-btn-grad mt-5 w-full"
+              >
+                Try a different code
               </button>
             ) : (
               <button onClick={backToStart} className="fg-back mt-5 w-full justify-center">
