@@ -196,44 +196,87 @@ export default function HostLobby({
             </div>
           </button>
           {(() => {
-            const canStart = state.players.length >= 2
+            const playerCount = state.players.length
+            const canStart = playerCount >= 2
+            const missing = Math.max(0, 2 - playerCount)
+
+            if (canStart) {
+              return (
+                <>
+                  <motion.button
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={onStart}
+                    className="fg-btn fg-btn-grad"
+                  >
+                    Start Game →
+                  </motion.button>
+                  <button
+                    onClick={onAddBots}
+                    className="fg-btn w-full"
+                    style={{
+                      padding: '10px 14px',
+                      fontSize: '0.85rem',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1.5px solid rgba(255,255,255,0.15)',
+                      color: '#d1d5db',
+                    }}
+                  >
+                    + Add 3 practice bots
+                  </button>
+                </>
+              )
+            }
+
+            // Not enough players yet — make the path forward obvious.
             return (
-              <>
-                <motion.button
-                  whileHover={canStart ? { y: -2 } : {}}
-                  whileTap={canStart ? { scale: 0.97 } : {}}
-                  onClick={canStart ? onStart : undefined}
-                  disabled={!canStart}
-                  className="fg-btn fg-btn-grad"
+              <div className="space-y-2">
+                <div
+                  className="rounded-2xl p-3 text-center"
                   style={{
-                    opacity: canStart ? 1 : 0.45,
-                    cursor: canStart ? 'pointer' : 'not-allowed',
+                    background: 'rgba(251,191,36,0.08)',
+                    border: '1.5px solid rgba(251,191,36,0.35)',
                   }}
                 >
-                  {canStart ? 'Start Game →' : 'Need at least 2 players'}
-                </motion.button>
-                {!canStart && (
-                  <p className="fg-sub text-[11px] text-center">
-                    Share the code with a friend, or tap "Add 3 practice bots".
-                    For solo, use Study Mode on the home screen.
+                  <div
+                    className="fg-lbl mb-1"
+                    style={{ color: '#fbbf24' }}
+                  >
+                    almost ready
+                  </div>
+                  <p className="text-white font-bold text-sm">
+                    Need {missing} more{' '}
+                    {missing === 1 ? 'player' : 'players'} to start.
                   </p>
-                )}
-              </>
+                  <p className="fg-sub text-[11px] mt-1">
+                    Share the code above, or fill the room with bots.
+                  </p>
+                </div>
+                <motion.button
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={onAddBots}
+                  className="fg-btn fg-btn-grad"
+                >
+                  + Add 3 practice bots
+                </motion.button>
+                <button
+                  disabled
+                  className="fg-btn w-full"
+                  style={{
+                    padding: '14px 20px',
+                    fontSize: '0.95rem',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1.5px solid rgba(255,255,255,0.12)',
+                    color: 'rgba(255,255,255,0.4)',
+                    cursor: 'not-allowed',
+                  }}
+                >
+                  Start Game (waiting for players)
+                </button>
+              </div>
             )
           })()}
-          <button
-            onClick={onAddBots}
-            className="fg-btn w-full"
-            style={{
-              padding: '10px 14px',
-              fontSize: '0.85rem',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1.5px solid rgba(255,255,255,0.15)',
-              color: '#d1d5db',
-            }}
-          >
-            + Add 3 practice bots
-          </button>
         </div>
       ) : (
         <div className="text-center fg-sub py-3 animate-pulse text-sm">
