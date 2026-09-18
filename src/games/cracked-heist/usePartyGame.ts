@@ -42,6 +42,10 @@ interface ConnectArgs {
   // Host-only: when true, the host doesn't join as a player. They get a
   // controller-style view (leaderboard + event feed) instead.
   isObserver?: boolean
+  // Joiner-only: when true, subscribe to the channel but don't broadcast a
+  // JOIN yet. Instead, send a PEEK so the picker can see who's already there,
+  // and wait for the client to call sendJoin() with a confirmed avatar.
+  peekOnly?: boolean
   // Host-only: seed the room with pre-configured settings and questions so
   // joiners arrive after the host has already chosen the round length and
   // written the trivia.
@@ -76,7 +80,20 @@ interface WireError {
   toClientId: string
   message: string
 }
-type Wire = WireJoin | WireAction | WireState | WireWelcome | WireError
+// Peek: a client that hasn't picked their avatar yet asks the host for the
+// current roster (names + colors that are already taken) so its picker UI
+// can gray out the ones that would collide.
+interface WirePeek {
+  type: 'PEEK'
+  clientId: string
+}
+interface WireRoster {
+  type: 'ROSTER'
+  toClientId: string
+  handles: string[]
+  colors: string[]
+}
+type Wire = WireJoin | WireAction | WireState | WireWelcome | WireError | WirePeek | WireRoster
 
 interface LocalState {
   state: RoomState
@@ -267,7 +284,12 @@ function useLocalGame() {
     return () => clearInterval(id)
   }, [state.phase])
 
-  return { state, meId, connected, error: null as string | null, connect, disconnect, dispatch }
+  const sendJoin = useCallback(() => {
+    // Local mode has no separate join — connect() already added the player.
+  }, [])
+  const roster = { handles: [] as string[], colors: [] as string[] }
+
+  return { state, meId, connected, error: null as string | null, roster, connect, sendJoin, disconnect, dispatch }
 }
 
 // ---------------- Multiplayer (Supabase Realtime) hook ----------------
@@ -279,6 +301,12 @@ function useSupabaseGame() {
   const [meId, setMeId] = useState<string>('')
   const [connected, setConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Populated by ROSTER responses (joiner side) so the avatar picker can
+  // gray out already-taken names and colors.
+  const [roster, setRoster] = useState<{ handles: string[]; colors: string[] }>({
+    handles: [],
+    colors: [],
+  })
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const myClientIdRef = useRef<string>('')
@@ -350,6 +378,19 @@ function useSupabaseGame() {
       })
       return
     }
+    // Reject duplicate colors
+    const wantedColor = msg.avatar.color.toLowerCase()
+    const colorDup = hostStateRef.current.players.some(
+      (p) => p.avatar.color.toLowerCase() === wantedColor,
+    )
+    if (colorDup) {
+      broadcast({
+        type: 'ERROR',
+        toClientId: msg.clientId,
+        message: `Someone already picked that color. Pick a different one.`,
+      })
+      return
+    }
     joinedClientIdsRef.current.add(msg.clientId)
     const taken = new Set<string>()
     for (const p of hostStateRef.current.players) {
@@ -412,8 +453,9 @@ function useSupabaseGame() {
   }
 
   const connect = useCallback((args: ConnectArgs) => {
-    const { code, handle, avatar, isHost, isObserver, initialSettings, initialCategory, initialCustomQuestions } = args
+    const { code, handle, avatar, isHost, isObserver, peekOnly, initialSettings, initialCategory, initialCustomQuestions } = args
     setError(null)
+    setRoster({ handles: [], colors: [] })
     const sb = getSupabase()
     if (!sb) {
       setError('Multiplayer is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify.')
@@ -488,6 +530,23 @@ function useSupabaseGame() {
         case 'JOIN':
           handleJoin(msg)
           break
+        case 'PEEK':
+          // Host responds with the current roster so the peeking client can
+          // gray out already-taken names/colors in their avatar picker.
+          if (isHostRef.current && hostStateRef.current) {
+            broadcast({
+              type: 'ROSTER',
+              toClientId: msg.clientId,
+              handles: hostStateRef.current.players.map((p) => p.handle),
+              colors: hostStateRef.current.players.map((p) => p.avatar.color),
+            })
+          }
+          break
+        case 'ROSTER':
+          if (!isHostRef.current && msg.toClientId === myClientIdRef.current) {
+            setRoster({ handles: msg.handles, colors: msg.colors })
+          }
+          break
         case 'ACTION':
           handleAction(msg)
           break
@@ -519,22 +578,34 @@ function useSupabaseGame() {
       if (status === 'SUBSCRIBED') {
         setConnected(true)
         if (!isHost) {
-          // Send a JOIN so the host can welcome us
-          broadcast({
-            type: 'JOIN',
-            clientId: myClientId,
-            handle,
-            avatar,
-            isHost: false,
-          })
-          // If no host is subscribed to this channel, our JOIN goes nowhere.
-          // Start a timer — if no WELCOME comes back, the code is dead.
-          if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current)
-          welcomeTimerRef.current = setTimeout(() => {
-            setError(
-              `No game found with code "${codeRef.current}". Check the code with the host — the room may not exist or the game may already be over.`,
-            )
-          }, 4000)
+          if (peekOnly) {
+            // Just ask the host for the current roster so the picker can
+            // gray out taken names/colors. Don't commit to joining yet.
+            broadcast({ type: 'PEEK', clientId: myClientId })
+            if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current)
+            welcomeTimerRef.current = setTimeout(() => {
+              setError(
+                `No game found with code "${codeRef.current}". Check the code with the host — the room may not exist or the game may already be over.`,
+              )
+            }, 4000)
+          } else {
+            // Send a JOIN so the host can welcome us
+            broadcast({
+              type: 'JOIN',
+              clientId: myClientId,
+              handle,
+              avatar,
+              isHost: false,
+            })
+            // If no host is subscribed to this channel, our JOIN goes nowhere.
+            // Start a timer — if no WELCOME comes back, the code is dead.
+            if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current)
+            welcomeTimerRef.current = setTimeout(() => {
+              setError(
+                `No game found with code "${codeRef.current}". Check the code with the host — the room may not exist or the game may already be over.`,
+              )
+            }, 4000)
+          }
         }
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         setConnected(false)
@@ -542,6 +613,29 @@ function useSupabaseGame() {
     })
 
     channelRef.current = channel
+  }, [])
+
+  // Send the JOIN broadcast on an already-subscribed peek channel. Called by
+  // the joiner after they've picked a name + color they see is available.
+  const sendJoin = useCallback((handle: string, avatar: Avatar) => {
+    if (!channelRef.current || !myClientIdRef.current) return
+    setError(null)
+    setRoster({ handles: [], colors: [] })
+    myHandleRef.current = handle
+    myAvatarRef.current = avatar
+    broadcast({
+      type: 'JOIN',
+      clientId: myClientIdRef.current,
+      handle,
+      avatar,
+      isHost: false,
+    })
+    if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current)
+    welcomeTimerRef.current = setTimeout(() => {
+      setError(
+        `No game found with code "${codeRef.current}". Check the code with the host — the room may not exist or the game may already be over.`,
+      )
+    }, 4000)
   }, [])
 
   const disconnect = useCallback(() => {
@@ -688,12 +782,12 @@ function useSupabaseGame() {
     }
   }, [])
 
-  return { state, meId, connected, error, connect, disconnect, dispatch }
+  return { state, meId, connected, error, roster, connect, sendJoin, disconnect, dispatch }
 }
 
 // ---------------- Public hook ----------------
 // Same name kept for drop-in compatibility with the previous PartyKit hook.
 
-export const usePartyGame: () => ReturnType<typeof useLocalGame> = multiplayerConfigured()
-  ? (useSupabaseGame as unknown as typeof useLocalGame)
-  : useLocalGame
+export const usePartyGame: () => ReturnType<typeof useSupabaseGame> = multiplayerConfigured()
+  ? useSupabaseGame
+  : (useLocalGame as unknown as typeof useSupabaseGame)

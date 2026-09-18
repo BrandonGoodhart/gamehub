@@ -7,6 +7,8 @@ import AvatarSvg from './AvatarSvg'
 interface Props {
   initialHandle?: string
   initialAvatar: Avatar
+  takenHandles?: string[]
+  takenColors?: string[]
   onConfirm: (handle: string, avatar: Avatar) => void
   onBack?: () => void
 }
@@ -14,11 +16,20 @@ interface Props {
 export default function AvatarPicker({
   initialHandle = '',
   initialAvatar,
+  takenHandles = [],
+  takenColors = [],
   onConfirm,
   onBack,
 }: Props) {
   const [avatar, setAvatar] = useState<Avatar>(initialAvatar)
   const [handle, setHandle] = useState(initialHandle)
+
+  const takenHandleSet = new Set(takenHandles.map((h) => h.trim().toLowerCase()))
+  const takenColorSet = new Set(takenColors.map((c) => c.toLowerCase()))
+  const handleTrim = handle.trim()
+  const handleTaken = handleTrim.length > 0 && takenHandleSet.has(handleTrim.toLowerCase())
+  const colorTaken = takenColorSet.has(avatar.color.toLowerCase())
+  const canConfirm = handleTrim.length > 0 && !handleTaken && !colorTaken
 
   return (
     <div className="max-w-[440px] mx-auto w-full space-y-5 pb-5">
@@ -60,7 +71,20 @@ export default function AvatarPicker({
             onChange={(e) => setHandle(e.target.value.slice(0, 12))}
             placeholder="Your name"
             className="fg-name-input"
+            style={
+              handleTaken
+                ? { borderColor: '#fb7185', boxShadow: '0 0 0 3px rgba(251,113,133,0.15)' }
+                : undefined
+            }
           />
+          {handleTaken && (
+            <div
+              className="text-xs mt-2 text-center font-bold"
+              style={{ color: '#fda4af' }}
+            >
+              "{handleTrim}" is already taken. Pick a different name.
+            </div>
+          )}
         </div>
       </motion.div>
 
@@ -69,33 +93,52 @@ export default function AvatarPicker({
         <div className="grid grid-cols-8 gap-2">
           {COLOR_PALETTE.map((c) => {
             const active = avatar.color === c
+            const isTaken = takenColorSet.has(c.toLowerCase()) && !active
             return (
               <button
                 key={c}
-                onClick={() => setAvatar({ color: c })}
+                onClick={() => {
+                  if (!isTaken) setAvatar({ color: c })
+                }}
+                disabled={isTaken}
+                title={isTaken ? 'Someone already picked this color' : undefined}
                 style={{
-                  backgroundColor: c,
+                  backgroundColor: isTaken ? '#3f3f46' : c,
                   boxShadow: active
                     ? `0 0 0 3px rgba(255,255,255,0.9), 0 0 16px ${c}aa`
-                    : `0 2px 6px ${c}44`,
+                    : isTaken
+                      ? 'none'
+                      : `0 2px 6px ${c}44`,
+                  opacity: isTaken ? 0.45 : 1,
+                  cursor: isTaken ? 'not-allowed' : 'pointer',
                 }}
                 className={`aspect-square rounded-xl border-2 transition-transform ${
                   active
                     ? 'border-white scale-110'
-                    : 'border-transparent hover:scale-110'
+                    : isTaken
+                      ? 'border-transparent'
+                      : 'border-transparent hover:scale-110'
                 }`}
-                aria-label={`color ${c}`}
+                aria-label={`color ${c}${isTaken ? ' (taken)' : ''}`}
               />
             )
           })}
         </div>
+        {colorTaken && (
+          <div
+            className="text-xs mt-3 text-center font-bold"
+            style={{ color: '#fda4af' }}
+          >
+            That color is already taken. Pick a different one.
+          </div>
+        )}
       </div>
 
       <motion.button
-        whileHover={{ y: -2 }}
-        whileTap={{ scale: 0.97 }}
-        disabled={!handle.trim()}
-        onClick={() => onConfirm(handle.trim(), avatar)}
+        whileHover={canConfirm ? { y: -2 } : {}}
+        whileTap={canConfirm ? { scale: 0.97 } : {}}
+        disabled={!canConfirm}
+        onClick={() => canConfirm && onConfirm(handleTrim, avatar)}
         className="fg-btn fg-btn-grad"
       >
         Enter Lobby →
