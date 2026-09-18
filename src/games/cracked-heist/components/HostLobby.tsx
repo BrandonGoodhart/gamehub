@@ -222,7 +222,7 @@ export default function HostLobby({
                       color: '#d1d5db',
                     }}
                   >
-                    + Add 3 practice bots
+                    + Add 2 practice bots
                   </button>
                 </>
               )
@@ -258,7 +258,7 @@ export default function HostLobby({
                   onClick={onAddBots}
                   className="fg-btn fg-btn-grad"
                 >
-                  + Add 3 practice bots
+                  + Add 2 practice bots
                 </motion.button>
                 <button
                   disabled

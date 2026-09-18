@@ -85,7 +85,7 @@ export default function CrackedHeist() {
   const [hostCustomQuestions, setHostCustomQuestions] = useState<Question[] | null>(null)
   const [, setHostObserveMode] = useState(false)
 
-  const { state, meId, connected, error, connect, disconnect, dispatch } = usePartyGame()
+  const { state, meId, connected, error, roster, connect, sendJoin, disconnect, dispatch } = usePartyGame()
 
   const me = state?.players.find((p) => p.id === meId)
   // Observer host: I'm the host but don't have a player entry.
@@ -156,12 +156,9 @@ export default function CrackedHeist() {
         initialCustomQuestions: hostCustomQuestions,
       })
     } else {
-      connect({
-        code: pendingCode,
-        handle,
-        avatar,
-        isHost: false,
-      })
+      // Joiner already subscribed via peek from JoinPrompt — just announce
+      // the JOIN over the same channel.
+      sendJoin(handle, avatar)
     }
     setLocalPhase('connected')
   }
@@ -324,6 +321,16 @@ export default function CrackedHeist() {
           <JoinPrompt
             onJoin={(code) => {
               setPendingCode(code)
+              // Peek into the room so the AvatarPicker knows what names and
+              // colors are already in use. We reuse this channel to actually
+              // send JOIN when the joiner confirms their avatar.
+              connect({
+                code,
+                handle: '',
+                avatar: defaultAvatar(),
+                isHost: false,
+                peekOnly: true,
+              })
               setLocalPhase('pickAvatar')
             }}
             onBack={backToStart}
@@ -334,12 +341,16 @@ export default function CrackedHeist() {
   }
 
   if (localPhase === 'pickAvatar') {
+    // For joiners we've already peeked into the room via connect(peekOnly),
+    // so `roster` has the taken names and colors. Hosts see an empty roster.
     return (
       <div className="fg-root min-h-screen relative">
         <AmbientBg onHelp={() => setHelpOpen(true)} />
         <div className="relative z-10 px-4 py-5">
           <AvatarPicker
             initialAvatar={defaultAvatar()}
+            takenHandles={role === 'player' ? roster.handles : []}
+            takenColors={role === 'player' ? roster.colors : []}
             onBack={role === 'host' ? () => setLocalPhase('hostModeChoice') : backToStart}
             onConfirm={onAvatarConfirmed}
           />
@@ -519,7 +530,7 @@ export default function CrackedHeist() {
             state={state}
             isHost={isHost}
             onKick={(id) => dispatch({ type: 'kickPlayer', id })}
-            onAddBots={() => dispatch({ type: 'addBots', count: 3 })}
+            onAddBots={() => dispatch({ type: 'addBots', count: 2 })}
             onToggleLateJoin={() =>
               dispatch({
                 type: 'setSettings',
