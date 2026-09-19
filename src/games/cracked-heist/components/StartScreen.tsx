@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { multiplayerConfigured } from '../usePartyGame'
 
 interface Props {
   onHost: () => void
@@ -51,6 +52,34 @@ export default function StartScreen({ onHost, onJoin, onStudy, onViewShared }: P
         <p className="fg-sub text-[0.95rem] mt-2">
           Answer fast. Steal coins. Don't get caught.
         </p>
+        {/* Diagnostic pill — tells the host whether multiplayer is configured. */}
+        <div
+          className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider"
+          style={{
+            background: multiplayerConfigured()
+              ? 'rgba(74,222,128,0.10)'
+              : 'rgba(251,191,36,0.10)',
+            border: multiplayerConfigured()
+              ? '1px solid rgba(74,222,128,0.35)'
+              : '1px solid rgba(251,191,36,0.5)',
+            color: multiplayerConfigured() ? '#86efac' : '#fbbf24',
+          }}
+          title={
+            multiplayerConfigured()
+              ? 'Supabase env vars detected. Multiplayer works.'
+              : 'VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY missing. Add them in Netlify env vars and redeploy.'
+          }
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: multiplayerConfigured() ? '#4ade80' : '#fbbf24',
+            }}
+          />
+          {multiplayerConfigured() ? 'Multiplayer On' : 'Multiplayer Off — Solo Only'}
+        </div>
       </motion.div>
 
       <div className="grid grid-cols-2 gap-3.5 mt-7 mx-auto" style={{ maxWidth: 380 }}>
