@@ -25,6 +25,8 @@ import PhishingGame from '../games/cracked-heist/components/PhishingGame'
 import RiskGame from '../games/cracked-heist/components/RiskGame'
 import PasswordReveal from '../games/cracked-heist/components/PasswordReveal'
 import GameOver from '../games/cracked-heist/components/GameOver'
+import BRPlay from '../games/cracked-heist/components/BRPlay'
+import BRChampion from '../games/cracked-heist/components/BRChampion'
 import StudyMode from '../games/cracked-heist/components/StudyMode'
 import HostModeChoice from '../games/cracked-heist/components/HostModeChoice'
 import ObserverView from '../games/cracked-heist/components/ObserverView'
@@ -537,7 +539,7 @@ export default function CrackedHeist() {
                 patch: { allowLateJoin: !state.settings.allowLateJoin },
               })
             }
-            onStart={() => dispatch({ type: 'setPhase', phase: 'pickPassword' })}
+            onStart={() => dispatch({ type: 'brStart' })}
           />
         )}
 
@@ -702,6 +704,32 @@ export default function CrackedHeist() {
               </div>
             </div>
           </div>
+        )}
+
+        {state.phase === 'brPlaying' && (
+          <BRPlay
+            state={state}
+            me={me}
+            isHost={isHost}
+            onAnswer={(choice) => {
+              if (!me) return
+              const q = state.br?.currentQuestion
+              const correct = !!q && choice === q.answer
+              dispatch({ type: 'brAnswer', playerId: me.id, correct })
+            }}
+            onAdvance={() => dispatch({ type: 'brNextRound' })}
+          />
+        )}
+
+        {state.phase === 'brChampion' && (
+          <BRChampion
+            state={state}
+            meId={meId}
+            onReset={() => {
+              if (isHost) dispatch({ type: 'reset' })
+              backToStart()
+            }}
+          />
         )}
 
         {state.phase === 'gameOver' && (

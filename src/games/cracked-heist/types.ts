@@ -12,10 +12,7 @@ export type Phase =
   | 'countdown'
   | 'playing'
   | 'gameOver'
-  // Battle Royale phases
-  | 'brRoundIntro'
-  | 'brMatch'
-  | 'brMatchResult'
+  | 'brPlaying'
   | 'brChampion'
 
 export type GameMode = 'heist' | 'battleRoyale'
@@ -86,30 +83,22 @@ export interface Settings {
   }
 }
 
-// Battle Royale match state — one active match between two players
-export interface BRMatch {
-  id: string
-  round: number
-  playerAId: string
-  // 'bot' when a filler is needed for odd counts
-  playerBId: string
-  scoreA: number
-  scoreB: number
-  questionsAnswered: number
-  currentQuestion: Question | null
-  playerAAnswered: boolean
-  playerBAnswered: boolean
-  playerACorrect: boolean
-  playerBCorrect: boolean
-  done: boolean
-  winnerId: string | null
-}
-
+// Battle Royale — simple elimination trivia
 export interface BRState {
-  round: number
-  matches: BRMatch[]
-  championId: string | null
+  // Shared question state — everyone sees the same question
+  currentQuestion: Question | null
+  questionIndex: number
   questionQueue: Question[]
+  // Map of playerId → their answer for the current question (choice index)
+  answers: { [playerId: string]: number }
+  // Elapsed ms since currentQuestion showed up (used for timer / tiebreaks)
+  questionStartedAt: number
+  // Deadline in ms since epoch when the question times out
+  deadline: number
+  // Winner if the round is over
+  championId: string | null
+  // How many seconds each question gives you before you're eliminated
+  secondsPerQuestion: number
 }
 
 export interface RoomState {
