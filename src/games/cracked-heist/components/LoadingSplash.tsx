@@ -35,7 +35,7 @@ export default function LoadingSplash({ onDone, duration = 2200 }: Props) {
           padding: '0 8px',
         }}
       >
-        CRACKED-HEIST
+        BATTLE ROYALE
       </motion.h1>
       <motion.p
         initial={{ opacity: 0, y: 8 }}
