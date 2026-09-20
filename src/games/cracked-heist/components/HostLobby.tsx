@@ -26,7 +26,7 @@ export default function HostLobby({
           className="fg-display"
           style={{ fontSize: 'clamp(2rem, 7vw, 3rem)', padding: '0 8px' }}
         >
-          Cracked-Heist
+          Battle Royale
         </h1>
         <p className="fg-sub text-xs mt-1">room is live · waiting for players</p>
       </div>

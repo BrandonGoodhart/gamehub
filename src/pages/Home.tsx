@@ -15,7 +15,7 @@ const games = [
     emoji: '$',
   },
   {
-    title: 'Cracked-Heist',
+    title: 'Battle Royale',
     description: 'Hack, spy, and crack passwords to steal coins in a 6-digit room',
     path: '/cracked-heist',
     emoji: '>_',

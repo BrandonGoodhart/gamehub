@@ -47,7 +47,7 @@ export default function StartScreen({ onHost, onJoin, onStudy, onViewShared }: P
           className="fg-display"
           style={{ fontSize: 'clamp(2.6rem, 9.5vw, 4.8rem)', padding: '0 8px' }}
         >
-          Cracked-Heist
+          Battle Royale
         </h1>
         <p className="fg-sub text-[0.95rem] mt-2">
           Answer fast. Steal coins. Don't get caught.
