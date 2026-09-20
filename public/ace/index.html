@@ -1654,11 +1654,28 @@ async function testConnection(){
   }
 }
 
-function exportChats(){
-  const blob=new Blob([JSON.stringify({exported:new Date().toISOString(),chats:S.chats},null,2)],{type:'application/json'});
+async function exportChats(){
+  const json=JSON.stringify({exported:new Date().toISOString(),chats:S.chats},null,2);
+  const name='ace-chats.json';
+  /* Inside the claude.ai artifact viewer a plain download link silently does
+     nothing — the downloads capability is the sanctioned route. Opened as a
+     local file there is no window.claude, so the anchor path runs instead. */
+  try{
+    const dl=(window.claude&&window.claude.use)?await window.claude.use('downloads'):null;
+    if(dl){
+      await dl.save({filename:name,data:json});
+      toast('Exported.','ok');
+      return;
+    }
+  }catch(err){
+    if(err&&err.code==='declined')return;
+    toast('Could not export: '+((err&&err.message)||'unknown error'),'err');
+    return;
+  }
+  const blob=new Blob([json],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='ace-chats.json';
+  a.download=name;
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
