@@ -116,3 +116,12 @@ body.chat{display:flex;flex-direction:column;min-height:100dvh}
   .result iframe{height:44vh}
 }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* The always-works route out: the file itself, selectable on screen. */
+.codebox{margin-top:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:10px 14px}
+.codebox summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--dim)}
+.codebox summary:hover{color:var(--ink)}
+.codebox[open] summary{color:var(--ink);margin-bottom:8px}
+.codebox textarea{width:100%;height:190px;background:var(--bg);border:1px solid var(--line);border-radius:10px;
+  color:var(--dim);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.5;
+  padding:10px;resize:vertical;white-space:pre;margin-bottom:10px}

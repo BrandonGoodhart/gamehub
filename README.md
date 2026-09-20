@@ -82,6 +82,19 @@ moves on.
 Once a site exists, plain English keeps working: *"make it darker"* restyles it,
 anything else gets added to the page and it rebuilds.
 
+### Getting the file out
+
+Three routes, because the first one is not always allowed:
+
+- **Download it** — the normal way, when the page is open in its own tab.
+- **Copy the code** — the whole file to the clipboard. Paste it into any notes or
+  text app and save it as `name.html`. This is what a preview frame needs: an
+  embedded page (the published artifact, an `<iframe>`) is usually refused
+  permission to download, and the click silently does nothing. The chat detects
+  that it is framed and leads with this button instead.
+- **Show me the code** — the file on screen in a text box, selectable by hand.
+  Nothing can block this one.
+
 ### What you get
 
 One self-contained `.html` file. No external requests, no build step, no

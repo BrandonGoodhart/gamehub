@@ -400,7 +400,49 @@
     return blobURL;
   }
 
+  /* A preview frame (the published artifact, an embed) usually blocks
+     downloads outright: the click does nothing and there is no event to catch.
+     So there is always a second route out — copy the code — and when we are
+     framed that becomes the main one. */
+  function framed() {
+    try { return window.self !== window.top; } catch (e) { return true; }
+  }
+
+  function copyCode(btn) {
+    var done = function () {
+      btn.textContent = 'Copied';
+      window.setTimeout(function () { btn.textContent = 'Copy the code'; }, 2400);
+    };
+    if (window.navigator.clipboard && window.navigator.clipboard.writeText) {
+      window.navigator.clipboard.writeText(lastHTML).then(done, function () { manualCopy(btn, done); });
+      return;
+    }
+    manualCopy(btn, done);
+  }
+
+  /* Older Safari, and anywhere the clipboard API is refused: select the text
+     in a real textarea and copy that. If even this is blocked, the code box
+     below is already on screen for them to select by hand. */
+  function manualCopy(btn, done) {
+    var ta = document.createElement('textarea');
+    ta.value = lastHTML;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, lastHTML.length);
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    if (ok) { return done(); }
+    btn.textContent = 'Use the box below';
+    var box = document.getElementById('code-' + lastName);
+    if (box) { box.open = true; box.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  }
+
   function showResult(title) {
+    var inFrame = framed();
     var frag = document.createDocumentFragment();
     var p = document.createElement('p');
     p.textContent = 'Here it is.';
@@ -425,19 +467,29 @@
 
     var dl = document.createElement('button');
     dl.type = 'button';
-    dl.className = 'btn primary';
+    dl.className = inFrame ? 'btn' : 'btn primary';
     dl.textContent = 'Download it';
     dl.addEventListener('click', function () {
       var a = document.createElement('a');
       a.href = fileURL();
       a.download = lastName + '.html';
+      a.rel = 'noopener';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       dl.textContent = 'Saved';
-      window.setTimeout(function () { dl.textContent = 'Download it'; }, 2200);
+      window.setTimeout(function () { dl.textContent = 'Download it'; }, 2400);
     });
-    acts.appendChild(dl);
+
+    var copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = inFrame ? 'btn primary' : 'btn';
+    copy.textContent = 'Copy the code';
+    copy.addEventListener('click', function () { copyCode(copy); });
+
+    /* Downloading is the better route when it is allowed, so it leads. */
+    if (inFrame) { acts.appendChild(copy); acts.appendChild(dl); }
+    else { acts.appendChild(dl); acts.appendChild(copy); }
 
     var open = document.createElement('button');
     open.type = 'button';
@@ -445,7 +497,7 @@
     open.textContent = 'Open in a new tab';
     open.addEventListener('click', function () {
       if (!window.open(fileURL(), '_blank')) {
-        say('Safari blocked the new tab. Allow pop-ups for this site, or just download it.');
+        say('That was blocked. Copy the code instead, or open this page in its own tab first.');
       }
     });
     acts.appendChild(open);
@@ -454,10 +506,34 @@
 
     var note = document.createElement('p');
     note.className = 'note';
-    note.textContent = 'Download it and open it — on an iPhone or iPad it lands in Files › Downloads. '
-      + 'The opened page has an Edit text button so you can reword anything yourself. '
-      + 'Or tell me here: "make it darker", "add a line about the garden", or ask me anything.';
+    note.textContent = inFrame
+      ? 'Heads up: this is running inside a preview window, and previews usually block downloads. '
+        + 'Tap Copy the code, paste it into Notes or TextEdit, and save it as ' + lastName + '.html. '
+        + 'Opened from its own tab, the Download button works normally.'
+      : 'On an iPhone or iPad it saves into Files \u203a Downloads \u2014 tap it and Safari opens it. '
+        + 'The opened page has an Edit text button so you can reword anything yourself.';
     frag.appendChild(note);
+
+    /* Last resort that cannot be blocked by anything: the file, on screen,
+       selectable. */
+    var box = document.createElement('details');
+    box.className = 'codebox';
+    box.id = 'code-' + lastName;
+    var sum = document.createElement('summary');
+    sum.textContent = 'Or show me the code to copy by hand';
+    box.appendChild(sum);
+    var how = document.createElement('p');
+    how.className = 'note';
+    how.textContent = 'Select it all, copy it, paste it into any notes or text app, and save the file as '
+      + lastName + '.html. Then open that file.';
+    box.appendChild(how);
+    var ta = document.createElement('textarea');
+    ta.readOnly = true;
+    ta.value = lastHTML;
+    ta.setAttribute('aria-label', 'The HTML for ' + title);
+    ta.addEventListener('focus', function () { ta.select(); });
+    box.appendChild(ta);
+    frag.appendChild(box);
 
     var bubble = msg('bot', frag);
     if (!S.TYPES[A.type].isGame) {
