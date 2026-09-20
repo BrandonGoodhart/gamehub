@@ -450,21 +450,22 @@ details.adv summary:hover{color:var(--txt)}
 
     <div class="s-card">
       <h3>Connection</h3>
-      <p class="sub">Ace needs an Anthropic API key to think. The key is stored only in this browser, on this device.</p>
+      <p class="sub">Ace needs an AI provider to think. Your key is stored only in this browser, on this device.</p>
 
       <div class="field">
-        <label for="mode-select">How to reach Claude</label>
-        <select class="select" id="mode-select">
-          <option value="direct">Direct from this browser (use my API key)</option>
-          <option value="proxy">Through my own server (recommended if you share this page)</option>
+        <label for="provider-select">Provider</label>
+        <select class="select" id="provider-select">
+          <option value="gemini">Google Gemini (AI Studio) &mdash; has a free tier</option>
+          <option value="anthropic">Anthropic (Claude) &mdash; paid credits</option>
+          <option value="proxy">Through my own server</option>
         </select>
       </div>
 
-      <div id="mode-direct">
+      <div id="pane-key">
         <div class="field">
-          <label for="api-input">Anthropic API key</label>
+          <label for="api-input" id="key-label">API key</label>
           <div class="s-row">
-            <input type="password" class="input" id="api-input" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+            <input type="password" class="input" id="api-input" placeholder="" autocomplete="off" spellcheck="false">
             <button class="btn btn-sec btn-sm" id="btn-toggle-key" aria-label="Show or hide key">Show</button>
             <button class="btn btn-pri btn-sm" id="btn-save-key">Save</button>
           </div>
@@ -474,34 +475,31 @@ details.adv summary:hover{color:var(--txt)}
           <button class="btn btn-sec btn-sm" id="btn-test-key">Test connection</button>
           <button class="btn btn-danger btn-sm" id="btn-clear-key">Remove key</button>
         </div>
-        <div class="help">
-          <b>Getting a key — step by step</b>
-          <ol>
-            <li>Go to <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com/settings/keys</a> and sign in.</li>
-            <li>Under <b>Billing</b>, add a payment method and buy credits. API credits are <b>separate</b> from a Claude.ai Pro/Max subscription — a subscription alone will not work here.</li>
-            <li>Click <b>Create Key</b>, copy it (it starts with <code>sk-ant-api03-</code>), and paste it above. You only get to see it once.</li>
-            <li>Press <b>Save</b>, then <b>Test connection</b>.</li>
-          </ol>
-          Typical cost is a fraction of a cent per message. You can cap spending with a monthly budget limit in the console.
-        </div>
-        <div class="warn-box">
-          <b>Where this key lives.</b> It is saved in this browser's <code>localStorage</code> and sent straight from your browser to Anthropic. Anyone who can use this browser profile can read it. Use it on your own device, don't paste your key into a copy of this page hosted by someone else, and rotate the key in the console if you ever share your screen with it visible. To host this page for other people, switch to the proxy mode above.
-        </div>
+        <div class="help" id="key-help"></div>
+        <div class="warn-box" id="key-warn"></div>
       </div>
 
-      <div id="mode-proxy" class="hidden">
+      <div id="pane-proxy" class="hidden">
         <div class="field">
           <label for="proxy-input">Proxy endpoint URL</label>
           <div class="s-row">
             <input type="text" class="input" id="proxy-input" placeholder="/api/ace-chat" autocomplete="off" spellcheck="false">
             <button class="btn btn-pri btn-sm" id="btn-save-proxy">Save</button>
           </div>
-          <div class="hint-txt">Ace will POST the conversation here instead of calling Anthropic directly. Your server holds the API key and forwards the request.</div>
+          <div class="hint-txt">Ace will POST the conversation here instead of calling a provider directly. Your server holds the key and forwards the request.</div>
           <div class="api-status"><div class="api-dot off" id="proxy-dot"></div><span id="proxy-text">Not configured</span></div>
+        </div>
+        <div class="field">
+          <label for="proxy-provider">My server talks to</label>
+          <select class="select" id="proxy-provider">
+            <option value="gemini">Google Gemini</option>
+            <option value="anthropic">Anthropic (Claude)</option>
+          </select>
+          <div class="hint-txt">Ace formats the request for this provider; your server just adds the key and forwards it.</div>
         </div>
         <button class="btn btn-sec btn-sm" id="btn-test-proxy">Test connection</button>
         <div class="help">
-          <b>Why a proxy?</b> In direct mode the key sits in the browser, so it only ever suits a page you run for yourself. A proxy keeps the key on a server you control, which is the only safe way to let other people use this page. This repo ships a ready-made Netlify function at <code>netlify/functions/ace-chat.ts</code> — set <code>ANTHROPIC_API_KEY</code> in your Netlify environment variables, deploy, and point this field at <code>/api/ace-chat</code>.
+          <b>Why a proxy?</b> With a key in the browser, the page only ever suits someone running it for themselves. A proxy keeps the key on a server you control, which is the only safe way to let other people use this page. This repo ships a Netlify function at <code>netlify/functions/ace-chat.ts</code> &mdash; set <code>ANTHROPIC_API_KEY</code> or <code>GEMINI_API_KEY</code> in your Netlify environment variables, deploy, and point this field at <code>/api/ace-chat</code>.
         </div>
       </div>
     </div>
@@ -511,10 +509,13 @@ details.adv summary:hover{color:var(--txt)}
       <p class="sub">Which Claude model answers you, and how much effort it spends thinking.</p>
       <div class="field">
         <label for="model-select">Model</label>
-        <select class="select" id="model-select"></select>
+        <div class="s-row">
+          <select class="select" id="model-select"></select>
+          <button class="btn btn-sec btn-sm" id="btn-refresh-models">Refresh list</button>
+        </div>
         <div class="hint-txt" id="model-hint"></div>
       </div>
-      <div class="field">
+      <div class="field" id="effort-field">
         <label for="effort-select">Response effort</label>
         <select class="select" id="effort-select">
           <option value="low">Low — fast and chatty (best for casual conversation)</option>
@@ -671,13 +672,35 @@ const THEMES=[
   {id:'rose',name:'Rose',c:['#1C1218','#36242E']}
 ];
 
-/* Model IDs are the current Anthropic ones. They are complete as written —
-   do not append a date suffix. Prices are USD per million tokens (in / out). */
-const MODELS=[
-  {id:'claude-opus-5',   name:'Claude Opus 5',   hint:'Most capable. $5 in / $25 out per million tokens.', effort:true},
-  {id:'claude-sonnet-5', name:'Claude Sonnet 5', hint:'Faster, cheaper, still very strong. $2 in / $10 out per million tokens.', effort:true},
-  {id:'claude-haiku-4-5',name:'Claude Haiku 4.5',hint:'Fastest and cheapest. $1 in / $5 out per million tokens.', effort:false}
-];
+/* Two providers, plus a proxy. Gemini is first because Google AI Studio has a
+   free tier, so a key costs nothing to try. Anthropic keys are sk-ant-...,
+   Google AI Studio keys are AIza... — pasting one into the other fails. */
+const PROVIDERS={
+  gemini:{
+    id:'gemini', name:'Google Gemini', keyName:'Google AI Studio API key',
+    placeholder:'AIza...', prefix:'AIza', console:'https://aistudio.google.com/apikey',
+    /* Seeds only. Google ships new models often, so the real list is pulled
+       from the key itself via listModels(). */
+    models:[
+      {id:'gemini-2.5-flash',      name:'Gemini 2.5 Flash',      hint:'Fast, capable, generous free tier.'},
+      {id:'gemini-2.5-flash-lite', name:'Gemini 2.5 Flash-Lite', hint:'Cheapest and fastest.'},
+      {id:'gemini-2.5-pro',        name:'Gemini 2.5 Pro',        hint:'Strongest 2.5 model.'}
+    ],
+    effort:false
+  },
+  anthropic:{
+    id:'anthropic', name:'Anthropic', keyName:'Anthropic API key',
+    placeholder:'sk-ant-api03-...', prefix:'sk-ant-', console:'https://console.anthropic.com/settings/keys',
+    /* Complete as written — never append a date suffix. */
+    models:[
+      {id:'claude-opus-5',   name:'Claude Opus 5',   hint:'Most capable. $5 in / $25 out per million tokens.'},
+      {id:'claude-sonnet-5', name:'Claude Sonnet 5', hint:'Faster and cheaper. $2 in / $10 out per million tokens.'},
+      {id:'claude-haiku-4-5',name:'Claude Haiku 4.5',hint:'Fastest and cheapest. $1 in / $5 out per million tokens.'}
+    ],
+    effort:true
+  }
+};
+const NO_EFFORT_MODELS=['claude-haiku-4-5'];
 
 const PERSONAS=[
   {id:'friendly', icon:'\u{1F60A}', l:'Friendly',  d:'Warm and casual',    p:'You are warm, upbeat and easy to talk to. Write like a thoughtful friend, not a corporate assistant.'},
@@ -715,8 +738,11 @@ const RECOLOR=[
   {sel:'.c2 [fill="#c2c3bd"], .c0 [fill="#c2c3bd"]', key:'hairColor'}
 ];
 
-const LS={name:'ace_name',u:'ace_uAv',a:'ace_aAv',theme:'ace_theme',api:'ace_api',chats:'ace_chats',
-          model:'ace_model',effort:'ace_effort',persona:'ace_persona',custom:'ace_custom',mode:'ace_mode',proxy:'ace_proxy'};
+const LS={name:'ace_name',u:'ace_uAv',a:'ace_aAv',theme:'ace_theme',chats:'ace_chats',
+          effort:'ace_effort',persona:'ace_persona',custom:'ace_custom',proxy:'ace_proxy',proxyProvider:'ace_proxy_provider',
+          provider:'ace_provider',keys:'ace_keys',models:'ace_models',modelCache:'ace_model_cache',
+          /* legacy keys, read once by migrate() then removed */
+          api:'ace_api',mode:'ace_mode',model:'ace_model'};
 
 /* =========================================================
    State
@@ -729,17 +755,48 @@ const S={
   uAv:Object.assign({},DEF_U,readJSON(LS.u,null)||{}),
   aAv:Object.assign({},DEF_A,readJSON(LS.a,null)||{}),
   theme:readStr(LS.theme,'light'),
-  api:readStr(LS.api,''),
-  mode:readStr(LS.mode,'direct'),
+  provider:readStr(LS.provider,''),
+  keys:readJSON(LS.keys,null)||{},
+  models:readJSON(LS.models,null)||{},
+  modelCache:readJSON(LS.modelCache,null)||{},
   proxy:readStr(LS.proxy,''),
-  model:readStr(LS.model,MODELS[0].id),
+  proxyProvider:readStr(LS.proxyProvider,'gemini'),
   effort:readStr(LS.effort,'low'),
   persona:readStr(LS.persona,'friendly'),
   custom:readStr(LS.custom,''),
   chats:readJSON(LS.chats,[])||[],
   cid:null, editAv:null, editMode:'user', step:0, img:null, busy:false, abort:null, onboarding:false
 };
-if(!MODELS.some(m=>m.id===S.model))S.model=MODELS[0].id;
+/* Migrate the single-provider layout this app used to store. */
+(function migrate(){
+  const oldKey=readStr(LS.api,''), oldMode=readStr(LS.mode,'');
+  if(oldKey&&!S.keys.anthropic&&!S.keys.gemini){
+    /* Route it to whichever provider the prefix actually belongs to. */
+    S.keys[oldKey.indexOf('AIza')===0?'gemini':'anthropic']=oldKey;
+    store(LS.keys,JSON.stringify(S.keys));
+  }
+  if(!S.provider)S.provider=oldMode==='proxy'?'proxy':(S.keys.anthropic?'anthropic':'gemini');
+  const oldModel=readStr(LS.model,'');
+  if(oldModel&&!S.models.anthropic&&oldModel.indexOf('claude')===0)S.models.anthropic=oldModel;
+  try{localStorage.removeItem(LS.api);localStorage.removeItem(LS.mode);localStorage.removeItem(LS.model)}catch(e){}
+})();
+function provider(){return PROVIDERS[S.provider]||null}
+/* Which provider's wire format to speak. In proxy mode the transport is your
+   server, but the payload still has to match whatever it forwards to. */
+function wire(){return S.provider==='proxy'?S.proxyProvider:S.provider}
+function apiKey(){const p=provider();return p?(S.keys[p.id]||''):''}
+function modelList(){
+  const p=provider(); if(!p)return [];
+  const cached=S.modelCache[p.id];
+  return (cached&&cached.length)?cached:p.models;
+}
+function curModel(){
+  const p=provider(); if(!p)return '';
+  const list=modelList();
+  const saved=S.models[p.id];
+  if(saved&&list.some(m=>m.id===saved))return saved;
+  return list.length?list[0].id:'';
+}
 
 const $=id=>document.getElementById(id);
 function on(id,ev,fn){const e=$(id);if(e)e.addEventListener(ev,fn)}
@@ -1286,7 +1343,15 @@ function scrollDown(instant){
 /* =========================================================
    Connection
    ========================================================= */
-function connReady(){return S.mode==='proxy'?!!S.proxy:!!S.api}
+function connReady(){return S.provider==='proxy'?!!S.proxy:!!apiKey()}
+function modelName(){
+  const m=modelList().find(x=>x.id===curModel());
+  return m?m.name:(curModel()||'No model');
+}
+function effortSupported(){
+  const p=provider();
+  return !!(p&&p.effort&&NO_EFFORT_MODELS.indexOf(curModel())<0);
+}
 function setStatus(text,cls){
   $('status-text').textContent=text;
   $('status-dot').className='status-dot'+(cls?' '+cls:'');
@@ -1297,62 +1362,146 @@ function updateConnUI(){
   setStatus(ready?(modelName()+' · ready'):'No API key yet',ready?'':'off');
   $('btn-send').disabled=!ready&&!S.busy;
 }
-function modelName(){const m=MODELS.find(x=>x.id===S.model);return m?m.name:S.model}
 
-function looksLikeKey(k){return /^sk-ant-/.test(k)}
-
+/* ---------------- key + provider settings UI ---------------- */
+function looksLikeKey(k){
+  const p=provider();
+  return !!(p&&k.indexOf(p.prefix)===0);
+}
 function saveKey(){
+  const p=provider();
+  if(!p)return;
   const v=$('api-input').value.trim();
   if(!v){toast('Paste a key first.','err');return}
-  if(!looksLikeKey(v)&&!confirm('That does not look like an Anthropic key (they start with "sk-ant-"). Save it anyway?'))return;
-  S.api=v;store(LS.api,v);
+  if(!looksLikeKey(v)){
+    /* The commonest mistake by far is pasting the other provider's key, so
+       offer to switch rather than just rejecting it. */
+    const other=Object.keys(PROVIDERS).map(k=>PROVIDERS[k]).find(o=>v.indexOf(o.prefix)===0);
+    if(other){
+      S.provider=other.id;store(LS.provider,S.provider);
+      S.keys[other.id]=v;store(LS.keys,JSON.stringify(S.keys));
+      $('api-input').value='';
+      renderConnection();renderModels();updateConnUI();
+      toast('That is a '+other.name+' key — switched provider to '+other.name+'.','ok');
+      loadModels(true);
+      return;
+    }
+    if(!confirm('That does not look like a '+p.keyName+' (they start with "'+p.prefix+'"). Save it anyway?'))return;
+  }
+  S.keys[p.id]=v;store(LS.keys,JSON.stringify(S.keys));
   $('api-input').value='';
-  renderKeyState();
-  updateConnUI();
-  toast('Key saved. Try "Test connection".','ok');
+  renderConnection();updateConnUI();
+  toast('Key saved.','ok');
+  loadModels(true);
 }
 function clearKey(){
-  if(!S.api)return;
-  if(!confirm('Remove the stored API key from this browser?'))return;
-  S.api='';
-  try{localStorage.removeItem(LS.api)}catch(e){}
+  const p=provider();
+  if(!p||!apiKey())return;
+  if(!confirm('Remove the stored '+p.keyName+' from this browser?'))return;
+  delete S.keys[p.id];store(LS.keys,JSON.stringify(S.keys));
   $('api-input').value='';
-  renderKeyState();updateConnUI();
+  renderConnection();updateConnUI();
   toast('Key removed.');
 }
-/* The old build wrote the literal text "key saved" into this box, which then
-   got saved back over the real key the next time Save was pressed. The stored
-   key is never written into an input now — only described. */
-function renderKeyState(){
-  const dot=$('api-dot'),txt=$('api-text'),inp=$('api-input');
-  if(S.api){
-    dot.className='api-dot on';
-    txt.textContent='Key stored ('+S.api.slice(0,11)+'…'+S.api.slice(-4)+')';
-    inp.placeholder='Paste a new key to replace it';
-  }else{
-    dot.className='api-dot off';
-    txt.textContent='Not connected';
-    inp.placeholder='sk-ant-api03-...';
+
+const KEY_HELP={
+  gemini:'<b>Getting a key — step by step</b>'+
+    '<ol><li>Go to <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a> and sign in with a Google account.</li>'+
+    '<li>Click <b>Create API key</b> and pick a Google Cloud project (a new one is fine).</li>'+
+    '<li>Copy the key — it starts with <code>AIza</code> — paste it above and press <b>Save</b>.</li>'+
+    '<li>Press <b>Test connection</b>.</li></ol>'+
+    'Google AI Studio has a free tier, so you can use this without adding a card. Free usage is rate limited; if you hit the limit, wait a minute or pick Flash-Lite.',
+  anthropic:'<b>Getting a key — step by step</b>'+
+    '<ol><li>Go to <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com/settings/keys</a> and sign in.</li>'+
+    '<li>Under <b>Billing</b>, add a payment method and buy credits. API credits are <b>separate</b> from a Claude.ai Pro/Max subscription — a subscription alone will not work here.</li>'+
+    '<li>Click <b>Create Key</b>, copy it (it starts with <code>sk-ant-api03-</code>) and paste it above. You only see it once.</li>'+
+    '<li>Press <b>Save</b>, then <b>Test connection</b>.</li></ol>'+
+    'Typical cost is a fraction of a cent per message. You can cap spending with a monthly budget limit in the console.'
+};
+const KEY_WARN='<b>Where this key lives.</b> It is saved in this browser\'s <code>localStorage</code> and sent straight from your browser to the provider. Anyone who can use this browser profile can read it. Use it on your own device, don\'t paste your key into a copy of this page hosted by someone else, and revoke the key if you ever share your screen with it visible. To host this page for other people, switch to the proxy option above.';
+
+function renderConnection(){
+  const p=provider();
+  $('provider-select').value=S.provider;
+  $('pane-key').classList.toggle('hidden',S.provider==='proxy');
+  $('pane-proxy').classList.toggle('hidden',S.provider!=='proxy');
+  if(p){
+    $('key-label').textContent=p.keyName;
+    $('api-input').placeholder=apiKey()?'Paste a new key to replace it':p.placeholder;
+    $('key-help').innerHTML=KEY_HELP[p.id]||'';
+    $('key-warn').innerHTML=KEY_WARN;
+    const dot=$('api-dot'),txt=$('api-text'),k=apiKey();
+    if(k){
+      dot.className='api-dot on';
+      txt.textContent='Key stored ('+k.slice(0,Math.min(8,k.length))+'…'+k.slice(-4)+')';
+    }else{
+      dot.className='api-dot off';
+      txt.textContent='No '+p.keyName+' yet';
+    }
   }
   const pd=$('proxy-dot'),pt=$('proxy-text');
-  if(S.proxy){pd.className='api-dot on';pt.textContent='Endpoint set';}
-  else{pd.className='api-dot off';pt.textContent='Not configured';}
+  if(S.proxy){pd.className='api-dot on';pt.textContent='Endpoint set'}
+  else{pd.className='api-dot off';pt.textContent='Not configured'}
   $('proxy-input').value=S.proxy;
-  $('mode-select').value=S.mode;
-  $('mode-direct').classList.toggle('hidden',S.mode!=='direct');
-  $('mode-proxy').classList.toggle('hidden',S.mode!=='proxy');
+  $('proxy-provider').value=S.proxyProvider;
 }
 
-function endpoint(){
-  return S.mode==='proxy'?S.proxy:'https://api.anthropic.com/v1/messages';
+/* Google ships new Gemini models often, so the authoritative list is the one
+   the key itself can see. Anything hardcoded here goes stale. */
+async function loadModels(quiet){
+  if(S.provider!=='gemini'||!apiKey()){
+    if(!quiet)toast('Model refresh only applies to Gemini.','err');
+    return;
+  }
+  const btn=$('btn-refresh-models');
+  if(btn){btn.disabled=true;btn.textContent='Loading…'}
+  try{
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key='+encodeURIComponent(apiKey()));
+    if(!res.ok)throw new Error(await describeFailure(res));
+    const j=await res.json();
+    const list=(j.models||[])
+      .filter(m=>(m.supportedGenerationMethods||[]).indexOf('generateContent')>=0)
+      .map(m=>({id:String(m.name||'').replace(/^models\//,''),
+                name:m.displayName||String(m.name||'').replace(/^models\//,''),
+                hint:m.description||''}))
+      .filter(m=>m.id&&m.id.indexOf('embedding')<0&&m.id.indexOf('aqa')<0);
+    if(!list.length)throw new Error('That key returned no usable chat models.');
+    list.sort((a,b)=>a.id<b.id?1:-1);
+    S.modelCache.gemini=list;
+    store(LS.modelCache,JSON.stringify(S.modelCache));
+    if(!list.some(m=>m.id===S.models.gemini)){
+      const pref=list.find(m=>/flash/i.test(m.id)&&!/lite/i.test(m.id))||list[0];
+      S.models.gemini=pref.id;store(LS.models,JSON.stringify(S.models));
+    }
+    renderModels();updateConnUI();
+    if(!quiet)toast('Loaded '+list.length+' models.','ok');
+  }catch(err){
+    if(!quiet)toast(err.message||'Could not load models.','err');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Refresh list'}
+  }
+}
+
+/* ---------------- request building, per provider ---------------- */
+function geminiUrl(model,method,key){
+  return 'https://generativelanguage.googleapis.com/v1beta/models/'+
+    encodeURIComponent(model)+':'+method+
+    (method==='streamGenerateContent'?'?alt=sse&key=':'?key=')+encodeURIComponent(key);
+}
+function endpoint(stream){
+  if(S.provider==='proxy')return S.proxy;
+  if(S.provider==='gemini')
+    return geminiUrl(curModel(),stream?'streamGenerateContent':'generateContent',apiKey());
+  return 'https://api.anthropic.com/v1/messages';
 }
 function headers(){
   const h={'content-type':'application/json'};
-  if(S.mode!=='proxy'){
-    h['x-api-key']=S.api;
+  if(S.provider==='anthropic'){
+    h['x-api-key']=apiKey();
     h['anthropic-version']='2023-06-01';
-    /* Without this header the API rejects browser requests outright, to stop
-       people shipping their key to the public by accident. */
+    /* Anthropic rejects browser requests without this, to stop people
+       shipping their key to the public by accident. Gemini needs no
+       equivalent — its key rides in the query string. */
     h['anthropic-dangerous-direct-browser-access']='true';
   }
   return h;
@@ -1365,66 +1514,129 @@ function buildSystem(){
   if(S.custom.trim())s+='\n\nAdditional standing instructions from '+(S.name||'the user')+':\n'+S.custom.trim();
   return s;
 }
-function apiMessages(list){
+function splitData(dataUrl){return dataUrl.slice(dataUrl.indexOf(',')+1)}
+
+function anthropicMessages(list){
   return list.filter(m=>!m.err).map(m=>{
     if(m.img&&m.img.data){
-      const b64=m.img.data.slice(m.img.data.indexOf(',')+1);
-      const parts=[{type:'image',source:{type:'base64',media_type:m.img.media||'image/jpeg',data:b64}}];
-      if(m.text)parts.push({type:'text',text:m.text});
-      else parts.push({type:'text',text:'What do you make of this image?'});
+      const parts=[{type:'image',source:{type:'base64',media_type:m.img.media||'image/jpeg',data:splitData(m.img.data)}}];
+      parts.push({type:'text',text:m.text||'What do you make of this image?'});
       return {role:m.role,content:parts};
     }
     return {role:m.role,content:m.text||'(empty)'};
   });
 }
+/* Gemini calls the assistant "model" and wraps every turn in parts[]. */
+function geminiContents(list){
+  return list.filter(m=>!m.err).map(m=>{
+    const parts=[];
+    if(m.img&&m.img.data)parts.push({inline_data:{mime_type:m.img.media||'image/jpeg',data:splitData(m.img.data)}});
+    parts.push({text:m.text||(m.img?'What do you make of this image?':'(empty)')});
+    return {role:m.role==='assistant'?'model':'user',parts};
+  });
+}
 function requestBody(list,stream){
-  const body={model:S.model,max_tokens:16000,system:buildSystem(),messages:apiMessages(list)};
-  const m=MODELS.find(x=>x.id===S.model);
-  /* effort is supported on Opus 5 / Sonnet 5 but errors on Haiku 4.5 */
-  if(m&&m.effort)body.output_config={effort:S.effort};
+  if(wire()==='gemini'){
+    const body={
+      system_instruction:{parts:[{text:buildSystem()}]},
+      contents:geminiContents(list),
+      generationConfig:{maxOutputTokens:8192,temperature:0.9}
+    };
+    /* Say so explicitly rather than relying on the server's default. */
+    if(S.provider==='proxy'){body.provider='gemini';body.model=S.models.gemini||''}
+    return body;
+  }
+  const body={model:S.provider==='proxy'?'':curModel(),max_tokens:16000,system:buildSystem(),messages:anthropicMessages(list)};
+  if(effortSupported())body.output_config={effort:S.effort};
   if(stream)body.stream=true;
+  if(S.provider==='proxy')body.provider=S.proxyProvider;
   return body;
 }
 
+/* ---------------- error reporting, per provider ---------------- */
 async function describeFailure(res){
-  let detail='';
-  try{const j=await res.json();detail=(j&&j.error&&j.error.message)||j.message||''}
-  catch(e){try{detail=(await res.text()).slice(0,300)}catch(_){}}
-  const d=detail||'';
+  let detail='',status='',reason='';
+  try{
+    const j=await res.json();
+    const e=j&&j.error;
+    detail=(e&&e.message)||j.message||'';
+    status=(e&&e.status)||'';
+    reason=(e&&e.details&&e.details[0]&&e.details[0].reason)||'';
+  }catch(e){try{detail=(await res.text()).slice(0,300)}catch(_){}}
+
+  if(wire()==='gemini'){
+    /* Gemini answers an invalid key with 400 INVALID_ARGUMENT, not 401. */
+    if(reason==='API_KEY_INVALID'||/API key not valid/i.test(detail))
+      return 'That Google AI Studio key was rejected. Check it was copied in full, and that it is an AI Studio key (it starts with "AIza").';
+    if(res.status===403||status==='PERMISSION_DENIED')
+      return 'Google refused this key. Usually the Generative Language API is not enabled on that project, or the key is restricted to other referrers. '+detail;
+    if(res.status===429||status==='RESOURCE_EXHAUSTED')
+      return 'You have hit the Gemini rate limit or free-tier quota. Wait a minute, or pick a lighter model like Flash-Lite.';
+    if(res.status===404)
+      return 'Model "'+curModel()+'" is not available to this key. Press "Refresh list" in Settings to load the models your key can actually use.';
+    if(res.status>=500)return 'Google returned a server error ('+res.status+'). Try again.';
+    return 'Gemini rejected the request'+(detail?': '+detail:' ('+res.status+').');
+  }
+
   if(res.status===401)return 'That API key was rejected. Check it was copied in full and has not been revoked in the console.';
-  if(res.status===403)return 'This key is not permitted to make this request. '+d;
-  if(res.status===404)return 'Model "'+S.model+'" was not found for this key. Pick another model in Settings.';
+  if(res.status===403)return 'This key is not permitted to make this request. '+detail;
+  if(res.status===404)return 'Model "'+curModel()+'" was not found for this key. Pick another model in Settings.';
   if(res.status===413)return 'That request was too large. Try a smaller image.';
   if(res.status===429)return 'Rate limited. Wait a few seconds and try again.';
   if(res.status===529)return 'Claude is overloaded right now. Try again in a moment.';
-  if(res.status>=500)return 'Anthropic returned a server error ('+res.status+'). Try again.';
+  if(res.status>=500)return 'The provider returned a server error ('+res.status+'). Try again.';
   if(res.status===400){
-    if(/credit balance|insufficient/i.test(d))return 'Your Anthropic account is out of credit. Add credits under Billing in the console — API credits are separate from a Claude.ai subscription.';
-    return 'The request was rejected: '+(d||'bad request')+'';
+    if(/credit balance|insufficient/i.test(detail))
+      return 'Your Anthropic account is out of credit. Add credits under Billing in the console — API credits are separate from a Claude.ai subscription.';
+    return 'The request was rejected: '+(detail||'bad request');
   }
-  return 'Request failed ('+res.status+')'+(d?': '+d:'.');
+  return 'Request failed ('+res.status+')'+(detail?': '+detail:'.');
 }
 function describeNetwork(err){
   if(err&&err.name==='AbortError')return null;
-  if(S.mode==='proxy')return 'Could not reach your proxy at '+S.proxy+'. Check the URL and that the server is running.';
-  return 'Could not reach the Anthropic API. This is usually no internet connection, a browser extension or network blocking the request, or the page being opened in a context the API will not accept. If you are opening this file directly from disk, try serving it over http instead.';
+  if(S.provider==='proxy')return 'Could not reach your proxy at '+S.proxy+'. Check the URL and that the server is running.';
+  const host=S.provider==='gemini'?'the Google Gemini API':'the Anthropic API';
+  return 'Could not reach '+host+'. This is usually no internet connection, or a browser extension or network blocking the request. If you opened this file straight from disk, try serving it over http instead.';
+}
+
+/* ---------------- streaming ---------------- */
+function readDelta(ev){
+  if(wire()==='gemini'){
+    const cand=ev.candidates&&ev.candidates[0];
+    if(!cand)return '';
+    if(cand.finishReason==='SAFETY'||cand.finishReason==='PROHIBITED_CONTENT')
+      throw new Error('Gemini blocked that response under its safety filters. Try rewording it.');
+    const parts=(cand.content&&cand.content.parts)||[];
+    return parts.map(x=>x.text||'').join('');
+  }
+  if(ev.type==='content_block_delta'&&ev.delta&&ev.delta.type==='text_delta')return ev.delta.text;
+  if(ev.type==='message_delta'&&ev.delta&&ev.delta.stop_reason==='refusal')
+    throw new Error('Claude declined to answer that one. Try rewording it.');
+  if(ev.type==='error')throw new Error((ev.error&&ev.error.message)||'The stream failed.');
+  return '';
 }
 
 async function streamReply(list,onDelta,signal){
   let res;
   try{
-    res=await fetch(endpoint(),{method:'POST',headers:headers(),body:JSON.stringify(requestBody(list,true)),signal});
+    res=await fetch(endpoint(true),{method:'POST',headers:headers(),
+      body:JSON.stringify(requestBody(list,true)),signal});
   }catch(err){
     const m=describeNetwork(err);
     if(m===null)throw err;
     throw new Error(m);
   }
   if(!res.ok)throw new Error(await describeFailure(res));
+
   if(!res.body){
     const j=await res.json();
-    const t=(j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-    onDelta(t);return;
+    const t=wire()==='gemini'
+      ? (((j.candidates||[])[0]||{}).content||{}).parts?.map(x=>x.text||'').join('')||''
+      : (j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    if(t)onDelta(t);
+    return;
   }
+
   const reader=res.body.getReader(),dec=new TextDecoder();
   let buf='',got=false;
   for(;;){
@@ -1437,19 +1649,16 @@ async function streamReply(list,onDelta,signal){
       for(const line of chunk.split('\n')){
         if(line.indexOf('data:')!==0)continue;
         const raw=line.slice(5).trim();
-        if(!raw)continue;
+        if(!raw||raw==='[DONE]')continue;
         let ev;try{ev=JSON.parse(raw)}catch(e){continue}
-        if(ev.type==='content_block_delta'&&ev.delta&&ev.delta.type==='text_delta'){got=true;onDelta(ev.delta.text)}
-        else if(ev.type==='message_delta'&&ev.delta&&ev.delta.stop_reason==='refusal'){
-          throw new Error('Claude declined to answer that one. Try rewording it.');
-        }
-        else if(ev.type==='error'){
-          throw new Error((ev.error&&ev.error.message)||'The stream failed.');
-        }
+        if(ev.promptFeedback&&ev.promptFeedback.blockReason)
+          throw new Error('Gemini blocked that prompt ('+ev.promptFeedback.blockReason+'). Try rewording it.');
+        const text=readDelta(ev);
+        if(text){got=true;onDelta(text)}
       }
     }
   }
-  if(!got)throw new Error('Claude returned an empty response. Try again.');
+  if(!got)throw new Error('The model returned an empty response. Try again.');
 }
 
 /* =========================================================
@@ -1583,7 +1792,7 @@ function autoGrow(){
 /* =========================================================
    Settings
    ========================================================= */
-function openSettings(){goto('settings');renderThemes();renderPersonas();renderModels();renderKeyState();$('s-name').value=S.name;$('custom-prompt').value=S.custom;$('effort-select').value=S.effort}
+function openSettings(){goto('settings');renderThemes();renderPersonas();renderConnection();renderModels();$('s-name').value=S.name;$('custom-prompt').value=S.custom;$('effort-select').value=S.effort}
 function closeSettings(){openChat()}
 
 function renderThemes(){
@@ -1614,29 +1823,42 @@ function renderPersonas(){
 }
 function renderModels(){
   const sel=$('model-select');sel.replaceChildren();
-  MODELS.forEach(m=>{
-    const o=document.createElement('option');o.value=m.id;o.textContent=m.name;
-    sel.appendChild(o);
-  });
-  sel.value=S.model;
+  if(S.provider==='proxy'){
+    const o=document.createElement('option');
+    o.value='';o.textContent='Chosen by your server';
+    sel.appendChild(o);sel.disabled=true;
+  }else{
+    sel.disabled=false;
+    modelList().forEach(m=>{
+      const o=document.createElement('option');o.value=m.id;o.textContent=m.name;
+      sel.appendChild(o);
+    });
+    sel.value=curModel();
+  }
+  $('btn-refresh-models').classList.toggle('hidden',S.provider!=='gemini');
   syncModelHint();
 }
 function syncModelHint(){
-  const m=MODELS.find(x=>x.id===S.model);
-  $('model-hint').textContent=m?m.hint+(m.effort?'':' Effort setting does not apply to this model.'):'';
-  $('effort-select').disabled=!(m&&m.effort);
+  const m=modelList().find(x=>x.id===curModel());
+  const hint=$('model-hint');
+  if(S.provider==='proxy')hint.textContent='Your proxy decides which model runs.';
+  else hint.textContent=(m&&m.hint)?m.hint.slice(0,220):'';
+  const supported=effortSupported();
+  $('effort-field').classList.toggle('hidden',!supported);
+  $('effort-select').disabled=!supported;
 }
 
 async function testConnection(){
-  if(S.mode==='direct'&&!S.api){toast('Save a key first.','err');return}
-  if(S.mode==='proxy'&&!S.proxy){toast('Enter a proxy URL first.','err');return}
-  const dot=S.mode==='proxy'?$('proxy-dot'):$('api-dot');
-  const txt=S.mode==='proxy'?$('proxy-text'):$('api-text');
+  if(S.provider==='proxy'&&!S.proxy){toast('Enter a proxy URL first.','err');return}
+  if(S.provider!=='proxy'&&!apiKey()){toast('Save a key first.','err');return}
+  const dot=S.provider==='proxy'?$('proxy-dot'):$('api-dot');
+  const txt=S.provider==='proxy'?$('proxy-text'):$('api-text');
   dot.className='api-dot busy';txt.textContent='Testing…';
   const body=requestBody([{role:'user',text:'Reply with the single word: ok'}],false);
-  body.max_tokens=64;
+  if(wire()==='gemini')body.generationConfig={maxOutputTokens:32};
+  else body.max_tokens=64;
   try{
-    const res=await fetch(endpoint(),{method:'POST',headers:headers(),body:JSON.stringify(body)});
+    const res=await fetch(endpoint(false),{method:'POST',headers:headers(),body:JSON.stringify(body)});
     if(!res.ok){
       const msg=await describeFailure(res);
       dot.className='api-dot bad';txt.textContent='Failed';
@@ -1716,7 +1938,13 @@ function bind(){
   on('file-input','change',e=>handleFile(e.target));
   on('btn-remove-file','click',removeFile);
 
-  on('mode-select','change',e=>{S.mode=e.target.value;store(LS.mode,S.mode);renderKeyState();updateConnUI()});
+  on('provider-select','change',e=>{
+    S.provider=e.target.value;store(LS.provider,S.provider);
+    renderConnection();renderModels();updateConnUI();
+    if(S.provider==='gemini'&&apiKey()&&!(S.modelCache.gemini||[]).length)loadModels(true);
+  });
+  on('btn-refresh-models','click',()=>loadModels(false));
+  on('proxy-provider','change',e=>{S.proxyProvider=e.target.value;store(LS.proxyProvider,S.proxyProvider);updateConnUI()});
   on('btn-save-key','click',saveKey);
   on('btn-clear-key','click',clearKey);
   on('btn-test-key','click',testConnection);
@@ -1730,11 +1958,15 @@ function bind(){
   });
   on('btn-save-proxy','click',()=>{
     S.proxy=$('proxy-input').value.trim();
-    store(LS.proxy,S.proxy);renderKeyState();updateConnUI();
+    store(LS.proxy,S.proxy);renderConnection();updateConnUI();
     toast(S.proxy?'Endpoint saved.':'Endpoint cleared.','ok');
   });
 
-  on('model-select','change',e=>{S.model=e.target.value;store(LS.model,S.model);syncModelHint();updateConnUI()});
+  on('model-select','change',e=>{
+    const p=provider();
+    if(p){S.models[p.id]=e.target.value;store(LS.models,JSON.stringify(S.models))}
+    syncModelHint();updateConnUI();
+  });
   on('effort-select','change',e=>{S.effort=e.target.value;store(LS.effort,S.effort)});
   on('custom-prompt','input',e=>{S.custom=e.target.value;store(LS.custom,S.custom)});
   on('btn-save-name','click',()=>{

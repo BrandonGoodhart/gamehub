@@ -7,40 +7,60 @@ leaves your device except for the messages you send to Anthropic.
 
 Deployed with this repo it is served at `/ace/`.
 
-## Connecting it to Claude
+## Connecting it
 
-Ace needs an **Anthropic API key**. Two ways to supply one:
+Ace speaks to two providers. Pick one in Settings → Connection.
 
-### Direct mode (default) — for a page you run for yourself
+### Google Gemini (default) — has a free tier
+
+1. Get a key at <https://aistudio.google.com/apikey>.
+2. Paste it (`AIza…`) into Settings → Connection → Save.
+3. Press **Test connection**.
+
+Saving a key also pulls the model list straight from that key, so the dropdown
+shows the models you can actually use rather than a hardcoded list that goes
+stale. **Refresh list** re-pulls it.
+
+Google AI Studio has a free tier, so this works without adding a card. Free
+usage is rate limited.
+
+### Anthropic (Claude) — paid
 
 1. Get a key at <https://console.anthropic.com/settings/keys>.
 2. Add a payment method and buy credits under **Billing**. API credits are
    separate from a Claude.ai Pro/Max subscription — a subscription alone will
    not work.
-3. Paste the key (`sk-ant-api03-…`) into Settings → Connection → Save, then
-   press **Test connection**.
+3. Paste the key (`sk-ant-api03-…`) and Save.
 
-The browser talks to `api.anthropic.com` directly, using the
-`anthropic-dangerous-direct-browser-access: true` header that Anthropic
-requires for browser-side calls. The key is readable by anyone who can use that
-browser profile, so this mode is only appropriate for your own device.
+Keys are stored per provider, so switching back and forth does not lose them.
+Paste a key with the other provider's prefix and Ace switches provider for you
+rather than failing.
+
+Either way the browser talks to the provider directly and the key is readable
+by anyone who can use that browser profile, so direct mode only suits your own
+device. Anthropic additionally requires the
+`anthropic-dangerous-direct-browser-access: true` header for browser calls;
+Gemini takes its key in the query string and needs no such header.
 
 ### Proxy mode — required if other people will use the page
 
 Never ship a page that carries your key to other people. Instead run the
 bundled Netlify function, which keeps the key server-side:
 
-1. Set `ANTHROPIC_API_KEY` in Netlify → Site settings → Environment variables.
+1. Set `GEMINI_API_KEY` and/or `ANTHROPIC_API_KEY` in Netlify → Site settings →
+   Environment variables.
 2. Deploy. The function is at `netlify/functions/ace-chat.ts` and is routed to
    `/api/ace-chat` by `netlify.toml`.
-3. In Settings → Connection choose **Through my own server** and enter
-   `/api/ace-chat`.
+3. In Settings → Connection choose **Through my own server**, enter
+   `/api/ace-chat`, and set **My server talks to** to match the key you
+   configured.
 
 Optionally set `ACE_ALLOWED_ORIGIN` to your site's origin to stop other sites
 calling your proxy.
 
 ## Cost
 
-Billed per token. Defaults to Claude Opus 5 at low effort; Sonnet 5 and
-Haiku 4.5 are selectable in Settings and are cheaper. A typical short exchange
-costs well under a cent. Set a monthly budget cap in the Anthropic console.
+Gemini's free tier costs nothing within its rate limits. Anthropic is billed
+per token — Opus 5 is $5/$25 per million in/out, Sonnet 5 $2/$10, Haiku 4.5
+$1/$5, so a short exchange is well under a cent. Set a monthly budget cap in
+the Anthropic console.
