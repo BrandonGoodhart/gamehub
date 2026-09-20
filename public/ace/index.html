@@ -292,6 +292,11 @@ button,input,textarea,select{font-family:inherit}
 .help ol{padding-left:1.3em;margin:8px 0}
 .help li+li{margin-top:5px}
 .help a{color:var(--pri)}
+.diag-line{display:flex;gap:9px;align-items:flex-start;padding:6px 0;line-height:1.55}
+.diag-mark{flex-shrink:0;font-weight:700;width:1.1em}
+.diag-ok{color:var(--acc2)}
+.diag-bad{color:var(--err)}
+.diag-wait{color:var(--txt3)}
 .help code{background:var(--bg1);border:1px solid var(--brd);padding:.1em .4em;border-radius:5px;font-family:ui-monospace,monospace;font-size:.88em;word-break:break-all}
 .warn-box{background:color-mix(in srgb,var(--warn) 12%,transparent);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);border-radius:12px;padding:13px 15px;margin-top:12px;font-size:.84rem;line-height:1.65;color:var(--txt2)}
 .warn-box b{color:var(--txt)}
@@ -473,8 +478,10 @@ details.adv summary:hover{color:var(--txt)}
         </div>
         <div class="s-row">
           <button class="btn btn-sec btn-sm" id="btn-test-key">Test connection</button>
+          <button class="btn btn-sec btn-sm" id="btn-diagnose">Run diagnostics</button>
           <button class="btn btn-danger btn-sm" id="btn-clear-key">Remove key</button>
         </div>
+        <div class="help hidden" id="diag"></div>
         <div class="help" id="key-help"></div>
         <div class="warn-box" id="key-warn"></div>
       </div>
@@ -559,6 +566,7 @@ details.adv summary:hover{color:var(--txt)}
     <div class="s-card">
       <h3>Data</h3>
       <p class="sub">Everything — chats, avatars, your key — is stored in this browser only. Nothing is uploaded anywhere except your messages going to Anthropic.</p>
+      <p class="sub" id="build-stamp"></p>
       <div class="stack">
         <button class="btn btn-sec" id="btn-export">Export chats as JSON</button>
         <button class="btn btn-danger" id="btn-reset">Erase everything and start over</button>
@@ -724,6 +732,7 @@ const STEPS=[
   {key:'shoeColor',  title:'Shoes',        sub:'',                                  icon:'▰', type:'color', opts:SHOEC}
 ];
 
+const BUILD='2026-09-20d';
 const STYLE_COUNT=Object.keys(AVATARS).length;
 const DEF_U={hairStyle:'hair1', skinColor:'#F0D5BE', hairColor:'#4A3728', topColor:'#5B6EF7', bottomColor:'#1A1A1A', shoeColor:'#1A1A1A'};
 const DEF_A={hairStyle:'hair19',skinColor:'#EECEB3', hairColor:'#2C222B', topColor:'#10B981', bottomColor:'#374151', shoeColor:'#FFFFFF'};
@@ -1364,6 +1373,11 @@ function updateConnUI(){
 }
 
 /* ---------------- key + provider settings UI ---------------- */
+/* Pasted keys often arrive wrapped in quotes, or with a newline from a
+   terminal. Silently stripping that saves a baffling rejection. */
+function cleanKey(raw){
+  return String(raw||'').replace(/[\s\u200b-\u200d\ufeff]+/g,'').replace(/^["'`]+|["'`]+$/g,'');
+}
 function looksLikeKey(k){
   const p=provider();
   return !!(p&&k.indexOf(p.prefix)===0);
@@ -1371,7 +1385,7 @@ function looksLikeKey(k){
 function saveKey(){
   const p=provider();
   if(!p)return;
-  const v=$('api-input').value.trim();
+  const v=cleanKey($('api-input').value);
   if(!v){toast('Paste a key first.','err');return}
   if(!looksLikeKey(v)){
     /* The commonest mistake by far is pasting the other provider's key, so
@@ -1392,7 +1406,9 @@ function saveKey(){
   $('api-input').value='';
   renderConnection();updateConnUI();
   toast('Key saved.','ok');
-  loadModels(true);
+  /* Not quiet: if this fails it is usually the same reason chatting will
+     fail, and silence here sent people hunting for a nonexistent bug. */
+  loadModels(false);
 }
 function clearKey(){
   const p=provider();
@@ -1792,7 +1808,7 @@ function autoGrow(){
 /* =========================================================
    Settings
    ========================================================= */
-function openSettings(){goto('settings');renderThemes();renderPersonas();renderConnection();renderModels();$('s-name').value=S.name;$('custom-prompt').value=S.custom;$('effort-select').value=S.effort}
+function openSettings(){goto('settings');renderThemes();renderPersonas();renderConnection();renderModels();$('build-stamp').textContent='Build '+BUILD+'.';$('s-name').value=S.name;$('custom-prompt').value=S.custom;$('effort-select').value=S.effort}
 function closeSettings(){openChat()}
 
 function renderThemes(){
@@ -1876,6 +1892,95 @@ async function testConnection(){
   }
 }
 
+/* =========================================================
+   Diagnostics — answers "why isn't my key working" definitively,
+   by separating "cannot reach the host at all" (network, extension,
+   or an embedding page's CSP) from "host answered and refused".
+   ========================================================= */
+function diagLine(mark,cls,text){
+  const row=document.createElement('div');row.className='diag-line';
+  const m=document.createElement('span');m.className='diag-mark '+cls;m.textContent=mark;
+  const t=document.createElement('span');t.innerHTML=text;
+  row.append(m,t);
+  return row;
+}
+async function runDiagnostics(){
+  const box=$('diag');
+  box.classList.remove('hidden');
+  box.replaceChildren();
+  const report=[];
+  const add=(mark,cls,html,plain)=>{box.appendChild(diagLine(mark,cls,html));report.push((plain||html.replace(/<[^>]+>/g,'')))};
+
+  const head=document.createElement('div');
+  head.innerHTML='<b>Diagnostics</b> · build '+BUILD;
+  box.appendChild(head);
+
+  const p=provider();
+  if(S.provider==='proxy'){add('i','diag-wait','Provider: your own server at <code>'+esc(S.proxy||'(not set)')+'</code>');}
+  else if(!p){add('✗','diag-bad','No provider selected.');return}
+  else add('i','diag-wait','Provider: <b>'+p.name+'</b>, model <code>'+esc(curModel()||'(none)')+'</code>');
+
+  /* 1. the key itself */
+  const k=apiKey();
+  if(S.provider!=='proxy'){
+    if(!k){add('✗','diag-bad','No key saved. Paste one above and press Save.');return}
+    if(k.indexOf(p.prefix)!==0)
+      add('✗','diag-bad','Key starts with <code>'+esc(k.slice(0,6))+'</code> but a '+p.keyName+' starts with <code>'+p.prefix+'</code>. Wrong provider selected, or wrong key pasted.');
+    else
+      add('✓','diag-ok','Key format looks right ('+k.length+' characters, starts <code>'+esc(k.slice(0,6))+'</code>).');
+  }
+
+  /* 2. can we reach the host at all? */
+  const reachUrl=S.provider==='gemini'
+    ? 'https://generativelanguage.googleapis.com/v1beta/models?key='+encodeURIComponent(k||'x')
+    : null;
+  if(reachUrl){
+    let res=null,netErr=null;
+    try{res=await fetch(reachUrl)}catch(e){netErr=e}
+    if(netErr){
+      add('✗','diag-bad','<b>Could not reach generativelanguage.googleapis.com at all.</b> The request failed before Google answered ('+esc(netErr.message||'network error')+
+        '). That is not your key. Usual causes: no internet, an ad/privacy blocker, a corporate network, or this page being embedded somewhere whose security policy forbids the call — <b>if you are using the hosted link, download the file and open it directly instead.</b>');
+      finishDiag(box,report);return;
+    }
+    if(res.ok){
+      let count=0;
+      try{const j=await res.json();count=(j.models||[]).length}catch(e){}
+      add('✓','diag-ok','Reached Google and the key was accepted — '+count+' models visible.');
+    }else{
+      const msg=await describeFailure(res.clone());
+      add('✗','diag-bad','Google answered <b>HTTP '+res.status+'</b> and refused: '+esc(msg));
+      finishDiag(box,report);return;
+    }
+  }
+
+  /* 3. a real generation on the selected model */
+  try{
+    const body=requestBody([{role:'user',text:'Reply with the single word: ok'}],false);
+    if(wire()==='gemini')body.generationConfig={maxOutputTokens:32};else body.max_tokens=64;
+    const res=await fetch(endpoint(false),{method:'POST',headers:headers(),body:JSON.stringify(body)});
+    if(res.ok){
+      add('✓','diag-ok','<b>The model replied. Everything works</b> — you can close this and start chatting.');
+    }else{
+      add('✗','diag-bad','Model call failed (HTTP '+res.status+'): '+esc(await describeFailure(res)));
+    }
+  }catch(e){
+    add('✗','diag-bad','Model call could not be sent: '+esc(e.message||'network error')+
+      '. If the check above passed, something is blocking this specific request.');
+  }
+  finishDiag(box,report);
+}
+function finishDiag(box,report){
+  const btn=document.createElement('button');
+  btn.className='btn btn-sec btn-sm';
+  btn.style.marginTop='10px';
+  btn.textContent='Copy this report';
+  btn.addEventListener('click',()=>{
+    const text='Ace diagnostics (build '+BUILD+')\n'+report.map(r=>'- '+r).join('\n');
+    navigator.clipboard?.writeText(text).then(()=>toast('Report copied','ok'),()=>toast('Could not copy','err'));
+  });
+  box.appendChild(btn);
+}
+
 async function exportChats(){
   const json=JSON.stringify({exported:new Date().toISOString(),chats:S.chats},null,2);
   const name='ace-chats.json';
@@ -1948,6 +2053,7 @@ function bind(){
   on('btn-save-key','click',saveKey);
   on('btn-clear-key','click',clearKey);
   on('btn-test-key','click',testConnection);
+  on('btn-diagnose','click',runDiagnostics);
   on('btn-test-proxy','click',testConnection);
   on('api-input','keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveKey()}});
   on('btn-toggle-key','click',()=>{
