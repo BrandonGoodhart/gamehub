@@ -22,6 +22,9 @@
   var lastHTML = '';
   var lastName = 'website';
   var blobURL = null;
+  var AI = F.AI;
+  var aiMode = false;      /* a model is answering, not the script */
+  var aiTurns = 0;
 
   /* ------------------------------------------------------------ helpers */
   function sleep(ms) { return new Promise(function (r) { window.setTimeout(r, ms); }); }
@@ -290,6 +293,13 @@
     }
 
     var q = questionFor(current);
+    /* Offline, a whole paragraph typed at the name question becomes the page
+       title and the filename. The model handles this properly; the script has
+       to ask. */
+    if (current === 'name' && text.length > 52) {
+      return aside('That is a lot to put at the top of the page. What is it actually called, in a few words?',
+        'Everything else you just told me is welcome \u2014 I will ask for it in a moment.');
+    }
     if (res.intent === 'skip') {
       if (!q.optional) {
         return aside('I do need this one — without it the page has a hole in it where the ' + current + ' should be.',
@@ -381,6 +391,7 @@
     built = true;
     current = null;
     input.placeholder = 'Want a change? Tell me…';
+    if (aiMode) { AI.push('assistant', 'I built the site and showed it to them.'); }
   }
 
   function fileURL() {
@@ -461,6 +472,7 @@
 
   /* Once a site exists, a message is either a question or a change. */
   function followUp(text) {
+    if (aiMode) { return aiTurn(text); }
     var res = B.classify(text, { qid: null });
     if (res.intent === 'capability') { return aside(B.capability(text) || B.capabilityFallback); }
     if (res.intent === 'choice') { return aside(B.choice(text)); }
@@ -479,6 +491,53 @@
     buildIt('Added that in.');
   }
 
+  /* ------------------------------------------------------------ AI turns */
+  /* The model fills the same fields the script fills, then the browser builds
+     the page. If a turn fails we say so once and finish on the script rather
+     than stranding someone mid-conversation. */
+  async function aiTurn(text) {
+    busy = true;
+    sendBtn.disabled = true;
+    AI.push('user', text);
+
+    var dots = document.createElement('div');
+    dots.className = 'typing';
+    dots.innerHTML = '<i></i><i></i><i></i>';
+    var waiting = msg('bot', dots);
+
+    var out;
+    try {
+      out = await AI.turn(A);
+    } catch (err) {
+      waiting.parentNode.remove();
+      busy = false;
+      sendBtn.disabled = false;
+      aiMode = false;
+      say('I lost my connection there, so I will carry on the simple way.',
+        err && err.message ? err.message : '');
+      if (!A.type) { return pickType(text); }
+      queue = flowFor(A.type).filter(function (q) { return !A[q] && q !== 'theme'; });
+      return nextQuestion();
+    }
+
+    waiting.parentNode.remove();
+    Object.keys(out.patch).forEach(function (k) { A[k] = out.patch[k]; });
+    say(out.reply);
+    busy = false;
+    sendBtn.disabled = false;
+
+    /* The model decides when there is enough; second-guessing it made the
+       conversation lurch into a build mid-question. buildable() is only a
+       backstop for an interview that will not end. */
+    aiTurns += 1;
+    var stalled = aiTurns >= 10 && AI.buildable(A);
+    if ((out.ready || stalled) && !built) {
+      if (!A.theme) { A.theme = S.detectTheme(A.brief || A.tagline || '') || 'calm'; }
+      return buildIt('');
+    }
+    input.focus();
+  }
+
   /* --------------------------------------------------------------- input */
   function submit() {
     var text = input.value.trim();
@@ -487,6 +546,7 @@
     resize();
     youSaid(text);
     clearChips();
+    if (aiMode) { return aiTurn(text); }
     if (built) { return followUp(text); }
     handle(text);
   }
@@ -509,6 +569,24 @@
   async function hello() {
     var preset = (window.location.search.match(/[?&]kind=([^&]+)/) || [])[1];
     preset = preset ? decodeURIComponent(preset) : '';
+
+    aiMode = await AI.probe();
+    if (aiMode) {
+      AI.reset();
+      await typing(300);
+      if (preset && S.TYPES[preset]) {
+        A.type = preset;
+        AI.push('user', 'I want ' + S.TYPES[preset].name.toLowerCase() + '.');
+        say('Hello. Let us build you ' + S.TYPES[preset].name.toLowerCase() + '.',
+          'Tell me about it in your own words and I will only ask for what is missing.');
+      } else {
+        say(['Hello. I build websites \u2014 one page, one file, yours to keep.',
+          'Tell me what you want one for, in as much or as little detail as you like.'],
+          'Say it all in one go if you want. I will only ask for what you leave out.');
+      }
+      input.focus();
+      return;
+    }
 
     await typing(300);
     if (preset && S.TYPES[preset]) {

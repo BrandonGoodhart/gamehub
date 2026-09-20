@@ -12,6 +12,11 @@
   to = "/.netlify/functions/generate-questions"
   status = 200
 
+[[redirects]]
+  from = "/api/forge-chat"
+  to = "/.netlify/functions/forge-chat"
+  status = 200
+
 # Game Forge is a static page under /public, not a React route. Static files
 # already win over non-forced redirects; this just covers the no-slash form.
 [[redirects]]

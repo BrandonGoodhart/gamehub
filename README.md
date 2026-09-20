@@ -36,6 +36,35 @@ Six themes (Calm, Fresh, Playful, Elegant, Bold, Night), each with its own
 palette and type family. The chat guesses the type and theme from your first
 sentence; if it cannot, it offers buttons.
 
+### Two brains, one conversation
+
+The chat runs in whichever mode the deployment supports, and switches silently:
+
+**With a model** (`/api/forge-chat`, a Netlify function). It reads everything in a
+message at once. Say *"It's called Ridgeway Bakehouse, we do sourdough and cakes,
+ring us on 01234 567890"* and it fills in the name, the items and the contact
+together, then asks about something else. It answers whatever you ask along the
+way and decides for itself when it has enough to build.
+
+Set **one** of these in Netlify -> Site settings -> Environment variables, then
+redeploy:
+
+| Variable | Provider |
+| --- | --- |
+| `ANTHROPIC_API_KEY` | Claude (`claude-opus-5`) |
+| `GEMINI_API_KEY` | Gemini (already used by the quiz questions) |
+
+Claude wins if both are set. With neither, the endpoint reports itself
+unavailable and nothing breaks.
+
+The model never writes HTML. It fills the same fields the scripted interview
+fills, and the browser builds the page from those, so a strange answer can cost
+you a wrong word but never a broken site.
+
+**Without one** — no key, a static host, the published artifact, or a page opened
+from a file — the scripted interview below takes over. It cannot read three facts
+out of one sentence, but it needs no server and works with the wifi off.
+
 ### It is not a form
 
 Partway through, "why?", "what do you mean?", "like what?", "you pick",
@@ -78,7 +107,8 @@ bundle, so everything runs from a file path as happily as from a server.
 | --- | --- |
 | `index.html` | The explainer page |
 | `chat.html` / `chat.js` | The conversation, the build, the result card |
-| `brain.js` | Reads what a message actually is, and the material it answers with |
+| `ai.js` | Talks to `/api/forge-chat` when it is there; steps aside when it is not |
+| `brain.js` | The offline brain: what a message is, and the material it answers with |
 | `site.js` | Website generator: themes, types, blocks, emitted CSS and runtime |
 | `generator.js` | Game generator: `parsePrompt` -> `buildSpec` -> `buildGame` |
 | `runtime.js` | The generated game's engine, inlined into every game export |
@@ -89,6 +119,10 @@ Both `runtime.js` (games) and the site runtime in `site.js` are serialised into
 their exports with `Function.prototype.toString()`. That keeps each export a
 single offline file while the engines stay ordinary source files you can lint,
 diff and test.
+
+The function itself is `netlify/functions/forge-chat.ts`. It returns a strict
+JSON turn -- a reply, a patch of fields it learned, and whether it is ready to
+build -- and never HTML.
 
 ### Adding things
 
