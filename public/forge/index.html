@@ -3,106 +3,93 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b0d14">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>Game Forge — describe a class game, get the file</title>
-<meta name="description" content="Describe the game you want for your class. Watch it get built. Download one file that works offline in Safari.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0d14'/%3E%3Cpath d='M9 22l7-13 7 13z' fill='%237c8cff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="forge.css">
+<meta name="theme-color" content="#0c0e14">
+<title>Game Forge</title>
+<meta name="description" content="Tell it what you want in a chat. It builds you a website you can download, use, and open in Safari.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0e14'/%3E%3Cpath d='M9 22l7-13 7 13z' fill='%236f8bff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header class="top">
-  <a class="logo" href="/">
-    <span class="mark" aria-hidden="true"></span>
-    <span>Game&nbsp;Forge</span>
-  </a>
-  <span class="badge">Works offline · No accounts · One file</span>
-</header>
 
-<main id="main">
-  <section class="hero">
-    <h1>Describe the game.<br><span class="grad">Get the file.</span></h1>
+<header class="top"><div class="wrap">
+  <a class="logo" href="index.html"><span class="mark"></span>Game Forge</a>
+  <a class="btn primary" href="chat.html">Start</a>
+</div></header>
+
+<main>
+  <section class="hero"><div class="wrap">
+    <h1>Tell it what you want.<br><span class="grad">Get a website.</span></h1>
     <p class="lede">
-      Tell it what your class needs, in a sentence. It builds a real trivia game,
-      shows you what it is doing, and hands you a single <code>.html</code> file you can
-      download, open in Safari, and play with no internet.
+      It asks you a few short questions in a chat, the way a person would.
+      Then it builds your website and hands you the file. No accounts, no code,
+      nothing to install.
     </p>
-  </section>
+    <a class="btn primary big" href="chat.html">Start chatting</a>
+  </div></section>
 
-  <section class="card prompt-card" id="promptCard">
-    <label class="lbl" for="prompt">What game do you want?</label>
-    <textarea id="prompt" rows="3" spellcheck="true"
-      placeholder="e.g. Build me a trivia game for my class that a lot of kids can play, like the ones they already love"></textarea>
-    <div class="chips" id="examples" aria-label="Example prompts"></div>
-    <div class="actions">
-      <button class="btn primary" id="build">Build my game</button>
-      <button class="btn" id="surprise">Surprise me</button>
+  <section class="block"><div class="wrap">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step"><b>1</b><p><strong>Say what it is for.</strong>
+        "A page for my mum's bakery." "A quiz for my class." Anything.</p></div>
+      <div class="step"><b>2</b><p><strong>Answer four or five quick questions.</strong>
+        What it is called, what you offer, how people reach you. Say <em>skip</em> to any of them.</p></div>
+      <div class="step"><b>3</b><p><strong>It builds it while you watch,</strong>
+        then shows you the finished site right there in the chat.</p></div>
+      <div class="step"><b>4</b><p><strong>Download the file.</strong>
+        One <code>.html</code> file. Open it, share it, keep it.</p></div>
     </div>
-  </section>
+  </div></section>
 
-  <section class="card build-card" id="buildCard" hidden>
-    <div class="build-head">
-      <div>
-        <h2 id="buildTitle">Building your game</h2>
-        <p class="quiet" id="buildPrompt"></p>
-      </div>
-      <span class="pct" id="pct">0%</span>
-    </div>
-    <div class="bar"><i id="barFill"></i></div>
-    <div class="build-body">
-      <ol class="log" id="log" aria-live="polite" aria-label="Build progress"></ol>
-      <div class="film" id="film" aria-label="Previews generated while building"></div>
-    </div>
-  </section>
+  <section class="block"><div class="wrap">
+    <h2>What it can make</h2>
+    <div class="kinds" id="kinds"></div>
+    <noscript><p class="lede">Turn on JavaScript to see the full list — or just start the chat.</p></noscript>
+  </div></section>
 
-  <section class="card done-card" id="doneCard" hidden>
-    <div class="done-head">
-      <div>
-        <h2 id="gameTitle">Your game</h2>
-        <div class="metas" id="metas"></div>
-      </div>
-      <button class="btn primary big" id="download">Download the game</button>
-    </div>
+  <section class="block"><div class="wrap">
+    <h2>What you get</h2>
+    <ul class="gets">
+      <li><span><b>One file.</b> Everything is inside it. Nothing else to download.</span></li>
+      <li><span><b>It works with the wifi off.</b> Open it on a plane, in a hall with no signal, anywhere.</span></li>
+      <li><span><b>It opens in Safari.</b> Tap it in Files on an iPad or iPhone, or double-click it on a Mac.</span></li>
+      <li><span><b>You can change the words later.</b> Every page has an <b>Edit text</b> button that saves you a new copy.</span></li>
+      <li><span><b>It is yours.</b> Email it, AirDrop it, put it on a school drive. No sign-in, ever.</span></li>
+    </ul>
+  </div></section>
 
-    <div class="get">
-      <button class="btn" id="openTab">Open it in a new tab</button>
-      <button class="btn" id="tweak">Change something</button>
-      <button class="btn" id="again">Build a different game</button>
-      <span class="quiet small" id="downloadNote"></span>
-    </div>
-
-    <div class="tweaks" id="tweaks" hidden></div>
-
-    <div class="preview-wrap">
-      <div class="preview-head">
-        <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="quiet small" id="previewName">preview</span>
-        <span class="live">live · playable right here</span>
-      </div>
-      <iframe id="preview" title="Live preview of your game"></iframe>
-    </div>
-
-    <details class="help">
-      <summary>Getting it onto an iPad, iPhone or Mac</summary>
-      <ol>
-        <li><b>Download the game</b> saves one <code>.html</code> file. That file is the whole game.</li>
-        <li>On iPhone or iPad it lands in <b>Files › Downloads</b>. Tap it — Safari opens it straight away.</li>
-        <li>On a Mac, double-click it, or drag it onto Safari.</li>
-        <li>No internet needed after that. Add it to your home screen and it opens like an app.</li>
-        <li>To share it with another teacher: AirDrop it, email it, or drop it in your class drive. Nothing to install.</li>
-      </ol>
-    </details>
-  </section>
+  <section class="end"><div class="wrap">
+    <p>Takes about a minute.</p>
+    <a class="btn primary big" href="chat.html">Start chatting</a>
+  </div></section>
 </main>
 
-<footer class="foot">
+<footer class="foot"><div class="wrap" style="display:flex;gap:14px;flex-wrap:wrap">
   <span>Part of GameHub.</span>
-  <a href="/">Back to the games →</a>
-</footer>
+  <a href="/">Back to the games</a>
+</div></footer>
 
 <script src="bank.js"></script>
 <script src="runtime.js"></script>
 <script src="generator.js"></script>
-<script src="forge.js"></script>
+<script src="site.js"></script>
+<script>
+(function () {
+  var host = document.getElementById('kinds');
+  var types = window.FORGE.SITE.TYPES;
+  Object.keys(types).forEach(function (id) {
+    var t = types[id];
+    var a = document.createElement('a');
+    a.className = 'kind';
+    a.href = 'chat.html?kind=' + encodeURIComponent(id);
+    a.style.textDecoration = 'none';
+    a.style.color = 'inherit';
+    a.innerHTML = '<span class="e">' + t.emoji + '</span><b></b><span></span>';
+    a.querySelector('b').textContent = t.name;
+    a.querySelectorAll('span')[1].textContent = t.blurb;
+    host.appendChild(a);
+  });
+}());
+</script>
 </body>
 </html>

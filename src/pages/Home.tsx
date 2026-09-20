@@ -13,7 +13,7 @@ type Game = {
 const games: Game[] = [
   {
     title: 'Game Forge',
-    description: 'Describe a class game in a sentence and download it as one file',
+    description: 'Chat about the website you want, then download it as one file',
     path: '/forge/',
     emoji: '~>',
     external: true,

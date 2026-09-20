@@ -534,13 +534,4 @@ window.FORGE = window.FORGE || {};
     ].join('\n');
   };
 
-  /* ------------------------------------------------------------ examples */
-  F.EXAMPLES = [
-    'Build me a trivia game for my class that a lot of kids can play at once, like the ones they already love',
-    'A 4th grade science review game with 5 teams and a 20 second timer',
-    'Fast buzzer round on world geography for 7th graders, 20 questions',
-    'Vocabulary bingo for 28 middle schoolers',
-    'Jeopardy-style points board for high school history, neon arcade look',
-    'Kindergarten counting and shapes game, no timer, three teams'
-  ];
 }(window.FORGE));

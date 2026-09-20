@@ -1,63 +1,86 @@
 # GameHub
 
-A collection of browser games, plus **Game Forge** — a builder that turns a
-sentence into a finished classroom game.
+A collection of browser games, plus **Game Forge** — a chat that turns a
+sentence into a finished website you can download.
 
 ## Game Forge
 
-Live at **`/forge/`** (`bun run dev` → <http://localhost:5173/forge/>).
+Live at **`/forge/`** (`bun run dev` -> <http://localhost:5173/forge/>).
 
-Type what you want — *"a 4th grade science review game with 5 teams and a 20
-second timer"* — and it parses the prompt, picks a game shape, writes the
-questions, and hands back a **single self-contained `.html` file**. While it
-builds it narrates each step and draws a preview of what it just decided
-(palette, board layout, a real question card, the scoreboard).
+Two pages, nothing else:
 
-The downloaded file has no external requests, no build step and no sign-in: open
-it from Files on an iPad, double-click it on a Mac, AirDrop it to another
-teacher. It works with the wifi off.
+- **`/forge/`** explains what it does, in plain language.
+- **`/forge/chat.html`** is a chat. You say what you want, it asks four or five
+  short questions, builds the site while you watch, and shows it to you playable
+  in the thread with a **Download** button.
 
-### Three game shapes
+It builds websites, not just games. The chat *collects* the details only you
+know rather than inventing them, so the copy on your page is your own words.
 
-| Shape | What it is | Picked when the prompt says |
-| --- | --- | --- |
-| **Buzz-In Quiz** | One big question, teams buzz in on number keys or by tapping their colour | *buzz, fast, kahoot, race* — and by default |
-| **Points Board** | Five categories × five point values, difficulty climbing with the points | *jeopardy, board, categories, review game* |
-| **Review Bingo** | A different printable card per student; you read clues, they cover answers | *bingo* |
+### What it can build
 
-The prompt also sets the subject, grade band (K–2 / 3–5 / 6–8 / 9–12), team
-count, class size, timer, length and colour theme. Anything it guesses wrong is
-a dropdown away under **Change something**.
+| Type | Sections it composes |
+| --- | --- |
+| Small business | hero, what we do, about, contact |
+| Cafe or restaurant | hero, menu with price leaders, about, hours |
+| Event | hero, running order, what to expect, RSVP |
+| Club or team | hero, what we do, about, come along |
+| Portfolio | hero, work gallery, about, contact |
+| Personal link page | centred hero with initials, big link buttons, about |
+| Class page | hero, coming up, how our week works, contact |
+| Product or project | hero, features, why it exists, call to action |
+| CV or résumé | hero, experience, profile, contact (prints cleanly) |
+| Game for a class | hands off to the game engine below |
 
-### Inside a generated game
+Six themes (Calm, Fresh, Playful, Elegant, Bold, Night), each with its own
+palette and type family. The chat guesses the type and theme from your first
+sentence; if it cannot, it offers buttons.
 
-Scoreboard, per-question timer with warning beeps, WebAudio sound effects,
-full-screen mode, keyboard shortcuts (number keys award points, space reveals),
-confetti on the win screen, and an in-game question editor that saves to
-`localStorage` — so a teacher can swap in their own questions without touching
-code.
+Once a site exists, plain English keeps working: *"make it darker"* restyles it,
+anything else gets added to the page and it rebuilds.
+
+### What you get
+
+One self-contained `.html` file. No external requests, no build step, no
+sign-in. It opens from Files on an iPad, double-clicks open on a Mac, and works
+with the wifi off. Every generated page carries an **Edit text** button that
+turns the page editable and saves you a new copy with your changes baked in —
+so someone who cannot code can still reword their own site.
+
+### The games
+
+Asking for a quiz, trivia or bingo routes to the game engine: a **buzz-in quiz**,
+a **points board** (5 categories x 5 values, difficulty climbing with the
+points), or **printable bingo** with a different card per student. Backed by
+~420 curated questions across 11 subjects and 4 grade bands, with a live
+scoreboard, timer, sound, keyboard shortcuts and an in-game question editor.
 
 ### Layout
 
 Deliberately plain static files under `public/forge/`, not part of the React
-bundle, so the builder runs from a file path as happily as from a server.
+bundle, so everything runs from a file path as happily as from a server.
 
 | File | Role |
 | --- | --- |
-| `bank.js` | ~420 curated questions across 11 subjects and 4 grade bands |
-| `generator.js` | `parsePrompt` → `buildSpec` → `buildGame` (emits the HTML) |
-| `runtime.js` | The generated game's engine and CSS, inlined into every export |
-| `forge.js` / `forge.css` / `index.html` | The builder page and its build pipeline |
+| `index.html` | The explainer page |
+| `chat.html` / `chat.js` | The conversation, the build, the result card |
+| `site.js` | Website generator: themes, types, blocks, emitted CSS and runtime |
+| `generator.js` | Game generator: `parsePrompt` -> `buildSpec` -> `buildGame` |
+| `runtime.js` | The generated game's engine, inlined into every game export |
+| `bank.js` | The question bank |
+| `styles.css` | Styling for both builder pages |
 
-`runtime.js` is serialised into each export with `Function.prototype.toString()`.
-That keeps the export a single offline file while the engine stays an ordinary
-source file you can lint, diff and test.
+Both `runtime.js` (games) and the site runtime in `site.js` are serialised into
+their exports with `Function.prototype.toString()`. That keeps each export a
+single offline file while the engines stay ordinary source files you can lint,
+diff and test.
 
-### Adding questions
+### Adding things
 
-Append to a subject's band array in `bank.js`. Each row is
-`[question, correctAnswer, wrong, wrong, wrong]`; distractors are shuffled at
-build time, and rows are reused as bingo clues when the answer is short enough.
+- **A new site type** is a recipe in `SITE.TYPES`: a name, the questions to ask,
+  the section labels and which blocks to compose. No new rendering code.
+- **A new theme** is one entry in `SITE.THEMES`.
+- **More questions** go in `bank.js` as `[question, answer, wrong, wrong, wrong]`.
 
 ---
 
