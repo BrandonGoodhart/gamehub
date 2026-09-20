@@ -465,9 +465,13 @@
     var acts = document.createElement('div');
     acts.className = 'acts';
 
+    var rescue = document.createElement('p');
+    rescue.className = 'note rescue';
+    rescue.hidden = true;
+
     var dl = document.createElement('button');
     dl.type = 'button';
-    dl.className = inFrame ? 'btn' : 'btn primary';
+    dl.className = 'btn primary';
     dl.textContent = 'Download it';
     dl.addEventListener('click', function () {
       var a = document.createElement('a');
@@ -479,17 +483,20 @@
       document.body.removeChild(a);
       dl.textContent = 'Saved';
       window.setTimeout(function () { dl.textContent = 'Download it'; }, 2400);
+      /* A frame without download permission refuses this with no error and no
+         event, so the click just does nothing. There is no way to detect that,
+         only to offer a way out straight afterwards. */
+      if (inFrame) { rescue.hidden = false; }
     });
 
     var copy = document.createElement('button');
     copy.type = 'button';
-    copy.className = inFrame ? 'btn primary' : 'btn';
+    copy.className = 'btn';
     copy.textContent = 'Copy the code';
     copy.addEventListener('click', function () { copyCode(copy); });
 
-    /* Downloading is the better route when it is allowed, so it leads. */
-    if (inFrame) { acts.appendChild(copy); acts.appendChild(dl); }
-    else { acts.appendChild(dl); acts.appendChild(copy); }
+    acts.appendChild(dl);
+    acts.appendChild(copy);
 
     var open = document.createElement('button');
     open.type = 'button';
@@ -506,13 +513,14 @@
 
     var note = document.createElement('p');
     note.className = 'note';
-    note.textContent = inFrame
-      ? 'Heads up: this is running inside a preview window, and previews usually block downloads. '
-        + 'Tap Copy the code, paste it into Notes or TextEdit, and save it as ' + lastName + '.html. '
-        + 'Opened from its own tab, the Download button works normally.'
-      : 'On an iPhone or iPad it saves into Files \u203a Downloads \u2014 tap it and Safari opens it. '
-        + 'The opened page has an Edit text button so you can reword anything yourself.';
+    note.textContent = 'On an iPhone or iPad it saves into Files \u203a Downloads \u2014 tap it and Safari opens it. '
+      + 'The opened page has an Edit text button so you can reword anything yourself.';
     frag.appendChild(note);
+
+    rescue.textContent = 'Nothing saved? Some preview windows block downloads. Tap Copy the code, '
+      + 'paste it into Notes, and save it as ' + lastName + '.html \u2014 or open this page in its own '
+      + 'tab, where Download always works.';
+    frag.appendChild(rescue);
 
     /* Last resort that cannot be blocked by anything: the file, on screen,
        selectable. */

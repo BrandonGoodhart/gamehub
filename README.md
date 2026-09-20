@@ -86,14 +86,16 @@ anything else gets added to the page and it rebuilds.
 
 Three routes, because the first one is not always allowed:
 
-- **Download it** — the normal way, when the page is open in its own tab.
-- **Copy the code** — the whole file to the clipboard. Paste it into any notes or
-  text app and save it as `name.html`. This is what a preview frame needs: an
-  embedded page (the published artifact, an `<iframe>`) is usually refused
-  permission to download, and the click silently does nothing. The chat detects
-  that it is framed and leads with this button instead.
+- **Download it** — the main button, everywhere. It works in a normal tab, and
+  inside an `<iframe>` whenever the frame carries `allow-downloads`.
+- **Copy the code** — the whole file to the clipboard, to paste into any text app
+  and save as `name.html`.
 - **Show me the code** — the file on screen in a text box, selectable by hand.
   Nothing can block this one.
+
+A frame *without* `allow-downloads` refuses the download with no error and no
+event, so the click does nothing and there is no way to detect it. After a click
+in a framed page a single line appears offering the other two routes.
 
 ### What you get
 
