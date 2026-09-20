@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Game Forge — describe a class game, get the file</title>
+<meta name="description" content="Describe the game you want for your class. Watch it get built. Download one file that works offline in Safari.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0d14'/%3E%3Cpath d='M9 22l7-13 7 13z' fill='%237c8cff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="forge.css">
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="/">
+    <span class="mark" aria-hidden="true"></span>
+    <span>Game&nbsp;Forge</span>
+  </a>
+  <span class="badge">Works offline · No accounts · One file</span>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <h1>Describe the game.<br><span class="grad">Get the file.</span></h1>
+    <p class="lede">
+      Tell it what your class needs, in a sentence. It builds a real trivia game,
+      shows you what it is doing, and hands you a single <code>.html</code> file you can
+      download, open in Safari, and play with no internet.
+    </p>
+  </section>
+
+  <section class="card prompt-card" id="promptCard">
+    <label class="lbl" for="prompt">What game do you want?</label>
+    <textarea id="prompt" rows="3" spellcheck="true"
+      placeholder="e.g. Build me a trivia game for my class that a lot of kids can play, like the ones they already love"></textarea>
+    <div class="chips" id="examples" aria-label="Example prompts"></div>
+    <div class="actions">
+      <button class="btn primary" id="build">Build my game</button>
+      <button class="btn" id="surprise">Surprise me</button>
+    </div>
+  </section>
+
+  <section class="card build-card" id="buildCard" hidden>
+    <div class="build-head">
+      <div>
+        <h2 id="buildTitle">Building your game</h2>
+        <p class="quiet" id="buildPrompt"></p>
+      </div>
+      <span class="pct" id="pct">0%</span>
+    </div>
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="build-body">
+      <ol class="log" id="log" aria-live="polite" aria-label="Build progress"></ol>
+      <div class="film" id="film" aria-label="Previews generated while building"></div>
+    </div>
+  </section>
+
+  <section class="card done-card" id="doneCard" hidden>
+    <div class="done-head">
+      <div>
+        <h2 id="gameTitle">Your game</h2>
+        <div class="metas" id="metas"></div>
+      </div>
+      <button class="btn primary big" id="download">Download the game</button>
+    </div>
+
+    <div class="get">
+      <button class="btn" id="openTab">Open it in a new tab</button>
+      <button class="btn" id="tweak">Change something</button>
+      <button class="btn" id="again">Build a different game</button>
+      <span class="quiet small" id="downloadNote"></span>
+    </div>
+
+    <div class="tweaks" id="tweaks" hidden></div>
+
+    <div class="preview-wrap">
+      <div class="preview-head">
+        <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="quiet small" id="previewName">preview</span>
+        <span class="live">live · playable right here</span>
+      </div>
+      <iframe id="preview" title="Live preview of your game"></iframe>
+    </div>
+
+    <details class="help">
+      <summary>Getting it onto an iPad, iPhone or Mac</summary>
+      <ol>
+        <li><b>Download the game</b> saves one <code>.html</code> file. That file is the whole game.</li>
+        <li>On iPhone or iPad it lands in <b>Files › Downloads</b>. Tap it — Safari opens it straight away.</li>
+        <li>On a Mac, double-click it, or drag it onto Safari.</li>
+        <li>No internet needed after that. Add it to your home screen and it opens like an app.</li>
+        <li>To share it with another teacher: AirDrop it, email it, or drop it in your class drive. Nothing to install.</li>
+      </ol>
+    </details>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Part of GameHub.</span>
+  <a href="/">Back to the games →</a>
+</footer>
+
+<script src="bank.js"></script>
+<script src="runtime.js"></script>
+<script src="generator.js"></script>
+<script src="forge.js"></script>
+</body>
+</html>

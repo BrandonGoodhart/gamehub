@@ -1,7 +1,23 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router'
 
-const games = [
+type Game = {
+  title: string
+  description: string
+  path: string
+  emoji: string
+  /** Served from /public, not a React route, so it needs a real navigation. */
+  external?: boolean
+}
+
+const games: Game[] = [
+  {
+    title: 'Game Forge',
+    description: 'Describe a class game in a sentence and download it as one file',
+    path: '/forge/',
+    emoji: '~>',
+    external: true,
+  },
   {
     title: 'Tic Tac Toe',
     description: 'Classic X and O game for two players',
@@ -47,8 +63,8 @@ export default function Home() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.6 }}
       >
-        {games.map((game) => (
-          <Link key={game.path} to={game.path}>
+        {games.map((game) => {
+          const Card = (
             <motion.div
               className="p-6 rounded-2xl bg-gray-900 border border-gray-800 hover:border-purple-500/50 transition-colors cursor-pointer group"
               whileHover={{ scale: 1.03, y: -4 }}
@@ -60,8 +76,18 @@ export default function Home() {
               </h2>
               <p className="text-gray-500 text-sm">{game.description}</p>
             </motion.div>
-          </Link>
-        ))}
+          )
+
+          return game.external ? (
+            <a key={game.path} href={game.path}>
+              {Card}
+            </a>
+          ) : (
+            <Link key={game.path} to={game.path}>
+              {Card}
+            </Link>
+          )
+        })}
       </motion.div>
     </div>
   )
