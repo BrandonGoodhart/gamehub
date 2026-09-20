@@ -230,11 +230,25 @@ window.FORGE = window.FORGE || {};
   /* People write lists the way they talk: commas, newlines, bullets, and
      sometimes "Thing: detail". Accept all of it. */
   function splitItems(text) {
-    return String(text || '')
-      .split(/\r?\n|,|;|•|(?:^|\s)[-*]\s/)
-      .map(function (s) { return s.trim().replace(/^[-*•]\s*/, ''); })
-      .filter(function (s) { return s.length > 0; })
-      .slice(0, 12);
+    /* Newlines, semicolons and bullets always separate items. Commas are
+       trickier: "Pastries: croissants, almond, pain au chocolat" is one item
+       whose detail happens to contain commas, so only break on a comma when
+       what follows starts a new "Title: detail" pair. */
+    var out = [];
+    String(text || '')
+      .split(/\r?\n|;|•|(?:^|\s)[-*]\s/)
+      .forEach(function (chunk) {
+        var piece = chunk.trim();
+        if (!piece) { return; }
+        var parts = piece.indexOf(':') === -1
+          ? piece.split(',')
+          : piece.split(/,\s*(?=[^,:]{1,40}:\s)/);
+        parts.forEach(function (bit) {
+          var t = bit.trim().replace(/^[-*•]\s*/, '').replace(/[,;]\s*$/, '');
+          if (t) { out.push(t); }
+        });
+      });
+    return out.slice(0, 12);
   }
 
   function splitPair(raw) {
@@ -295,6 +309,7 @@ window.FORGE = window.FORGE || {};
       theme: S.THEMES[themeId] || S.THEMES.calm,
       themeId: themeId,
       brief: answers.brief || '',
+      intro: (F.BRAIN && F.BRAIN.introFor) ? F.BRAIN.introFor(answers.type) : '',
       about: isSkip(answers.more) ? '' : String(answers.more || '').trim()
     };
   };
@@ -673,6 +688,7 @@ window.FORGE = window.FORGE || {};
         nav: ['what', spec.labels.items],
         html: '<section class="sec" id="what"><div class="wrap">'
           + '<h2 class="rise">' + esc(spec.labels.items) + '</h2>'
+          + (spec.intro ? '<p class="intro rise">' + esc(spec.intro) + '</p>' : '')
           + '<div class="cards">' + cards + '</div></div></section>'
       };
     },
@@ -688,6 +704,7 @@ window.FORGE = window.FORGE || {};
         nav: ['what', spec.labels.items],
         html: '<section class="sec" id="what"><div class="wrap">'
           + '<h2 class="rise">' + esc(spec.labels.items) + '</h2>'
+          + (spec.intro ? '<p class="intro rise">' + esc(spec.intro) + '</p>' : '')
           + '<div class="rows">' + rows + '</div></div></section>'
       };
     },
@@ -709,6 +726,7 @@ window.FORGE = window.FORGE || {};
         nav: ['what', spec.labels.items],
         html: '<section class="sec" id="what"><div class="wrap">'
           + '<h2 class="rise">' + esc(spec.labels.items) + '</h2>'
+          + (spec.intro ? '<p class="intro rise">' + esc(spec.intro) + '</p>' : '')
           + '<div class="grid">' + tiles + '</div></div></section>'
       };
     },

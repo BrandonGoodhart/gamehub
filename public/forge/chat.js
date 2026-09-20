@@ -1,40 +1,38 @@
 /* Game Forge — the chat.
  *
- * A short scripted conversation that collects the details only the person
- * knows, then builds the site from them. Deliberately not an open-ended bot:
- * it asks, you answer, you get a website. Works offline, same as what it makes.
+ * It asks for the things only you know, but it is not a form: "why?",
+ * "what do you mean?", "like what?", "you pick" and "can it do X?" all get a
+ * real answer, and then it picks the thread back up where it left off.
  */
 (function (F) {
   'use strict';
 
   var S = F.SITE;
+  var B = F.BRAIN;
   var messages = document.getElementById('messages');
   var input = document.getElementById('say');
   var sendBtn = document.getElementById('send');
 
-  var A = {};            /* the answers so far */
-  var queue = [];        /* remaining question ids */
-  var current = null;    /* the question on screen */
-  var built = false;     /* a site exists, so replies are follow-ups */
+  var A = {};           /* answers so far */
+  var queue = [];       /* question ids still to ask */
+  var history = [];     /* question ids already answered, for "go back" */
+  var current = null;
+  var built = false;
   var busy = false;
   var lastHTML = '';
   var lastName = 'website';
   var blobURL = null;
 
   /* ------------------------------------------------------------ helpers */
-  function esc(s) {
-    return String(s === undefined || s === null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
   function sleep(ms) { return new Promise(function (r) { window.setTimeout(r, ms); }); }
   function slug(s) {
     return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'website';
   }
   function scrollDown() {
-    window.requestAnimationFrame(function () {
-      window.scrollTo(0, document.body.scrollHeight);
-    });
+    window.requestAnimationFrame(function () { window.scrollTo(0, document.body.scrollHeight); });
+  }
+  function shorten(s, n) {
+    return s.length > n ? s.slice(0, n - 1).replace(/[\s,.:;-]+$/, '') + '…' : s;
   }
 
   function msg(side, node) {
@@ -57,6 +55,7 @@
   function say(lines, hint) {
     var frag = document.createDocumentFragment();
     (Array.isArray(lines) ? lines : [lines]).forEach(function (line) {
+      if (!line) { return; }
       var p = document.createElement('p');
       p.textContent = line;
       frag.appendChild(p);
@@ -76,6 +75,10 @@
     return msg('me', p);
   }
 
+  function clearChips() {
+    [].forEach.call(messages.querySelectorAll('.chips'), function (n) { n.remove(); });
+  }
+
   function addChips(bubble, chips, onPick) {
     var row = document.createElement('div');
     row.className = 'chips';
@@ -91,8 +94,8 @@
       }
       b.appendChild(document.createTextNode(c.label));
       b.addEventListener('click', function () {
-        row.remove();
-        youSaid(c.label);
+        clearChips();
+        youSaid(c.say || c.value || c.label);
         onPick(c);
       });
       row.appendChild(b);
@@ -106,12 +109,8 @@
     dots.className = 'typing';
     dots.innerHTML = '<i></i><i></i><i></i>';
     var bubble = msg('bot', dots);
-    await sleep(ms || 420);
+    await sleep(ms || 400);
     bubble.parentNode.remove();
-  }
-
-  function clearChips() {
-    [].forEach.call(messages.querySelectorAll('.chips'), function (n) { n.remove(); });
   }
 
   /* ------------------------------------------------------------ questions */
@@ -120,11 +119,11 @@
   });
 
   function questionFor(id) {
-    var type = S.TYPES[A.type];
+    var type = S.TYPES[A.type] || S.TYPES.business;
     if (id === 'more') {
       return {
         ask: 'Anything else you would like on the page?',
-        hint: 'A sentence or two about you. Or say skip.',
+        hint: 'A sentence or two in your own words. Or say skip.',
         placeholder: 'Say skip if you would rather not',
         optional: true
       };
@@ -135,7 +134,7 @@
     if (id === 'gamebrief') {
       return {
         ask: 'Tell me about the class — what subject, and what year group?',
-        hint: 'Anything else helps too: how many teams, how long you want it.',
+        hint: 'Number of teams and how long you want it all help too.',
         placeholder: 'e.g. Year 5 science, 5 teams, 20 second timer'
       };
     }
@@ -158,56 +157,163 @@
     };
   }
 
+  function askCurrent(lead) {
+    var q = questionFor(current);
+    var bubble = say(lead ? [lead, q.ask] : q.ask, q.hint);
+    input.placeholder = q.placeholder || 'Type your answer…';
+    if (q.chips) {
+      input.placeholder = 'Or type your own…';
+      addChips(bubble, q.chips, function (c) { accept(c.value || c.label); });
+    }
+    input.focus();
+    return bubble;
+  }
+
+  async function nextQuestion() {
+    if (!queue.length) { return buildIt(); }
+    current = queue.shift();
+    await typing();
+    askCurrent();
+  }
+
   function flowFor(typeId) {
     return S.TYPES[typeId].isGame
       ? ['gamebrief', 'gameshape']
       : ['name', 'tagline', 'items', 'contact', 'more', 'theme'];
   }
 
-  async function nextQuestion() {
-    if (!queue.length) { return buildIt(); }
-    current = queue.shift();
-    var q = questionFor(current);
-    await typing();
-    var bubble = say(q.ask, q.hint);
-    input.placeholder = q.placeholder || 'Type your answer…';
-    if (q.chips) {
-      input.placeholder = 'Or type your own…';
-      addChips(bubble, q.chips, function (c) { answer(c.value || c.label, true); });
-    }
-    input.focus();
+  /* --------------------------------------------------- asides and replies */
+  /* An aside answers the question they asked, then puts the thread back
+     where it was so nothing is lost. */
+  var LEADS = ['So — back to it.', 'Right, where were we.', 'Anyway —', 'Back to you.', 'Carrying on:'];
+  var leadAt = 0;
+  function nextLead() {
+    var lead = LEADS[leadAt % LEADS.length];
+    leadAt += 1;
+    return lead;
   }
 
-  /* ------------------------------------------------------------- answers */
-  function answer(text, fromChip) {
-    if (busy) { return; }
-    var value = String(text).trim();
-    if (!fromChip) { youSaid(value); }
-    clearChips();
+  async function aside(lines, hint) {
+    await typing(380);
+    say(lines, hint);
+    if (built || !current) { return; }
+    await sleep(320);
+    askCurrent(nextLead());
+  }
 
-    if (!A.type) { return pickType(value); }
+  function saidSoFar() {
+    return [A.brief, A.name, A.tagline, A.items].filter(Boolean).join(' ');
+  }
 
-    var q = questionFor(current);
-    if (!value && !q.optional) {
-      typing().then(function () { say('I need something for that one — even a rough answer works.'); });
-      return;
+  async function offerExamples() {
+    var ideas = B.examplesFor(current, A.type, saidSoFar());
+    await typing(420);
+    if (!ideas.length) {
+      if (current === 'name') {
+        return aside(
+          'This is the one I genuinely cannot invent — it is your name for it, and it goes at the top of every screen.',
+          'If it truly has no name yet, type anything now and reword it later with the Edit text button.'
+        );
+      }
+      return aside(B.mean(current));
     }
+    var bubble = say('Something like these — tap one to use it, or type your own.');
+    addChips(bubble, ideas.map(function (t) {
+      return { label: shorten(t, 58), value: t, say: t };
+    }), function (c) { accept(c.value); });
+    input.placeholder = 'Or type your own…';
+  }
+
+  async function delegate() {
+    var ideas = B.examplesFor(current, A.type, saidSoFar());
+    if (current === 'name') {
+      return aside(
+        'Happy to write the rest, but not this one — the name has to be yours. It is the title of the page and the first thing anyone reads.',
+        'Anything will do for now; you can change it in the finished file.'
+      );
+    }
+    if (!ideas.length) { return aside(B.mean(current)); }
+    await typing(420);
+    say(['Done — I have put this in:', ideas[0]], 'Change it later with the Edit text button, any time.');
+    await sleep(240);
+    accept(ideas[0], true);
+  }
+
+  function progressLine() {
+    var left = queue.length + (current ? 1 : 0);
+    if (built) { return 'All done — the site is above. Anything you say now I will treat as a change to it.'; }
+    if (left <= 1) { return 'This is the last one, then I build it.'; }
+    return left + ' questions left, including this one. You can say skip to most of them.';
+  }
+
+  async function goBack() {
+    if (!history.length) {
+      return aside('We are still on the first question, so there is nothing behind us yet.');
+    }
+    var prev = history.pop();
+    if (current) { queue.unshift(current); }
+    current = prev;
+    delete A[prev];
+    await typing(340);
+    askCurrent('Of course — let us do that one again.');
+  }
+
+  /* -------------------------------------------------------- taking answers */
+  function accept(value, quiet) {
     if (current === 'theme') { A.theme = value; }
     else { A[current] = value; }
-    nextQuestion();
+    history.push(current);
+    current = null;
+    if (quiet) { return nextQuestion(); }
+    return nextQuestion();
+  }
+
+  function handle(text) {
+    var res = B.classify(text, { qid: current });
+
+    if (!A.type) {
+      /* Before a type is chosen, questions about the tool still deserve a
+         real answer rather than being read as "a website about why". */
+      if (res.intent === 'capability' || res.intent === 'mean' || res.intent === 'why') {
+        var ans = B.capability(text);
+        return aside(ans || (res.intent === 'capability' ? B.capabilityFallback
+          : 'Tell me roughly what the page is for and I will take it from there — "a page for my mum’s bakery", "a quiz for my class", "somewhere to put my photos".'));
+      }
+      return pickType(text);
+    }
+
+    switch (res.intent) {
+      case 'why': return aside(B.why(current));
+      case 'mean': return aside(B.mean(current));
+      case 'example': return offerExamples();
+      case 'delegate': return delegate();
+      case 'choice': return aside(B.choice(text));
+      case 'capability': return aside(B.capability(text) || B.capabilityFallback);
+      case 'progress': return aside(progressLine());
+      case 'back': return goBack();
+      case 'empty': return;
+      default: break;
+    }
+
+    var q = questionFor(current);
+    if (res.intent === 'skip') {
+      if (!q.optional) {
+        return aside('I do need this one — without it the page has a hole in it where the ' + current + ' should be.',
+          'Say "you pick" and I will write something you can change later.');
+      }
+      return accept('skip');
+    }
+    return accept(text);
   }
 
   async function pickType(text) {
-    var guess = S.detectType(text);
     A.brief = text;
+    var guess = S.detectType(text);
     if (!guess) {
       await typing();
-      var bubble = say(
-        'I can build any of these. Which is closest?',
-        'Pick one and we will shape it from there.'
-      );
+      var bubble = say('I can build any of these — which is closest?');
       addChips(bubble, Object.keys(S.TYPES).map(function (id) {
-        return { label: S.TYPES[id].name, value: id, emoji: S.TYPES[id].emoji };
+        return { label: S.TYPES[id].name, value: id, emoji: S.TYPES[id].emoji, say: S.TYPES[id].name };
       }), function (c) { startType(c.value); });
       return;
     }
@@ -222,7 +328,8 @@
     queue = flowFor(typeId);
     if (A.theme) { queue = queue.filter(function (q) { return q !== 'theme'; }); }
     await typing(360);
-    say(t.name + '. ' + t.blurb, 'A few quick questions and it is yours.');
+    say(t.name + '. ' + t.blurb,
+      'A few short questions. Ask me anything as we go — "why?", "like what?", or "you pick" all work.');
     nextQuestion();
   }
 
@@ -269,7 +376,7 @@
       li.appendChild(document.createTextNode(stepNames[i]));
       list.appendChild(li);
       scrollDown();
-      await sleep(240);
+      await sleep(230);
     }
 
     lastHTML = html;
@@ -278,6 +385,7 @@
     busy = false;
     sendBtn.disabled = false;
     built = true;
+    current = null;
     input.placeholder = 'Want a change? Tell me…';
   }
 
@@ -343,14 +451,12 @@
     note.className = 'note';
     note.textContent = 'Download it and open it — on an iPhone or iPad it lands in Files › Downloads. '
       + 'The opened page has an Edit text button so you can reword anything yourself. '
-      + 'Or tell me here: try "make it darker".';
+      + 'Or tell me here: "make it darker", "add a line about the garden", or ask me anything.';
     frag.appendChild(note);
 
     var bubble = msg('bot', frag);
     if (!S.TYPES[A.type].isGame) {
-      addChips(bubble, THEME_CHIPS.map(function (c) {
-        return { label: c.label, value: 'theme:' + c.value };
-      }), function (c) { restyle(c.value.slice(6)); });
+      addChips(bubble, THEME_CHIPS, function (c) { restyle(c.value); });
     }
   }
 
@@ -359,10 +465,16 @@
     buildIt('New look coming up.');
   }
 
-  /* Once a site exists, anything typed is a change request rather than an
-     answer — the two things people actually ask for are a different look and
-     another line of text. */
+  /* Once a site exists, a message is either a question or a change. */
   function followUp(text) {
+    var res = B.classify(text, { qid: null });
+    if (res.intent === 'capability') { return aside(B.capability(text) || B.capabilityFallback); }
+    if (res.intent === 'choice') { return aside(B.choice(text)); }
+    if (res.intent === 'progress') { return aside(progressLine()); }
+    if (res.intent === 'why' || res.intent === 'mean') {
+      return aside('The site above is built from what you told me. Tell me what to change and I will rebuild it — '
+        + 'a different look ("make it darker"), or another line of text and I will add it to the page.');
+    }
     var theme = S.detectTheme(text);
     if (theme) { return restyle(theme); }
     if (S.TYPES[A.type].isGame) {
@@ -379,8 +491,10 @@
     if (!text || busy) { return; }
     input.value = '';
     resize();
-    if (built) { youSaid(text); clearChips(); return followUp(text); }
-    answer(text);
+    youSaid(text);
+    clearChips();
+    if (built) { return followUp(text); }
+    handle(text);
   }
 
   function resize() {
@@ -397,7 +511,7 @@
     window.location.href = 'chat.html';
   });
 
-  /* ----------------------------------------------------------- kick off */
+  /* ------------------------------------------------------------ kick off */
   async function hello() {
     var preset = (window.location.search.match(/[?&]kind=([^&]+)/) || [])[1];
     preset = preset ? decodeURIComponent(preset) : '';
@@ -409,11 +523,11 @@
       return startType(preset);
     }
     var bubble = say(
-      ['Hello. I build websites.', 'What do you want one for?'],
-      'Say it however you like — "a page for my mum’s bakery", "a quiz for my class".'
+      ['Hello. I build websites — one page, one file, yours to keep.', 'What do you want one for?'],
+      'Say it however you like. If you would rather ask me something first, go ahead.'
     );
     addChips(bubble, Object.keys(S.TYPES).slice(0, 6).map(function (id) {
-      return { label: S.TYPES[id].name, value: id, emoji: S.TYPES[id].emoji };
+      return { label: S.TYPES[id].name, value: id, emoji: S.TYPES[id].emoji, say: S.TYPES[id].name };
     }), function (c) { A.brief = S.TYPES[c.value].name; startType(c.value); });
     input.focus();
   }

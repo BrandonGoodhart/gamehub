@@ -36,6 +36,20 @@ Six themes (Calm, Fresh, Playful, Elegant, Bold, Night), each with its own
 palette and type family. The chat guesses the type and theme from your first
 sentence; if it cannot, it offers buttons.
 
+### It is not a form
+
+Partway through, "why?", "what do you mean?", "like what?", "you pick",
+"should I put X or Y?", "how many more?" and "go back" all work. It answers,
+then picks the thread up where it left off without losing your place.
+
+Questions about the tool itself get straight answers, including the honest
+noes — no shopping carts, no photo uploads, no self-sending contact forms,
+because a one-file site has no server behind it.
+
+"Like what?" offers worked examples ranked against what you have already said,
+so a bakery gets loaves rather than gnudi. "You pick" writes the answer in and
+moves on.
+
 Once a site exists, plain English keeps working: *"make it darker"* restyles it,
 anything else gets added to the page and it rebuilds.
 
@@ -64,6 +78,7 @@ bundle, so everything runs from a file path as happily as from a server.
 | --- | --- |
 | `index.html` | The explainer page |
 | `chat.html` / `chat.js` | The conversation, the build, the result card |
+| `brain.js` | Reads what a message actually is, and the material it answers with |
 | `site.js` | Website generator: themes, types, blocks, emitted CSS and runtime |
 | `generator.js` | Game generator: `parsePrompt` -> `buildSpec` -> `buildGame` |
 | `runtime.js` | The generated game's engine, inlined into every game export |
