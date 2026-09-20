@@ -86,6 +86,9 @@ export default function CrackedHeist() {
   const [hostCategory, setHostCategory] = useState<string | null>(null)
   const [hostCustomQuestions, setHostCustomQuestions] = useState<Question[] | null>(null)
   const [, setHostObserveMode] = useState(false)
+  // Shown only when there are exactly 2 players in the lobby — pick 1-round
+  // or best-of-3 before the game actually starts.
+  const [twoPlayerChoiceOpen, setTwoPlayerChoiceOpen] = useState(false)
 
   const { state, meId, connected, error, roster, connect, sendJoin, disconnect, dispatch } = usePartyGame()
 
@@ -539,7 +542,17 @@ export default function CrackedHeist() {
                 patch: { allowLateJoin: !state.settings.allowLateJoin },
               })
             }
-            onStart={() => dispatch({ type: 'brStart' })}
+            onStart={() => {
+              // Two players get to choose 1-round or best-of-3. Larger games
+              // always jump straight into the knockout with 1-round matches.
+              const humanCount = state.players.filter((p) => p.isHuman).length
+              const total = state.players.length
+              if (total === 2 || humanCount === 2) {
+                setTwoPlayerChoiceOpen(true)
+              } else {
+                dispatch({ type: 'brStart' })
+              }
+            }}
           />
         )}
 
@@ -867,6 +880,52 @@ export default function CrackedHeist() {
         )}
       </Modal>
       </>)}
+
+      <Modal
+        open={twoPlayerChoiceOpen}
+        onClose={() => setTwoPlayerChoiceOpen(false)}
+        title="How many rounds?"
+      >
+        <div className="space-y-3">
+          <p className="fg-sub text-sm">
+            Two players — pick your format. Best of 3 gives the loser two
+            chances to bounce back.
+          </p>
+          <button
+            onClick={() => {
+              setTwoPlayerChoiceOpen(false)
+              dispatch({ type: 'brStart', scoreToWin: 1 })
+            }}
+            className="fg-btn fg-btn-grad w-full"
+            style={{ padding: '16px 18px', fontSize: '1rem' }}
+          >
+            One round — winner takes all
+          </button>
+          <button
+            onClick={() => {
+              setTwoPlayerChoiceOpen(false)
+              dispatch({ type: 'brStart', scoreToWin: 2 })
+            }}
+            className="fg-btn fg-btn-grad w-full"
+            style={{ padding: '16px 18px', fontSize: '1rem' }}
+          >
+            Best of 3 (first to 2 wins)
+          </button>
+          <button
+            onClick={() => setTwoPlayerChoiceOpen(false)}
+            className="fg-btn w-full"
+            style={{
+              padding: '12px 16px',
+              fontSize: '0.9rem',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1.5px solid rgba(255,255,255,0.18)',
+              color: '#d1d5db',
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </Modal>
 
       <Modal open={flow.kind === 'endConfirm'} onClose={close} title="End the game now?">
         <div className="space-y-4">

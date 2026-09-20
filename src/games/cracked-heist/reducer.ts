@@ -107,8 +107,8 @@ export type GameAction =
   | { type: 'setShareCode'; code: string }
   | { type: 'reset' }
   | { type: 'setPending'; kind: ActionKind | null }
-  // Battle Royale actions
-  | { type: 'brStart' }
+  // Battle Royale actions (routed as 'The Last One Standing' in the UI)
+  | { type: 'brStart'; scoreToWin?: number }
   | { type: 'brNextRound' }
   | { type: 'brAnswer'; playerId: string; correct: boolean }
   | { type: 'brFinishMatch' }
@@ -408,7 +408,7 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
       return makeInitialState(state.code)
 
     // ============================================================
-    // Battle Royale — elimination trivia
+    // The Last One Standing — 1v1 knockout
     // ============================================================
     case 'brStart': {
       const source = state.customQuestions
@@ -416,27 +416,33 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
         : shuffledQs(state.category ?? CATEGORIES[0])
       const shuffled = [...source].sort(() => Math.random() - 0.5)
       const [first, ...rest] = shuffled
-      const perQ = state.settings.brQuestionsPerMatch >= 20 ? state.settings.brQuestionsPerMatch : 15
-      const now = Date.now()
       const alivePlayers = state.players.map((p) => ({
         ...p,
         brEliminated: false,
         brMatchesWon: 0,
         brMatchesLost: 0,
       }))
+      // Pick the first two players (random shuffle).
+      const pool = [...alivePlayers].sort(() => Math.random() - 0.5)
+      const a = pool[0]?.id ?? null
+      const b = pool[1]?.id ?? null
+      const scoreToWin = action.scoreToWin && action.scoreToWin > 0 ? action.scoreToWin : 1
       return {
         ...state,
         phase: 'brPlaying',
         players: alivePlayers,
         br: {
+          matchAId: a,
+          matchBId: b,
+          scoreA: 0,
+          scoreB: 0,
+          scoreToWin,
           currentQuestion: first ?? null,
           questionIndex: 0,
           questionQueue: rest,
           answers: {},
-          questionStartedAt: now,
-          deadline: now + perQ * 1000,
           championId: null,
-          secondsPerQuestion: perQ,
+          matchResolved: false,
         },
       }
     }
@@ -445,10 +451,14 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
       if (!state.br || !state.br.currentQuestion) return state
       const alreadyAnswered = state.br.answers[action.playerId] !== undefined
       if (alreadyAnswered) return state
-      // Only living players can answer
-      const p = state.players.find((x) => x.id === action.playerId)
-      if (!p || p.brEliminated) return state
-      // The action's `correct` field is client-computed; server double-checks.
+      // Only the two players in the current match can answer
+      if (
+        action.playerId !== state.br.matchAId &&
+        action.playerId !== state.br.matchBId
+      ) {
+        return state
+      }
+      if (state.br.matchResolved) return state
       const q = state.br.currentQuestion
       const choice = action.correct ? q.answer : -1
       return {
@@ -461,37 +471,34 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
     }
 
     case 'brNextRound': {
-      // Advance to the next question: eliminate anyone whose answer was wrong
-      // or who didn't answer, then load the next question. If <=1 player is
-      // left, crown a champion.
+      // Resolve the current question and advance:
+      // - Both correct or both wrong → play again with a new question (same
+      //   pair). Nobody is out yet.
+      // - Exactly one correct → the loser accrues +1 in their opponent's
+      //   score column. When one player reaches scoreToWin, they win the
+      //   match: the loser is eliminated, the winner stays in and the next
+      //   opponent is drawn from the still-alive pool.
       if (!state.br || !state.br.currentQuestion) return state
-      const q = state.br.currentQuestion
-      const nextPlayers = state.players.map((p) => {
-        if (p.brEliminated) return p
-        const ans = state.br!.answers[p.id]
-        const answeredCorrect = ans !== undefined && ans === q.answer
-        return answeredCorrect
-          ? { ...p, brMatchesWon: p.brMatchesWon + 1 }
-          : { ...p, brEliminated: true, brMatchesLost: p.brMatchesLost + 1 }
-      })
-      const survivors = nextPlayers.filter((p) => !p.brEliminated)
-      // 0 or 1 survivor left — crown a champion (the last correct answerer or
-      // no one if everyone got the last question wrong at the same round).
-      if (survivors.length <= 1) {
+      const br = state.br
+      const q = br.currentQuestion!
+      const aId = br.matchAId
+      const bId = br.matchBId
+      if (!aId || !bId) {
+        // Only one player left / no valid match — crown whoever's left.
+        const surv = state.players.filter((p) => !p.brEliminated)
         return {
           ...state,
           phase: 'brChampion',
-          players: nextPlayers,
-          br: {
-            ...state.br,
-            championId: survivors[0]?.id ?? null,
-            currentQuestion: null,
-            answers: {},
-          },
+          br: { ...br, championId: surv[0]?.id ?? null, currentQuestion: null },
         }
       }
-      // Load next question. Refill queue when it's about to run dry.
-      let queue = state.br.questionQueue
+      const aChoice = br.answers[aId]
+      const bChoice = br.answers[bId]
+      const aRight = aChoice !== undefined && aChoice === q.answer
+      const bRight = bChoice !== undefined && bChoice === q.answer
+
+      // Draw the next question.
+      let queue = br.questionQueue
       if (queue.length < 3) {
         const refill = state.customQuestions
           ? [...state.customQuestions].sort(() => Math.random() - 0.5)
@@ -499,18 +506,83 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
         queue = [...queue, ...refill]
       }
       const [nextQ, ...restQ] = queue
-      const now = Date.now()
+      const baseNext = {
+        currentQuestion: nextQ ?? null,
+        questionIndex: br.questionIndex + 1,
+        questionQueue: restQ,
+        answers: {},
+        matchResolved: false,
+      }
+
+      // Tie (both same result): play again, same pair, same scores.
+      if (aRight === bRight) {
+        return { ...state, br: { ...br, ...baseNext } }
+      }
+      // Someone won this question.
+      const roundWinnerId = aRight ? aId : bId
+      const roundLoserId = aRight ? bId : aId
+      const scoreA = br.scoreA + (aRight ? 1 : 0)
+      const scoreB = br.scoreB + (bRight ? 1 : 0)
+      const matchWon =
+        (roundWinnerId === aId && scoreA >= br.scoreToWin) ||
+        (roundWinnerId === bId && scoreB >= br.scoreToWin)
+
+      // Match not over yet — same pair, next question, updated score.
+      if (!matchWon) {
+        return {
+          ...state,
+          br: { ...br, ...baseNext, scoreA, scoreB },
+        }
+      }
+
+      // Match is over. Eliminate the loser, advance the winner.
+      const nextPlayers = state.players.map((p) => {
+        if (p.id === roundLoserId) {
+          return {
+            ...p,
+            brEliminated: true,
+            brMatchesLost: p.brMatchesLost + 1,
+          }
+        }
+        if (p.id === roundWinnerId) {
+          return { ...p, brMatchesWon: p.brMatchesWon + 1 }
+        }
+        return p
+      })
+      const alive = nextPlayers.filter((p) => !p.brEliminated)
+      // Crown the champion when only the winner remains.
+      if (alive.length <= 1) {
+        return {
+          ...state,
+          phase: 'brChampion',
+          players: nextPlayers,
+          br: {
+            ...br,
+            ...baseNext,
+            scoreA: 0,
+            scoreB: 0,
+            matchAId: null,
+            matchBId: null,
+            championId: alive[0]?.id ?? null,
+            currentQuestion: null,
+          },
+        }
+      }
+      // Pick the next opponent for the winner: any alive player who isn't the
+      // winner, chosen at random.
+      const contenders = alive.filter((p) => p.id !== roundWinnerId)
+      const nextOpponent =
+        contenders[Math.floor(Math.random() * contenders.length)]
       return {
         ...state,
         players: nextPlayers,
         br: {
-          ...state.br,
-          currentQuestion: nextQ ?? null,
-          questionIndex: state.br.questionIndex + 1,
-          questionQueue: restQ,
-          answers: {},
-          questionStartedAt: now,
-          deadline: now + state.br.secondsPerQuestion * 1000,
+          ...br,
+          ...baseNext,
+          matchAId: roundWinnerId,
+          matchBId: nextOpponent?.id ?? null,
+          scoreA: 0,
+          scoreB: 0,
         },
       }
     }

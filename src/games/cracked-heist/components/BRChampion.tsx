@@ -57,7 +57,7 @@ export default function BRChampion({ state, meId, onReset }: Props) {
       className="max-w-xl mx-auto fg-panel fg-panel-lg text-center relative overflow-hidden"
     >
       <div className="fg-lbl mb-2" style={{ color: '#fbbf24' }}>
-        battle royale · winner
+        the last one standing · winner
       </div>
       {champion ? (
         <>

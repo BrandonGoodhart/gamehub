@@ -83,22 +83,30 @@ export interface Settings {
   }
 }
 
-// Battle Royale — simple elimination trivia
+// The Last One Standing — 1v1 match knockout trivia
 export interface BRState {
-  // Shared question state — everyone sees the same question
+  // The two players currently in the ring. Everyone else watches.
+  matchAId: string | null
+  matchBId: string | null
+  // Match score used for best-of formats (2-player games).
+  scoreA: number
+  scoreB: number
+  // Number of round wins required to end this match. 1 = single-round
+  // (loser is eliminated immediately), 2 = best-of-3, 3 = best-of-5, etc.
+  scoreToWin: number
+  // Current question shown to A and B.
   currentQuestion: Question | null
+  // How many questions we've played in the current game.
   questionIndex: number
+  // Draw pool.
   questionQueue: Question[]
-  // Map of playerId → their answer for the current question (choice index)
+  // Per-question answers keyed by playerId — only A and B populate this.
   answers: { [playerId: string]: number }
-  // Elapsed ms since currentQuestion showed up (used for timer / tiebreaks)
-  questionStartedAt: number
-  // Deadline in ms since epoch when the question times out
-  deadline: number
-  // Winner if the round is over
+  // Champion when the game is over.
   championId: string | null
-  // How many seconds each question gives you before you're eliminated
-  secondsPerQuestion: number
+  // Marks that the current match's result has been revealed, so the UI can
+  // hold on it briefly before the host advances to the next match / question.
+  matchResolved: boolean
 }
 
 export interface RoomState {
