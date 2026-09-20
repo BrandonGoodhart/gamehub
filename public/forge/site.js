@@ -57,7 +57,7 @@ window.FORGE = window.FORGE || {};
      `ask` drives the chat, so a new type needs no new chat code. */
   S.TYPES = {
     business: {
-      name: 'A small business', emoji: '🏪', theme: 'calm',
+      name: 'A small business', theme: 'calm',
       blurb: 'Shop, salon, studio, tradesperson — what you do, and how to reach you.',
       ask: {
         name: ['What is the business called?', 'e.g. Ridgeway Bakehouse'],
@@ -69,7 +69,7 @@ window.FORGE = window.FORGE || {};
       blocks: ['hero', 'cards', 'about', 'contact']
     },
     menu: {
-      name: 'A cafe or restaurant', emoji: '🍽️', theme: 'elegant',
+      name: 'A cafe or restaurant', theme: 'elegant',
       blurb: 'A menu that reads beautifully on a phone at the table.',
       ask: {
         name: ['What is the place called?', 'e.g. The Blue Kettle'],
@@ -81,7 +81,7 @@ window.FORGE = window.FORGE || {};
       blocks: ['hero', 'list', 'about', 'contact']
     },
     event: {
-      name: 'An event', emoji: '🎟️', theme: 'bold',
+      name: 'An event', theme: 'bold',
       blurb: 'Party, fundraiser, recital, launch — the details and how to RSVP.',
       ask: {
         name: ['What is the event called?', 'e.g. Spring Showcase 2026'],
@@ -93,7 +93,7 @@ window.FORGE = window.FORGE || {};
       blocks: ['hero', 'list', 'about', 'contact']
     },
     club: {
-      name: 'A club or team', emoji: '⚑', theme: 'fresh',
+      name: 'A club or team', theme: 'fresh',
       blurb: 'Who you are, when you meet, how to join.',
       ask: {
         name: ['What is the club called?', 'e.g. Hillside Chess Club'],
@@ -105,7 +105,7 @@ window.FORGE = window.FORGE || {};
       blocks: ['hero', 'cards', 'about', 'contact']
     },
     portfolio: {
-      name: 'A portfolio', emoji: '🎨', theme: 'bold',
+      name: 'A portfolio', theme: 'bold',
       blurb: 'Your work, shown large, with a way to get in touch.',
       ask: {
         name: ['What is your name?', 'e.g. Ama Boateng'],
@@ -117,7 +117,7 @@ window.FORGE = window.FORGE || {};
       blocks: ['hero', 'gallery', 'about', 'contact']
     },
     personal: {
-      name: 'A personal link page', emoji: '🔗', theme: 'night',
+      name: 'A personal link page', theme: 'night',
       blurb: 'One tidy page holding everything you want to point people at.',
       ask: {
         name: ['What is your name?', 'e.g. Sam Rivera'],
@@ -129,7 +129,7 @@ window.FORGE = window.FORGE || {};
       blocks: ['hero', 'links', 'about']
     },
     classpage: {
-      name: 'A class page', emoji: '🎒', theme: 'calm',
+      name: 'A class page', theme: 'calm',
       blurb: 'Homework, notices and links, in one place families can actually find.',
       ask: {
         name: ['Which class is this for?', 'e.g. Year 5 Oak'],
@@ -141,7 +141,7 @@ window.FORGE = window.FORGE || {};
       blocks: ['hero', 'list', 'about', 'contact']
     },
     project: {
-      name: 'A product or project', emoji: '🚀', theme: 'night',
+      name: 'A product or project', theme: 'night',
       blurb: 'A landing page: what it is, why it is good, what to do next.',
       ask: {
         name: ['What is it called?', 'e.g. Tidepool'],
@@ -154,7 +154,7 @@ window.FORGE = window.FORGE || {};
       blocksTail: ['contact']
     },
     resume: {
-      name: 'A CV or résumé', emoji: '📄', theme: 'elegant',
+      name: 'A CV or résumé', theme: 'elegant',
       blurb: 'A clean one-pager that prints properly.',
       ask: {
         name: ['What is your name?', 'e.g. Priya Raman'],
@@ -166,7 +166,7 @@ window.FORGE = window.FORGE || {};
       blocks: ['hero', 'list', 'about', 'contact']
     },
     game: {
-      name: 'A game for a class', emoji: '🎮', theme: 'night',
+      name: 'A game for a class', theme: 'night',
       blurb: 'Trivia, a points board or printable bingo — built for a whole class.',
       isGame: true
     }

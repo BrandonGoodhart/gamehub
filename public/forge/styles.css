@@ -50,10 +50,11 @@ h2{font-size:22px;letter-spacing:-.02em;margin:0 0 20px;font-weight:700}
 .kind{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px}
 .kind b{display:block;font-size:15px;margin-bottom:3px}
 .kind span{display:block;color:var(--dim);font-size:13.5px;line-height:1.45}
-.kind .e{font-size:20px;display:block;margin-bottom:8px}
 .gets{list-style:none;margin:0;padding:0;display:grid;gap:11px}
 .gets li{display:flex;gap:11px;color:var(--dim);font-size:16px}
-.gets li::before{content:"✓";color:var(--ok);font-weight:800;flex:none}
+/* A CSS-drawn tick, so the page carries no pictographs at all. */
+.gets li::before{content:"";flex:none;width:6px;height:11px;margin:7px 5px 0 2px;
+  border:solid var(--ok);border-width:0 2px 2px 0;transform:rotate(45deg)}
 .gets b{color:var(--ink);font-weight:650}
 .end{padding:44px 0 60px;border-top:1px solid var(--line);text-align:center}
 .end p{color:var(--dim);margin:0 0 20px}
@@ -78,7 +79,6 @@ body.chat{display:flex;flex-direction:column;min-height:100dvh}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
 .chip{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:8px 14px;font-size:14.5px;color:var(--ink);text-align:left}
 .chip:hover{border-color:var(--spark);color:var(--spark)}
-.chip .e{margin-right:6px}
 .typing{display:flex;gap:4px;padding:4px 2px}
 .typing i{width:7px;height:7px;border-radius:50%;background:var(--dim);animation:bob 1s infinite}
 .typing i:nth-child(2){animation-delay:.16s}
@@ -87,6 +87,8 @@ body.chat{display:flex;flex-direction:column;min-height:100dvh}
 
 .steps-live{margin:4px 0 0;padding:0;list-style:none;font-size:14.5px;color:var(--dim)}
 .steps-live li{padding:3px 0;display:flex;gap:9px}
+.steps-live li b.tick{flex:none;width:5px;height:10px;margin:5px 4px 0 2px;
+  border:solid var(--ok);border-width:0 2px 2px 0;transform:rotate(45deg)}
 .steps-live li b{color:var(--ok);font-weight:800}
 
 /* result card inside the chat */

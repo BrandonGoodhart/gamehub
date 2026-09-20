@@ -459,7 +459,7 @@ window.FORGE.RUNTIME = function (DATA) {
         var key = ci + '-' + r;
         if (!item) { grid.appendChild(el('div')); return; }
         var spent = !!S.used[key];
-        var t = el('button', 'tile' + (spent ? ' spent' : ''), spent ? '✓' : String(item.points));
+        var t = el('button', 'tile' + (spent ? ' spent' : ''), spent ? '\u2014' : String(item.points));
         if (!spent) {
           on(t, 'click', function () { openQuestion(item, key, c.name); });
         } else {
@@ -642,14 +642,14 @@ window.FORGE.RUNTIME = function (DATA) {
       var awards = el('div', 'awards');
       if (S.locked >= 0 && !S.revealed) {
         awards.appendChild(el('span', 'lead-in', 'Did ' + S.teams[S.locked].name + ' get it right?'));
-        var yes = el('button', 'award', '✓ Correct  +' + item.points);
+        var yes = el('button', 'award', 'Correct  +' + item.points);
         yes.style.background = 'var(--ok)';
         on(yes, 'click', function () {
           S.teams[S.locked].score += item.points;
           sfx('right'); S.revealed = true; render();
         });
         awards.appendChild(yes);
-        var no = el('button', 'award', DATA.negative ? '✗ Wrong  −' + item.points : '✗ Wrong');
+        var no = el('button', 'award', DATA.negative ? 'Wrong  −' + item.points : 'Wrong');
         no.style.background = 'var(--bad)';
         on(no, 'click', function () {
           if (DATA.negative) { S.teams[S.locked].score -= item.points; }

@@ -85,9 +85,9 @@
     a.href = 'chat.html?kind=' + encodeURIComponent(id);
     a.style.textDecoration = 'none';
     a.style.color = 'inherit';
-    a.innerHTML = '<span class="e">' + t.emoji + '</span><b></b><span></span>';
+    a.innerHTML = '<b></b><span></span>';
     a.querySelector('b').textContent = t.name;
-    a.querySelectorAll('span')[1].textContent = t.blurb;
+    a.querySelector('span').textContent = t.blurb;
     host.appendChild(a);
   });
 }());

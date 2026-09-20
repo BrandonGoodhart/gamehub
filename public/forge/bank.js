@@ -7,7 +7,7 @@ window.FORGE = window.FORGE || {};
 
 window.FORGE.BANK = {
   math: {
-    name: 'Math', emoji: '➗', tint: '#4f8cff',
+    name: 'Math', tint: '#4f8cff',
     sets: {
       early: [
         ['What is 2 + 3?', '5', '4', '6', '7'],
@@ -69,7 +69,7 @@ window.FORGE.BANK = {
   },
 
   science: {
-    name: 'Science', emoji: '\u{1f9ea}', tint: '#2fd6a8',
+    name: 'Science', tint: '#2fd6a8',
     sets: {
       early: [
         ['What do plants need to grow?', 'Sunlight and water', 'Only rocks', 'Only wind', 'Nothing at all'],
@@ -131,7 +131,7 @@ window.FORGE.BANK = {
   },
 
   geography: {
-    name: 'Geography', emoji: '\u{1f30d}', tint: '#f2a03d',
+    name: 'Geography', tint: '#f2a03d',
     sets: {
       early: [
         ['Which is the largest ocean on Earth?', 'The Pacific Ocean', 'The Atlantic Ocean', 'The Indian Ocean', 'The Arctic Ocean'],
@@ -191,7 +191,7 @@ window.FORGE.BANK = {
   },
 
   history: {
-    name: 'History', emoji: '\u{1f3db}️', tint: '#c98fff',
+    name: 'History', tint: '#c98fff',
     sets: {
       elementary: [
         ['Who was the first president of the United States?', 'George Washington', 'Abraham Lincoln', 'Thomas Jefferson', 'John Adams'],
@@ -239,7 +239,7 @@ window.FORGE.BANK = {
   },
 
   words: {
-    name: 'Words & Spelling', emoji: '\u{1f524}', tint: '#ff7fb0',
+    name: 'Words & Spelling', tint: '#ff7fb0',
     sets: {
       early: [
         ['Which word rhymes with “cat”?', 'Hat', 'Dog', 'Sun', 'Cup'],
@@ -301,7 +301,7 @@ window.FORGE.BANK = {
   },
 
   reading: {
-    name: 'Reading & Literature', emoji: '\u{1f4da}', tint: '#5ad1ff',
+    name: 'Reading & Literature', tint: '#5ad1ff',
     sets: {
       elementary: [
         ['Who wrote “Charlotte’s Web”?', 'E. B. White', 'Roald Dahl', 'Beverly Cleary', 'Judy Blume'],
@@ -349,7 +349,7 @@ window.FORGE.BANK = {
   },
 
   animals: {
-    name: 'Animals & Nature', emoji: '\u{1f43e}', tint: '#7ee08a',
+    name: 'Animals & Nature', tint: '#7ee08a',
     sets: {
       early: [
         ['What sound does a cow make?', 'Moo', 'Woof', 'Meow', 'Quack'],
@@ -397,7 +397,7 @@ window.FORGE.BANK = {
   },
 
   space: {
-    name: 'Space', emoji: '\u{1f680}', tint: '#8f9cff',
+    name: 'Space', tint: '#8f9cff',
     sets: {
       elementary: [
         ['How many planets are in our solar system?', '8', '9', '7', '10'],
@@ -445,7 +445,7 @@ window.FORGE.BANK = {
   },
 
   tech: {
-    name: 'Tech & Coding', emoji: '\u{1f4bb}', tint: '#4fe0d0',
+    name: 'Tech & Coding', tint: '#4fe0d0',
     sets: {
       elementary: [
         ['What is the “brain” of a computer called?', 'The CPU', 'The mouse', 'The screen', 'The keyboard'],
@@ -493,7 +493,7 @@ window.FORGE.BANK = {
   },
 
   arts: {
-    name: 'Art & Music', emoji: '\u{1f3a8}', tint: '#ffb35c',
+    name: 'Art & Music', tint: '#ffb35c',
     sets: {
       elementary: [
         ['What are the three primary colors?', 'Red, blue and yellow', 'Green, orange and purple', 'Black, white and grey', 'Pink, brown and teal'],
@@ -527,7 +527,7 @@ window.FORGE.BANK = {
   },
 
   sports: {
-    name: 'Sports', emoji: '⚽', tint: '#ff8a5c',
+    name: 'Sports', tint: '#ff8a5c',
     sets: {
       elementary: [
         ['How many players from one basketball team are on the court at once?', '5', '6', '7', '4'],

@@ -86,12 +86,6 @@
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'chip';
-      if (c.emoji) {
-        var e = document.createElement('span');
-        e.className = 'e';
-        e.textContent = c.emoji;
-        b.appendChild(e);
-      }
       b.appendChild(document.createTextNode(c.label));
       b.addEventListener('click', function () {
         clearChips();
@@ -142,9 +136,9 @@
       return {
         ask: 'And what kind of game?',
         chips: [
-          { label: 'Buzz-in quiz', value: 'buzzer quiz', emoji: '⚡' },
-          { label: 'Points board', value: 'jeopardy points board categories', emoji: '▦' },
-          { label: 'Printable bingo', value: 'bingo', emoji: '🎯' }
+          { label: 'Buzz-in quiz', value: 'buzzer quiz' },
+          { label: 'Points board', value: 'jeopardy points board categories' },
+          { label: 'Printable bingo', value: 'bingo' }
         ]
       };
     }
@@ -313,7 +307,7 @@
       await typing();
       var bubble = say('I can build any of these — which is closest?');
       addChips(bubble, Object.keys(S.TYPES).map(function (id) {
-        return { label: S.TYPES[id].name, value: id, emoji: S.TYPES[id].emoji, say: S.TYPES[id].name };
+        return { label: S.TYPES[id].name, value: id, say: S.TYPES[id].name };
       }), function (c) { startType(c.value); });
       return;
     }
@@ -372,7 +366,7 @@
 
     for (var i = 0; i < stepNames.length; i += 1) {
       var li = document.createElement('li');
-      li.innerHTML = '<b>✓</b>';
+      li.innerHTML = '<b class="tick"></b>';
       li.appendChild(document.createTextNode(stepNames[i]));
       list.appendChild(li);
       scrollDown();
@@ -527,7 +521,7 @@
       'Say it however you like. If you would rather ask me something first, go ahead.'
     );
     addChips(bubble, Object.keys(S.TYPES).slice(0, 6).map(function (id) {
-      return { label: S.TYPES[id].name, value: id, emoji: S.TYPES[id].emoji, say: S.TYPES[id].name };
+      return { label: S.TYPES[id].name, value: id, say: S.TYPES[id].name };
     }), function (c) { A.brief = S.TYPES[c.value].name; startType(c.value); });
     input.focus();
   }
