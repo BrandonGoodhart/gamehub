@@ -174,6 +174,9 @@ function useLocalGame() {
           currentQuestion: null,
           questionQueue: [],
           questionTick: 0,
+          brEliminated: false,
+          brMatchesWon: 0,
+          brMatchesLost: 0,
         },
       })
       dispatchLocal({ type: 'addBots', count: 3 })
@@ -425,6 +428,9 @@ function useSupabaseGame() {
         currentQuestion: null,
         questionQueue: [],
         questionTick: 0,
+          brEliminated: false,
+          brMatchesWon: 0,
+          brMatchesLost: 0,
       },
     })
     broadcast({ type: 'WELCOME', meId: msg.clientId, state: hostStateRef.current! })
@@ -508,6 +514,9 @@ function useSupabaseGame() {
             currentQuestion: null,
             questionQueue: [],
             questionTick: 0,
+          brEliminated: false,
+          brMatchesWon: 0,
+          brMatchesLost: 0,
           }
       const seeded: RoomState = {
         ...initial,

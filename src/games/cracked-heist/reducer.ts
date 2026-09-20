@@ -1,4 +1,4 @@
-import type { ActionKind, Avatar, EventLog, Phase, Player, Question, RiskOutcome, RoomState, Settings } from './types'
+import type { ActionKind, Avatar, BRMatch, BRState, EventLog, Phase, Player, Question, RiskOutcome, RoomState, Settings } from './types'
 import { RISK_COST } from './types'
 import { makePasswordOptions, pickN, uid } from './utils'
 import { BOT_NAMES } from './words'
@@ -17,6 +17,8 @@ function allTakenPasswords(state: RoomState): Set<string> {
 export const DEFAULT_SETTINGS: Settings = {
   roundSeconds: 420,
   allowLateJoin: false,
+  gameMode: 'heist',
+  brQuestionsPerMatch: 3,
   costs: { spy: 10, hack: 15, password: 15 },
   rewards: {
     spyCatch: 5,
@@ -54,6 +56,9 @@ export function makeBotPlayer(handle: string, taken: Set<string> = new Set()): P
     currentQuestion: null,
     questionQueue: [],
     questionTick: 0,
+    brEliminated: false,
+    brMatchesWon: 0,
+    brMatchesLost: 0,
   }
 }
 
@@ -74,6 +79,7 @@ export function makeInitialState(code: string): RoomState {
     countdownValue: 3,
     shareCode: null,
     isJoiner: false,
+    br: null,
   }
 }
 
@@ -101,6 +107,11 @@ export type GameAction =
   | { type: 'setShareCode'; code: string }
   | { type: 'reset' }
   | { type: 'setPending'; kind: ActionKind | null }
+  // Battle Royale actions
+  | { type: 'brStart' }
+  | { type: 'brNextRound' }
+  | { type: 'brAnswer'; playerId: string; matchId: string; correct: boolean }
+  | { type: 'brFinishMatch'; matchId: string }
   | { type: 'addBots'; count: number }
 
 function updatePlayer(state: RoomState, id: string, patch: Partial<Player>): RoomState {
@@ -148,6 +159,9 @@ export function makePlayer(
     currentQuestion: null,
     questionQueue: [],
     questionTick: 0,
+    brEliminated: false,
+    brMatchesWon: 0,
+    brMatchesLost: 0,
   }
 }
 
@@ -392,5 +406,251 @@ export function reducer(state: RoomState, action: GameAction): RoomState {
       return { ...state, shareCode: action.code }
     case 'reset':
       return makeInitialState(state.code)
+
+    // ============================================================
+    // Battle Royale
+    // ============================================================
+    case 'brStart': {
+      const source = state.customQuestions
+        ? [...state.customQuestions]
+        : shuffledQs(state.category ?? CATEGORIES[0])
+      // Reset any prior BR state and start round 1.
+      const alivePlayers = state.players.map((p) => ({
+        ...p,
+        brEliminated: false,
+        brMatchesWon: 0,
+        brMatchesLost: 0,
+      }))
+      const brWithRound1 = buildNextRound(
+        {
+          round: 0,
+          matches: [],
+          championId: null,
+          questionQueue: [...source].sort(() => Math.random() - 0.5),
+        },
+        alivePlayers,
+        state.settings.brQuestionsPerMatch,
+      )
+      return {
+        ...state,
+        phase: 'brMatch',
+        players: alivePlayers,
+        br: brWithRound1,
+      }
+    }
+
+    case 'brNextRound': {
+      if (!state.br) return state
+      // Eliminate everyone who lost their match this round
+      const nextPlayers = state.players.map((p) => {
+        const wasInMatch = state.br!.matches.some(
+          (m) => (m.playerAId === p.id || m.playerBId === p.id) && m.done,
+        )
+        if (!wasInMatch) return p
+        const lost = state.br!.matches.some(
+          (m) => m.done && m.winnerId !== p.id && (m.playerAId === p.id || m.playerBId === p.id),
+        )
+        return lost ? { ...p, brEliminated: true } : p
+      })
+      const survivors = nextPlayers.filter((p) => !p.brEliminated)
+      if (survivors.length <= 1) {
+        // Champion crowned
+        return {
+          ...state,
+          phase: 'brChampion',
+          players: nextPlayers,
+          br: {
+            ...state.br,
+            championId: survivors[0]?.id ?? null,
+            matches: [],
+          },
+        }
+      }
+      const nextBR = buildNextRound(
+        state.br,
+        survivors,
+        state.settings.brQuestionsPerMatch,
+      )
+      return {
+        ...state,
+        phase: 'brMatch',
+        players: nextPlayers,
+        br: nextBR,
+      }
+    }
+
+    case 'brAnswer': {
+      if (!state.br) return state
+      const nextMatches = state.br.matches.map((m) => {
+        if (m.id !== action.matchId || m.done) return m
+        if (action.playerId === m.playerAId && !m.playerAAnswered) {
+          return {
+            ...m,
+            playerAAnswered: true,
+            playerACorrect: action.correct,
+            scoreA: m.scoreA + (action.correct ? 1 : 0),
+          }
+        }
+        if (action.playerId === m.playerBId && !m.playerBAnswered) {
+          return {
+            ...m,
+            playerBAnswered: true,
+            playerBCorrect: action.correct,
+            scoreB: m.scoreB + (action.correct ? 1 : 0),
+          }
+        }
+        return m
+      })
+      return { ...state, br: { ...state.br, matches: nextMatches } }
+    }
+
+    case 'brFinishMatch': {
+      if (!state.br) return state
+      const totalQ = state.settings.brQuestionsPerMatch
+      const nextMatches = state.br.matches.map((m) => {
+        if (m.id !== action.matchId || m.done) return m
+        const bothAnswered = m.playerAAnswered && m.playerBAnswered
+        if (!bothAnswered) return m
+        const nextQAnswered = m.questionsAnswered + 1
+        // Match ends when a player has enough wins that opponent can't catch up
+        const remaining = totalQ - nextQAnswered
+        const aCanWin = m.scoreA + remaining >= m.scoreB
+        const bCanWin = m.scoreB + remaining >= m.scoreA
+        if (nextQAnswered >= totalQ || !(aCanWin && bCanWin)) {
+          const winnerId =
+            m.scoreA > m.scoreB
+              ? m.playerAId
+              : m.scoreB > m.scoreA
+                ? m.playerBId
+                : m.playerAId
+          return {
+            ...m,
+            questionsAnswered: nextQAnswered,
+            done: true,
+            winnerId,
+            currentQuestion: null,
+          }
+        }
+        // Advance to next question — queue is drawn from state.br.questionQueue
+        // outside this map. Reset per-question flags for the next question.
+        const nextQ = state.br!.questionQueue[0] ?? null
+        return {
+          ...m,
+          questionsAnswered: nextQAnswered,
+          currentQuestion: nextQ,
+          playerAAnswered: false,
+          playerBAnswered: false,
+          playerACorrect: false,
+          playerBCorrect: false,
+        }
+      })
+      // Consume queue for advanced matches
+      const consumed = nextMatches.filter(
+        (m, i) =>
+          !m.done && state.br!.matches[i].questionsAnswered !== m.questionsAnswered,
+      ).length
+      const nextQueue = state.br.questionQueue.slice(consumed)
+
+      // Once we ran out of unique questions, refill from source
+      const refillIfEmpty =
+        nextQueue.length < 10
+          ? [
+              ...nextQueue,
+              ...(state.customQuestions
+                ? [...state.customQuestions].sort(() => Math.random() - 0.5)
+                : shuffledQs(state.category ?? CATEGORIES[0])),
+            ]
+          : nextQueue
+
+      // Update the winner/loser stats
+      const finishedMatch = nextMatches.find((m) => m.id === action.matchId && m.done)
+      let nextPlayers = state.players
+      if (finishedMatch && finishedMatch.winnerId) {
+        const loserId =
+          finishedMatch.winnerId === finishedMatch.playerAId
+            ? finishedMatch.playerBId
+            : finishedMatch.playerAId
+        nextPlayers = state.players.map((p) => {
+          if (p.id === finishedMatch.winnerId) return { ...p, brMatchesWon: p.brMatchesWon + 1 }
+          if (p.id === loserId) return { ...p, brMatchesLost: p.brMatchesLost + 1 }
+          return p
+        })
+      }
+
+      // If every match is done, transition to matchResult phase
+      const allDone = nextMatches.every((m) => m.done)
+      return {
+        ...state,
+        players: nextPlayers,
+        phase: allDone ? 'brMatchResult' : state.phase,
+        br: { ...state.br, matches: nextMatches, questionQueue: refillIfEmpty },
+      }
+    }
+  }
+}
+
+// Build the next Battle Royale round: pair the survivors, deal first questions.
+function buildNextRound(br: BRState, survivors: Player[], questionsPerMatch: number): BRState {
+  const shuffled = [...survivors].sort(() => Math.random() - 0.5)
+  const matches: BRMatch[] = []
+  const nextRound = br.round + 1
+  let queue = [...br.questionQueue]
+
+  // If odd, one player gets a bye (auto-advance to next round without playing).
+  // We handle it by pairing an odd person with themselves and marking them a
+  // pass-through winner immediately.
+  let i = 0
+  while (i < shuffled.length - 1) {
+    const a = shuffled[i]
+    const b = shuffled[i + 1]
+    const [q, ...restQ] = queue
+    queue = restQ
+    matches.push({
+      id: `r${nextRound}m${i / 2}`,
+      round: nextRound,
+      playerAId: a.id,
+      playerBId: b.id,
+      scoreA: 0,
+      scoreB: 0,
+      questionsAnswered: 0,
+      currentQuestion: q ?? null,
+      playerAAnswered: false,
+      playerBAnswered: false,
+      playerACorrect: false,
+      playerBCorrect: false,
+      done: false,
+      winnerId: null,
+    })
+    i += 2
+  }
+  // Odd count: give the last player a free-pass match against themselves
+  // (winner set immediately). questionsPerMatch is referenced to hint at the
+  // format but not strictly used here.
+  void questionsPerMatch
+  if (i === shuffled.length - 1) {
+    const solo = shuffled[i]
+    matches.push({
+      id: `r${nextRound}bye`,
+      round: nextRound,
+      playerAId: solo.id,
+      playerBId: solo.id,
+      scoreA: 1,
+      scoreB: 0,
+      questionsAnswered: 1,
+      currentQuestion: null,
+      playerAAnswered: true,
+      playerBAnswered: true,
+      playerACorrect: true,
+      playerBCorrect: false,
+      done: true,
+      winnerId: solo.id,
+    })
+  }
+
+  return {
+    round: nextRound,
+    matches,
+    championId: null,
+    questionQueue: queue,
   }
 }
