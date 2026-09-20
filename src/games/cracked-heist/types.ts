@@ -12,6 +12,13 @@ export type Phase =
   | 'countdown'
   | 'playing'
   | 'gameOver'
+  // Battle Royale phases
+  | 'brRoundIntro'
+  | 'brMatch'
+  | 'brMatchResult'
+  | 'brChampion'
+
+export type GameMode = 'heist' | 'battleRoyale'
 
 export type ActionKind = 'spy' | 'hack' | 'password' | 'risk'
 
@@ -46,6 +53,10 @@ export interface Player {
   currentQuestion: Question | null
   questionQueue: Question[]
   questionTick: number
+  // Battle Royale
+  brEliminated: boolean
+  brMatchesWon: number
+  brMatchesLost: number
 }
 
 export interface Question {
@@ -64,6 +75,8 @@ export interface EventLog {
 export interface Settings {
   roundSeconds: number
   allowLateJoin: boolean
+  gameMode: GameMode
+  brQuestionsPerMatch: number // 1 or 3
   costs: { spy: number; hack: number; password: number }
   rewards: {
     spyCatch: number
@@ -71,6 +84,32 @@ export interface Settings {
     correctAnswerCoins: number
     correctAnswerTokens: number
   }
+}
+
+// Battle Royale match state — one active match between two players
+export interface BRMatch {
+  id: string
+  round: number
+  playerAId: string
+  // 'bot' when a filler is needed for odd counts
+  playerBId: string
+  scoreA: number
+  scoreB: number
+  questionsAnswered: number
+  currentQuestion: Question | null
+  playerAAnswered: boolean
+  playerBAnswered: boolean
+  playerACorrect: boolean
+  playerBCorrect: boolean
+  done: boolean
+  winnerId: string | null
+}
+
+export interface BRState {
+  round: number
+  matches: BRMatch[]
+  championId: string | null
+  questionQueue: Question[]
 }
 
 export interface RoomState {
@@ -89,6 +128,7 @@ export interface RoomState {
   countdownValue: number
   shareCode: string | null
   isJoiner: boolean
+  br: BRState | null
 }
 
 export interface SharedGame {
