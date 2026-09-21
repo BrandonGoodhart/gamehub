@@ -17,6 +17,13 @@ Ace speaks to two providers. Pick one in Settings → Connection.
 2. Paste it into Settings → Connection → Save.
 3. Press **Test connection**.
 
+**If your `AQ.` key is rejected with a 401 (`ACCESS_TOKEN_TYPE_UNSUPPORTED`):**
+Google refuses *unrestricted* keys in this newer format (a rule that took
+effect 19 June 2026). On the API keys page, click the **Unrestricted** label
+beside your key, choose **Add restrictions**, restrict it to the **Gemini
+API**, and save. This is the most common cause and it is a Google-side rule,
+not an app bug.
+
 Google issues two key formats and Ace handles both. Newer keys start `AQ.` and
 are sent as a bearer token; older `AIza` keys are sent as an API key. The
 api-key path rejects an `AQ.` key with `ACCESS_TOKEN_TYPE_UNSUPPORTED`, so the

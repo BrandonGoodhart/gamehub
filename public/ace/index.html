@@ -748,7 +748,7 @@ const STEPS=[
   {key:'shoeColor',  title:'Shoes',        sub:'',                                  icon:'▰', type:'color', opts:SHOEC}
 ];
 
-const BUILD='2026-09-21a';
+const BUILD='2026-09-21b';
 const STYLE_COUNT=Object.keys(AVATARS).length;
 const DEF_U={hairStyle:'hair1', skinColor:'#F0D5BE', hairColor:'#4A3728', topColor:'#5B6EF7', bottomColor:'#1A1A1A', shoeColor:'#1A1A1A'};
 const DEF_A={hairStyle:'hair19',skinColor:'#EECEB3', hairColor:'#2C222B', topColor:'#10B981', bottomColor:'#374151', shoeColor:'#FFFFFF'};
@@ -1463,7 +1463,8 @@ const KEY_HELP={
     '<li>Click <b>Create API key</b> and pick a Google Cloud project (a new one is fine).</li>'+
     '<li>Copy the whole key — new keys start <code>AQ.</code>, older ones <code>AIza</code>; both work — paste it above and press <b>Save</b>.</li>'+
     '<li>Press <b>Test connection</b>.</li></ol>'+
-    'Google AI Studio has a free tier, so you can use this without adding a card. Free usage is rate limited; if you hit the limit, wait a minute or pick Flash-Lite.',
+    'Google AI Studio has a free tier, so you can use this without adding a card. Free usage is rate limited; if you hit the limit, wait a minute or pick Flash-Lite.'+
+    '<div class="warn-box" style="margin-top:12px"><b>If your key starts <code>AQ.</code> and is rejected:</b> Google refuses <i>unrestricted</i> keys in this newer format. On the API keys page, click the <b>Unrestricted</b> label beside your key \u2192 <b>Add restrictions</b> \u2192 restrict it to the <b>Gemini API</b> \u2192 save. That resolves the 401 for most people.</div>',
   anthropic:'<b>Getting a key — step by step</b>'+
     '<ol><li>Go to <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com/settings/keys</a> and sign in.</li>'+
     '<li>Under <b>Billing</b>, add a payment method and buy credits. API credits are <b>separate</b> from a Claude.ai Pro/Max subscription — a subscription alone will not work here.</li>'+
@@ -1669,7 +1670,7 @@ async function describeFailure(res){
   if(wire()==='gemini'){
     /* Gemini answers an invalid key with 400 INVALID_ARGUMENT, not 401. */
     if(reason==='ACCESS_TOKEN_TYPE_UNSUPPORTED')
-      return 'Google did not accept this key in either supported form. Newer "AQ." keys must be sent as a bearer token and older "AIza" keys as an API key — Ace tried both. Regenerate the key at aistudio.google.com/apikey and paste the whole thing.';
+      return 'Google rejected this key (ACCESS_TOKEN_TYPE_UNSUPPORTED). This is a known issue with the newer "AQ." keys and it is almost always because the key is Unrestricted — since 19 June 2026 Google refuses unrestricted keys of this format. FIX: open aistudio.google.com/apikey, click the "Unrestricted" label next to this key, choose Add restrictions, restrict it to the Gemini API, save, then try again. If it still fails, check the Generative Language API is enabled for that project.';
     if(reason==='API_KEY_SERVICE_BLOCKED')
       return 'Google accepted the key but the Generative Language API is blocked for it. Enable that API on the key\'s project, or create a fresh key in AI Studio.';
     if(reason==='API_KEY_INVALID'||/API key not valid/i.test(detail))
@@ -2037,8 +2038,12 @@ async function runDiagnostics(){
       try{const j=await res.json();count=(j.models||[]).length}catch(e){}
       add('✓','diag-ok','Reached Google and the key was accepted — '+count+' models visible.');
     }else{
+      const reason=await errReason(res);
       const msg=await describeFailure(res.clone());
       add('✗','diag-bad','Google answered <b>HTTP '+res.status+'</b> and refused: '+esc(msg));
+      if(reason==='ACCESS_TOKEN_TYPE_UNSUPPORTED'){
+        add('→','diag-wait','<b>Most likely fix:</b> the key is <i>Unrestricted</i>. Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a>, click the <b>Unrestricted</b> label beside this key, choose <b>Add restrictions</b>, restrict it to the <b>Gemini API</b>, save, and test again. This is a Google-side rule, not a fault in Ace.');
+      }
       finishDiag(box,report);return;
     }
   }
