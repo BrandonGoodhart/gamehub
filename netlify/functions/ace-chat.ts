@@ -139,9 +139,14 @@ export const handler: Handler = async (
     const method = streaming ? 'streamGenerateContent' : 'generateContent'
     url =
       `${GEMINI_BASE}/${encodeURIComponent(model)}:${method}` +
-      (streaming ? '?alt=sse&key=' : '?key=') +
-      encodeURIComponent(apiKey)
-    headers = { 'Content-Type': 'application/json' }
+      (streaming ? '?alt=sse' : '')
+    // Google issues two key formats and they authenticate differently: the
+    // newer "AQ." keys are bearer tokens and are rejected on the API-key path
+    // with ACCESS_TOKEN_TYPE_UNSUPPORTED; older "AIza" keys are API keys.
+    // Sending it as a header also keeps the key out of URLs and logs.
+    headers = apiKey.startsWith('AQ.')
+      ? { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }
+      : { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }
     payload = { contents: body.contents }
     if (body.system_instruction) payload.system_instruction = body.system_instruction
     if (body.generationConfig && typeof body.generationConfig === 'object') {

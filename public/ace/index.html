@@ -320,6 +320,10 @@ details.adv summary:hover{color:var(--txt)}
 .toast.ok{border-color:var(--acc2);color:var(--acc2)}
 @keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:600;display:flex;align-items:center;justify-content:center;padding:24px}
+.modal-card{background:var(--card);border:1px solid var(--brd);border-radius:18px;padding:24px;max-width:420px;width:100%;box-shadow:var(--shadow-lg)}
+.modal-card p{line-height:1.65;margin-bottom:20px;font-size:.95rem}
+.modal-btns{display:flex;gap:10px;justify-content:flex-end}
 #measure{position:fixed;left:-99999px;top:0;width:400px;height:400px;visibility:hidden;pointer-events:none;z-index:-1}
 
 @media(prefers-reduced-motion:reduce){
@@ -339,6 +343,15 @@ details.adv summary:hover{color:var(--txt)}
 <div class="app-bg"><div class="bg-base"></div><div class="bg-pattern"></div><div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div></div>
 <div id="measure" aria-hidden="true"></div>
 <div id="toasts" role="status" aria-live="polite"></div>
+<div class="modal-back hidden" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-text">
+  <div class="modal-card">
+    <p id="modal-text"></p>
+    <div class="modal-btns">
+      <button class="btn btn-sec btn-sm" id="modal-no">Cancel</button>
+      <button class="btn btn-pri btn-sm" id="modal-yes">OK</button>
+    </div>
+  </div>
+</div>
 
 <div id="loading" class="screen">
   <div class="loader">
@@ -686,7 +699,10 @@ const THEMES=[
 const PROVIDERS={
   gemini:{
     id:'gemini', name:'Google Gemini', keyName:'Google AI Studio API key',
-    placeholder:'AIza...', prefix:'AIza', console:'https://aistudio.google.com/apikey',
+    /* Google is migrating AI Studio keys from the old "AIza" format to the
+       newer "AQ." one. Both are valid and they authenticate differently. */
+    placeholder:'AQ.... or AIza...', prefix:'AQ.', prefixes:['AQ.','AIza'],
+    console:'https://aistudio.google.com/apikey',
     /* Seeds only. Google ships new models often, so the real list is pulled
        from the key itself via listModels(). */
     models:[
@@ -698,7 +714,7 @@ const PROVIDERS={
   },
   anthropic:{
     id:'anthropic', name:'Anthropic', keyName:'Anthropic API key',
-    placeholder:'sk-ant-api03-...', prefix:'sk-ant-', console:'https://console.anthropic.com/settings/keys',
+    placeholder:'sk-ant-api03-...', prefix:'sk-ant-', prefixes:['sk-ant-'], console:'https://console.anthropic.com/settings/keys',
     /* Complete as written — never append a date suffix. */
     models:[
       {id:'claude-opus-5',   name:'Claude Opus 5',   hint:'Most capable. $5 in / $25 out per million tokens.'},
@@ -732,7 +748,7 @@ const STEPS=[
   {key:'shoeColor',  title:'Shoes',        sub:'',                                  icon:'▰', type:'color', opts:SHOEC}
 ];
 
-const BUILD='2026-09-20d';
+const BUILD='2026-09-21a';
 const STYLE_COUNT=Object.keys(AVATARS).length;
 const DEF_U={hairStyle:'hair1', skinColor:'#F0D5BE', hairColor:'#4A3728', topColor:'#5B6EF7', bottomColor:'#1A1A1A', shoeColor:'#1A1A1A'};
 const DEF_A={hairStyle:'hair19',skinColor:'#EECEB3', hairColor:'#2C222B', topColor:'#10B981', bottomColor:'#374151', shoeColor:'#FFFFFF'};
@@ -748,7 +764,7 @@ const RECOLOR=[
 ];
 
 const LS={name:'ace_name',u:'ace_uAv',a:'ace_aAv',theme:'ace_theme',chats:'ace_chats',
-          effort:'ace_effort',persona:'ace_persona',custom:'ace_custom',proxy:'ace_proxy',proxyProvider:'ace_proxy_provider',
+          effort:'ace_effort',persona:'ace_persona',custom:'ace_custom',proxy:'ace_proxy',proxyProvider:'ace_proxy_provider',geminiAuth:'ace_gemini_auth',
           provider:'ace_provider',keys:'ace_keys',models:'ace_models',modelCache:'ace_model_cache',
           /* legacy keys, read once by migrate() then removed */
           api:'ace_api',mode:'ace_mode',model:'ace_model'};
@@ -770,6 +786,7 @@ const S={
   modelCache:readJSON(LS.modelCache,null)||{},
   proxy:readStr(LS.proxy,''),
   proxyProvider:readStr(LS.proxyProvider,'gemini'),
+  geminiAuth:readStr(LS.geminiAuth,'auto'),
   effort:readStr(LS.effort,'low'),
   persona:readStr(LS.persona,'friendly'),
   custom:readStr(LS.custom,''),
@@ -831,6 +848,25 @@ function persistChats(){
     }))
   }));
   store(LS.chats,JSON.stringify(slim));
+}
+
+/* window.confirm() is ignored inside a sandboxed iframe (as used by hosted
+   artifact viewers) and simply returns false, which silently aborted whatever
+   it was guarding. This modal works everywhere. */
+let modalResolve=null;
+function ask(text,okLabel){
+  return new Promise(resolve=>{
+    modalResolve=resolve;
+    $('modal-text').textContent=text;
+    $('modal-yes').textContent=okLabel||'OK';
+    show('modal');
+    setTimeout(()=>$('modal-yes').focus(),30);
+  });
+}
+function closeModal(v){
+  hide('modal');
+  const r=modalResolve;modalResolve=null;
+  if(r)r(v);
 }
 
 function toast(text,kind){
@@ -1222,10 +1258,10 @@ function loadChat(id){
   renderTranscript();
   closeSidebar();
 }
-function deleteChat(id){
+async function deleteChat(id){
   const c=S.chats.find(x=>x.id===id);
   if(!c)return;
-  if(c.msgs.length&&!confirm('Delete "'+c.title+'"? This cannot be undone.'))return;
+  if(c.msgs.length&&!await ask('Delete "'+c.title+'"? This cannot be undone.','Delete'))return;
   S.chats=S.chats.filter(x=>x.id!==id);
   if(S.cid===id)S.cid=S.chats.length?S.chats[0].id:null;
   if(!S.cid)newChat(true);
@@ -1378,42 +1414,43 @@ function updateConnUI(){
 function cleanKey(raw){
   return String(raw||'').replace(/[\s\u200b-\u200d\ufeff]+/g,'').replace(/^["'`]+|["'`]+$/g,'');
 }
+function keyPrefixes(p){return (p&&p.prefixes)||[p&&p.prefix].filter(Boolean)}
 function looksLikeKey(k){
   const p=provider();
-  return !!(p&&k.indexOf(p.prefix)===0);
+  return !!(p&&keyPrefixes(p).some(pre=>k.indexOf(pre)===0));
 }
-function saveKey(){
+async function saveKey(){
   const p=provider();
   if(!p)return;
   const v=cleanKey($('api-input').value);
   if(!v){toast('Paste a key first.','err');return}
-  if(!looksLikeKey(v)){
-    /* The commonest mistake by far is pasting the other provider's key, so
-       offer to switch rather than just rejecting it. */
-    const other=Object.keys(PROVIDERS).map(k=>PROVIDERS[k]).find(o=>v.indexOf(o.prefix)===0);
-    if(other){
-      S.provider=other.id;store(LS.provider,S.provider);
-      S.keys[other.id]=v;store(LS.keys,JSON.stringify(S.keys));
-      $('api-input').value='';
-      renderConnection();renderModels();updateConnUI();
-      toast('That is a '+other.name+' key — switched provider to '+other.name+'.','ok');
-      loadModels(true);
-      return;
-    }
-    if(!confirm('That does not look like a '+p.keyName+' (they start with "'+p.prefix+'"). Save it anyway?'))return;
+  /* If the key clearly belongs to the other provider, switch to it. Otherwise
+     save it regardless of prefix: an unfamiliar prefix is a hint, never a
+     reason to refuse. Google has already changed its key format once
+     (AIza -> AQ.), and a hardcoded check must not lock anyone out. */
+  const other=Object.keys(PROVIDERS).map(k=>PROVIDERS[k])
+    .find(o=>o.id!==p.id&&keyPrefixes(o).some(pre=>v.indexOf(pre)===0));
+  if(other){
+    S.provider=other.id;store(LS.provider,S.provider);
+    S.keys[other.id]=v;store(LS.keys,JSON.stringify(S.keys));
+    $('api-input').value='';
+    renderConnection();renderModels();updateConnUI();
+    toast('That is a '+other.name+' key — switched provider to '+other.name+'.','ok');
+    loadModels(false);
+    return;
   }
   S.keys[p.id]=v;store(LS.keys,JSON.stringify(S.keys));
+  S.geminiAuth='auto';store(LS.geminiAuth,'auto');
   $('api-input').value='';
   renderConnection();updateConnUI();
-  toast('Key saved.','ok');
-  /* Not quiet: if this fails it is usually the same reason chatting will
-     fail, and silence here sent people hunting for a nonexistent bug. */
+  if(!looksLikeKey(v))toast('Saved. That prefix is unusual for '+p.name+' — if it fails, run diagnostics.','ok');
+  else toast('Key saved.','ok');
   loadModels(false);
 }
-function clearKey(){
+async function clearKey(){
   const p=provider();
   if(!p||!apiKey())return;
-  if(!confirm('Remove the stored '+p.keyName+' from this browser?'))return;
+  if(!await ask('Remove the stored '+p.keyName+' from this browser?','Remove'))return;
   delete S.keys[p.id];store(LS.keys,JSON.stringify(S.keys));
   $('api-input').value='';
   renderConnection();updateConnUI();
@@ -1424,7 +1461,7 @@ const KEY_HELP={
   gemini:'<b>Getting a key — step by step</b>'+
     '<ol><li>Go to <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a> and sign in with a Google account.</li>'+
     '<li>Click <b>Create API key</b> and pick a Google Cloud project (a new one is fine).</li>'+
-    '<li>Copy the key — it starts with <code>AIza</code> — paste it above and press <b>Save</b>.</li>'+
+    '<li>Copy the whole key — new keys start <code>AQ.</code>, older ones <code>AIza</code>; both work — paste it above and press <b>Save</b>.</li>'+
     '<li>Press <b>Test connection</b>.</li></ol>'+
     'Google AI Studio has a free tier, so you can use this without adding a card. Free usage is rate limited; if you hit the limit, wait a minute or pick Flash-Lite.',
   anthropic:'<b>Getting a key — step by step</b>'+
@@ -1472,7 +1509,7 @@ async function loadModels(quiet){
   const btn=$('btn-refresh-models');
   if(btn){btn.disabled=true;btn.textContent='Loading…'}
   try{
-    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key='+encodeURIComponent(apiKey()));
+    const res=await apiFetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',{});
     if(!res.ok)throw new Error(await describeFailure(res));
     const j=await res.json();
     const list=(j.models||[])
@@ -1499,15 +1536,64 @@ async function loadModels(quiet){
 }
 
 /* ---------------- request building, per provider ---------------- */
-function geminiUrl(model,method,key){
+/* The key travels in a header, never the query string: it keeps the key out
+   of URLs, proxy logs and referrers. */
+function geminiUrl(model,method){
   return 'https://generativelanguage.googleapis.com/v1beta/models/'+
     encodeURIComponent(model)+':'+method+
-    (method==='streamGenerateContent'?'?alt=sse&key=':'?key=')+encodeURIComponent(key);
+    (method==='streamGenerateContent'?'?alt=sse':'');
+}
+/* Two credential formats, two transports:
+     AIza...  -> x-goog-api-key   (classic API key)
+     AQ....   -> Authorization: Bearer   (the newer format; the api-key path
+                 rejects it with ACCESS_TOKEN_TYPE_UNSUPPORTED)
+   Both headers are CORS-allowed by Google. We try the one the prefix implies,
+   fall back to the other, and remember whichever worked. */
+function preferredAuth(){
+  if(S.geminiAuth==='bearer'||S.geminiAuth==='apikey')return S.geminiAuth;
+  return /^AQ\./.test(apiKey())?'bearer':'apikey';
+}
+function authModes(){
+  const first=preferredAuth();
+  return [first,first==='bearer'?'apikey':'bearer'];
+}
+function withAuth(h,mode){
+  const k=apiKey();
+  if(mode==='bearer')h['authorization']='Bearer '+k;
+  else h['x-goog-api-key']=k;
+  return h;
+}
+const AUTH_RETRY=['ACCESS_TOKEN_TYPE_UNSUPPORTED','API_KEY_SERVICE_BLOCKED','API_KEY_INVALID'];
+async function errReason(res){
+  try{
+    const j=await res.clone().json();
+    const d=(j.error&&j.error.details)||[];
+    return (d.find(x=>x&&x.reason)||{}).reason||'';
+  }catch(e){return ''}
+}
+/* Gemini calls go through here so the transport fallback applies everywhere. */
+async function apiFetch(url,init){
+  if(wire()!=='gemini'||S.provider==='proxy')return fetch(url,init);
+  const modes=authModes();
+  let last=null;
+  for(let i=0;i<modes.length;i++){
+    const h=withAuth(Object.assign({},init&&init.headers),modes[i]);
+    const res=await fetch(url,Object.assign({},init,{headers:h}));
+    if(res.ok){
+      if(S.geminiAuth!==modes[i]){S.geminiAuth=modes[i];store(LS.geminiAuth,modes[i])}
+      return res;
+    }
+    last=res;
+    if(i===modes.length-1)break;
+    if(res.status!==401&&res.status!==400)break;
+    if(AUTH_RETRY.indexOf(await errReason(res))<0)break;
+  }
+  return last;
 }
 function endpoint(stream){
   if(S.provider==='proxy')return S.proxy;
   if(S.provider==='gemini')
-    return geminiUrl(curModel(),stream?'streamGenerateContent':'generateContent',apiKey());
+    return geminiUrl(curModel(),stream?'streamGenerateContent':'generateContent');
   return 'https://api.anthropic.com/v1/messages';
 }
 function headers(){
@@ -1582,8 +1668,12 @@ async function describeFailure(res){
 
   if(wire()==='gemini'){
     /* Gemini answers an invalid key with 400 INVALID_ARGUMENT, not 401. */
+    if(reason==='ACCESS_TOKEN_TYPE_UNSUPPORTED')
+      return 'Google did not accept this key in either supported form. Newer "AQ." keys must be sent as a bearer token and older "AIza" keys as an API key — Ace tried both. Regenerate the key at aistudio.google.com/apikey and paste the whole thing.';
+    if(reason==='API_KEY_SERVICE_BLOCKED')
+      return 'Google accepted the key but the Generative Language API is blocked for it. Enable that API on the key\'s project, or create a fresh key in AI Studio.';
     if(reason==='API_KEY_INVALID'||/API key not valid/i.test(detail))
-      return 'That Google AI Studio key was rejected. Check it was copied in full, and that it is an AI Studio key (it starts with "AIza").';
+      return 'That Google AI Studio key was rejected. Check it was copied in full — keys start with "AQ." (new format) or "AIza" (older).';
     if(res.status===403||status==='PERMISSION_DENIED')
       return 'Google refused this key. Usually the Generative Language API is not enabled on that project, or the key is restricted to other referrers. '+detail;
     if(res.status===429||status==='RESOURCE_EXHAUSTED')
@@ -1635,7 +1725,7 @@ function readDelta(ev){
 async function streamReply(list,onDelta,signal){
   let res;
   try{
-    res=await fetch(endpoint(true),{method:'POST',headers:headers(),
+    res=await apiFetch(endpoint(true),{method:'POST',headers:headers(),
       body:JSON.stringify(requestBody(list,true)),signal});
   }catch(err){
     const m=describeNetwork(err);
@@ -1874,7 +1964,7 @@ async function testConnection(){
   if(wire()==='gemini')body.generationConfig={maxOutputTokens:32};
   else body.max_tokens=64;
   try{
-    const res=await fetch(endpoint(false),{method:'POST',headers:headers(),body:JSON.stringify(body)});
+    const res=await apiFetch(endpoint(false),{method:'POST',headers:headers(),body:JSON.stringify(body)});
     if(!res.ok){
       const msg=await describeFailure(res);
       dot.className='api-dot bad';txt.textContent='Failed';
@@ -1932,11 +2022,11 @@ async function runDiagnostics(){
 
   /* 2. can we reach the host at all? */
   const reachUrl=S.provider==='gemini'
-    ? 'https://generativelanguage.googleapis.com/v1beta/models?key='+encodeURIComponent(k||'x')
+    ? 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200'
     : null;
   if(reachUrl){
     let res=null,netErr=null;
-    try{res=await fetch(reachUrl)}catch(e){netErr=e}
+    try{res=await apiFetch(reachUrl,{})}catch(e){netErr=e}
     if(netErr){
       add('✗','diag-bad','<b>Could not reach generativelanguage.googleapis.com at all.</b> The request failed before Google answered ('+esc(netErr.message||'network error')+
         '). That is not your key. Usual causes: no internet, an ad/privacy blocker, a corporate network, or this page being embedded somewhere whose security policy forbids the call — <b>if you are using the hosted link, download the file and open it directly instead.</b>');
@@ -1957,7 +2047,7 @@ async function runDiagnostics(){
   try{
     const body=requestBody([{role:'user',text:'Reply with the single word: ok'}],false);
     if(wire()==='gemini')body.generationConfig={maxOutputTokens:32};else body.max_tokens=64;
-    const res=await fetch(endpoint(false),{method:'POST',headers:headers(),body:JSON.stringify(body)});
+    const res=await apiFetch(endpoint(false),{method:'POST',headers:headers(),body:JSON.stringify(body)});
     if(res.ok){
       add('✓','diag-ok','<b>The model replied. Everything works</b> — you can close this and start chatting.');
     }else{
@@ -2006,8 +2096,8 @@ async function exportChats(){
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
-function resetAll(){
-  if(!confirm('Erase your name, avatars, chats and API key from this browser?'))return;
+async function resetAll(){
+  if(!await ask('Erase your name, avatars, chats and API key from this browser?','Erase'))return;
   try{Object.values(LS).forEach(k=>localStorage.removeItem(k))}catch(e){}
   location.reload();
 }
@@ -2054,6 +2144,8 @@ function bind(){
   on('btn-clear-key','click',clearKey);
   on('btn-test-key','click',testConnection);
   on('btn-diagnose','click',runDiagnostics);
+  on('modal-yes','click',()=>closeModal(true));
+  on('modal-no','click',()=>closeModal(false));
   on('btn-test-proxy','click',testConnection);
   on('api-input','keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveKey()}});
   on('btn-toggle-key','click',()=>{
@@ -2087,6 +2179,7 @@ function bind(){
 
   document.addEventListener('keydown',e=>{
     if(e.key!=='Escape')return;
+    if(modalResolve){closeModal(false);return}
     if($('sidebar').classList.contains('active')){closeSidebar();return}
     if(!$('settings').classList.contains('hidden')){closeSettings();return}
     if(S.busy)stopGenerating();

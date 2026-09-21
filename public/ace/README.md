@@ -14,8 +14,14 @@ Ace speaks to two providers. Pick one in Settings → Connection.
 ### Google Gemini (default) — has a free tier
 
 1. Get a key at <https://aistudio.google.com/apikey>.
-2. Paste it (`AIza…`) into Settings → Connection → Save.
+2. Paste it into Settings → Connection → Save.
 3. Press **Test connection**.
+
+Google issues two key formats and Ace handles both. Newer keys start `AQ.` and
+are sent as a bearer token; older `AIza` keys are sent as an API key. The
+api-key path rejects an `AQ.` key with `ACCESS_TOKEN_TYPE_UNSUPPORTED`, so the
+distinction matters — Ace picks the right one from the prefix, falls back to
+the other if that fails, and remembers which worked.
 
 Saving a key also pulls the model list straight from that key, so the dropdown
 shows the models you can actually use rather than a hardcoded list that goes
