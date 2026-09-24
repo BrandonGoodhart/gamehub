@@ -1,69 +1,101 @@
-# Putting Ace on theacechat.com (Cloudflare)
+# Putting Ace on theacechat.com
 
-The domain's DNS is already in Cloudflare, so hosting it on Cloudflare Pages
-avoids touching DNS records at all — attaching the custom domain sets them up
-for you, and there is no proxy/grey-cloud problem to get wrong.
+Two routes. Pick one — the difference is whether visitors need their own
+API key.
 
-Nothing here needs a file upload. Cloudflare pulls the code from GitHub.
+| | GitHub Pages | Cloudflare Pages |
+| --- | --- | --- |
+| Hosting | static only | static + server code |
+| Who supplies the API key | **each visitor, in Settings** | **you, once, as a secret** |
+| DNS work | add records in Cloudflare by hand | one click, records written for you |
+| Files to upload | none | none |
 
-## 1. Create the Pages project
+GitHub Pages cannot run the `/api/ace-chat` function, so there is nowhere for
+a server-held key to live. Ace detects that and falls back to asking each
+visitor for their own key, which works fine — it is just a worse experience
+for anyone but you.
 
-Cloudflare dashboard → **Workers & Pages** → **Create** → **Pages** →
-**Connect to Git** → pick the `gamehub` repository.
+---
 
-Build settings:
+## Route A — GitHub Pages (what the verification TXT record is for)
+
+The app is committed at `docs/index.html`, with `docs/CNAME` naming the
+domain, so there is nothing to upload.
+
+### 1. Turn Pages on
+
+GitHub → the `gamehub` repo → **Settings** → **Pages**:
+
+- Source: **Deploy from a branch**
+- Branch: `claude/optimistic-mayer-6s4bp3`, folder **`/docs`**
+- Save.
+
+### 2. Verify the domain
+
+GitHub → your profile **Settings** → **Pages** → **Add a domain**. It gives
+the TXT record. In Cloudflare → **DNS** → **Add record**:
+
+| Field | Value |
+| --- | --- |
+| Type | `TXT` |
+| Name | `_github-pages-challenge-BrandonGoodhart` |
+| Content | the value GitHub shows |
+| TTL | Auto |
+
+### 3. Point the domain at GitHub
+
+In Cloudflare → DNS, replace the existing `theacechat.com` record with four
+**A** records, all named `theacechat.com`:
+
+    185.199.108.153
+    185.199.109.153
+    185.199.110.153
+    185.199.111.153
+
+Optionally a **CNAME** named `www` pointing at `brandongoodhart.github.io`.
+
+**Set every one of these to "DNS only" — the grey cloud, not orange.** While
+Cloudflare proxies them, GitHub cannot issue the HTTPS certificate for the
+domain. You can switch proxying back on afterwards if you want it.
+
+### 4. Set the custom domain in the repo
+
+Repo → Settings → Pages → Custom domain → `theacechat.com` → Save, then tick
+**Enforce HTTPS** once the certificate is issued (can take a few minutes).
+
+---
+
+## Route B — Cloudflare Pages (no key for visitors)
+
+Worth it if anyone other than you will use the site.
+
+Cloudflare → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
+→ `gamehub`:
 
 | Setting | Value |
 | --- | --- |
 | Production branch | `claude/optimistic-mayer-6s4bp3` |
-| Framework preset | None |
 | Build command | `npm install && npm run build` |
 | Build output directory | `dist/ace` |
-| Root directory | *(leave blank)* |
 
-`dist/ace` is the important one: it makes Ace the site root, so the domain
-serves the app directly rather than at `/ace/`.
+Then **Settings → Variables and Secrets** → add `GEMINI_API_KEY`, press
+**Encrypt**, and redeploy. Then **Custom domains** → add `theacechat.com`;
+Cloudflare writes the DNS itself.
 
-The API function is picked up automatically from `functions/api/ace-chat.js`
-in the repository root and served at `/api/ace-chat`. The build output
-directory does not affect it.
-
-## 2. Add the key as a secret
-
-Project → **Settings** → **Variables and Secrets** → **Add**:
-
-- Name `GEMINI_API_KEY`, value your Google AI Studio key, and press **Encrypt**
-  before saving. (Or `ANTHROPIC_API_KEY` for Claude.)
-
-Secrets must exist *before* the deployment that uses them, so redeploy after
-adding it.
-
-Once set, visitors need no key of their own: Ace detects the server key on
-load and routes through it.
-
-## 3. Attach the domain
-
-Project → **Custom domains** → **Set up a custom domain** → `theacechat.com`.
-
-Because the zone is in the same Cloudflare account, Cloudflare creates the DNS
-record itself. Repeat for `www.theacechat.com` if you want it.
-
-## 4. Check the key actually works
-
-Open:
+`functions/api/ace-chat.js` is picked up automatically and served at
+`/api/ace-chat`. Check the key with:
 
     https://theacechat.com/api/ace-chat?selftest=1
 
-The server calls the provider and reports exactly what came back — status,
-the provider's own reason code, and the fix if it is the unrestricted-`AQ.`
-key problem. `ok: true` means you are done. It contains no secret, so it is
-safe to share.
+It reports exactly what the provider said, and contains no secret.
 
-## Notes
+---
 
-- Netlify is still supported: `netlify/functions/ace-chat.mts` and the host
-  rules in `netlify.toml` are the equivalent setup there. Use one or the
-  other, not both.
-- Inside a Claude artifact the app needs no key at all — it asks Claude
-  directly, because that page has no outbound network access. That path is
-  unrelated to this deployment.
+## Note
+
+Inside a Claude artifact the app needs no key at all — it asks Claude directly,
+because that page has no outbound network access. That is unrelated to either
+deployment above.
+
+When the app changes, `docs/index.html` is a copy of `public/ace/index.html`
+and must be refreshed alongside it.
