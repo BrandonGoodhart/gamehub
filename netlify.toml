@@ -6,16 +6,39 @@
 [functions]
   node_bundler = "esbuild"
 
-# API redirect must come first so it isn't swallowed by the SPA fallback
+# API redirects must come first so they aren't swallowed by the SPA fallback.
+# (ace-chat declares its own path in code, so it needs no rule here.)
 [[redirects]]
   from = "/api/generate-questions"
   to = "/.netlify/functions/generate-questions"
   status = 200
 
+# theacechat.com serves the Ace app at its root, while the same deploy keeps
+# serving the game hub on its own domain. Host-matched rules come before the
+# SPA fallback, and exclude /api/* so the function stays reachable.
 [[redirects]]
-  from = "/api/ace-chat"
-  to = "/.netlify/functions/ace-chat"
+  from = "https://theacechat.com/api/*"
+  to = "/api/:splat"
   status = 200
+  force = true
+
+[[redirects]]
+  from = "https://www.theacechat.com/api/*"
+  to = "/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://theacechat.com/*"
+  to = "/ace/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://www.theacechat.com/*"
+  to = "/ace/:splat"
+  status = 200
+  force = true
 
 [[redirects]]
   from = "/*"

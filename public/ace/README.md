@@ -55,6 +55,17 @@ device. Anthropic additionally requires the
 `anthropic-dangerous-direct-browser-access: true` header for browser calls;
 Gemini takes its key in the query string and needs no such header.
 
+### Hosted mode — zero setup for visitors
+
+When Ace is served from a site whose server holds a key, it detects that on
+load and uses it: visitors never see a key prompt. Set `GEMINI_API_KEY` (or
+`ANTHROPIC_API_KEY`) in the site's environment variables and deploy. The
+function is `netlify/functions/ace-chat.mts`, served at `/api/ace-chat`.
+
+`GET /api/ace-chat?selftest=1` makes the server call the provider and reports
+exactly what came back. That is the definitive test of whether a key works,
+because it takes the browser out of the question.
+
 ### Proxy mode — required if other people will use the page
 
 Never ship a page that carries your key to other people. Instead run the

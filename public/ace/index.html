@@ -748,7 +748,7 @@ const STEPS=[
   {key:'shoeColor',  title:'Shoes',        sub:'',                                  icon:'▰', type:'color', opts:SHOEC}
 ];
 
-const BUILD='2026-09-21b';
+const BUILD='2026-09-24a';
 const STYLE_COUNT=Object.keys(AVATARS).length;
 const DEF_U={hairStyle:'hair1', skinColor:'#F0D5BE', hairColor:'#4A3728', topColor:'#5B6EF7', bottomColor:'#1A1A1A', shoeColor:'#1A1A1A'};
 const DEF_A={hairStyle:'hair19',skinColor:'#EECEB3', hairColor:'#2C222B', topColor:'#10B981', bottomColor:'#374151', shoeColor:'#FFFFFF'};
@@ -787,6 +787,7 @@ const S={
   proxy:readStr(LS.proxy,''),
   proxyProvider:readStr(LS.proxyProvider,'gemini'),
   geminiAuth:readStr(LS.geminiAuth,'auto'),
+  hosted:null,
   effort:readStr(LS.effort,'low'),
   persona:readStr(LS.persona,'friendly'),
   custom:readStr(LS.custom,''),
@@ -1086,10 +1087,32 @@ function setupDone(){
   try{return !!(localStorage.getItem(LS.name)&&localStorage.getItem(LS.u))}catch(e){return false}
 }
 
+/* When this page is served by a site whose server holds an API key, visitors
+   should not have to supply one at all. Probe for that, and adopt it unless
+   the person has already configured something themselves. */
+async function detectHostedKey(){
+  if(location.protocol==='file:')return;
+  try{
+    const res=await fetch('/api/ace-chat',{method:'GET'});
+    if(!res.ok)return;
+    const j=await res.json();
+    if(!j||!j.ok||!j.providers)return;
+    S.hosted=j.providers;
+    const chosen=(S.provider==='proxy'&&S.proxy)||apiKey();
+    if(!chosen){
+      S.provider='proxy';store(LS.provider,S.provider);
+      S.proxy='/api/ace-chat';store(LS.proxy,S.proxy);
+      S.proxyProvider=j.defaultProvider||'gemini';store(LS.proxyProvider,S.proxyProvider);
+    }
+    updateConnUI();
+  }catch(e){/* no server here; direct mode stands */}
+}
+
 window.addEventListener('DOMContentLoaded',()=>{
   document.body.setAttribute('data-theme',S.theme);
   renderAvatar('load-av',S.aAv,'full');
   bind();
+  detectHostedKey();
   setTimeout(()=>{
     if(setupDone()) openChat();
     else{goto('welcome');renderAvatar('welcome-av',S.aAv,'full')}
@@ -1310,7 +1333,7 @@ function heroNode(){
   const p=document.createElement('p');
   p.textContent=connReady()
     ? "I'm Ace. Ask me anything, or pick one of these to get started."
-    : "I'm Ace. Add an Anthropic API key in Settings and I'll be able to reply.";
+    : "I'm Ace. Add an API key in Settings and I'll be able to reply.";
   wrap.append(av,h,p);
   if(connReady()){
     const q=document.createElement('div');q.className='quick-btns';
@@ -1390,6 +1413,7 @@ function scrollDown(instant){
    ========================================================= */
 function connReady(){return S.provider==='proxy'?!!S.proxy:!!apiKey()}
 function modelName(){
+  if(S.provider==='proxy')return 'Served by this site';
   const m=modelList().find(x=>x.id===curModel());
   return m?m.name:(curModel()||'No model');
 }
@@ -1401,10 +1425,11 @@ function setStatus(text,cls){
   $('status-text').textContent=text;
   $('status-dot').className='status-dot'+(cls?' '+cls:'');
 }
+function hostedReady(){return !!(S.hosted&&(S.hosted.gemini||S.hosted.anthropic)&&S.provider==='proxy')}
 function updateConnUI(){
   const ready=connReady();
   $('key-notice').classList.toggle('hidden',ready);
-  setStatus(ready?(modelName()+' · ready'):'No API key yet',ready?'':'off');
+  setStatus(ready?(hostedReady()?'Ready · no key needed':(modelName()+' · ready')):'No API key yet',ready?'':'off');
   $('btn-send').disabled=!ready&&!S.busy;
 }
 
@@ -1494,7 +1519,10 @@ function renderConnection(){
     }
   }
   const pd=$('proxy-dot'),pt=$('proxy-text');
-  if(S.proxy){pd.className='api-dot on';pt.textContent='Endpoint set'}
+  if(hostedReady()){
+    pd.className='api-dot on';
+    pt.textContent='This site supplies the key \u2014 nothing to enter';
+  }else if(S.proxy){pd.className='api-dot on';pt.textContent='Endpoint set'}
   else{pd.className='api-dot off';pt.textContent='Not configured'}
   $('proxy-input').value=S.proxy;
   $('proxy-provider').value=S.proxyProvider;
