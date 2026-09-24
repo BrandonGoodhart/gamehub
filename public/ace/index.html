@@ -473,10 +473,18 @@ details.adv summary:hover{color:var(--txt)}
       <div class="field">
         <label for="provider-select">Provider</label>
         <select class="select" id="provider-select">
+          <option value="claude" id="opt-claude" hidden>Claude &mdash; built in, no key needed</option>
           <option value="gemini">Google Gemini (AI Studio) &mdash; has a free tier</option>
           <option value="anthropic">Anthropic (Claude) &mdash; paid credits</option>
           <option value="proxy">Through my own server</option>
         </select>
+      </div>
+
+      <div id="pane-claude" class="hidden">
+        <div class="help">
+          <b>Nothing to set up.</b> This page is running inside Claude, so Ace asks Claude directly on your account &mdash; no API key, no billing setup, no provider to configure. The first message asks your permission, then it just works.
+          <br><br>Pick a speed under <b>Model</b> below. If you would rather use your own Gemini or Anthropic key, switch provider above &mdash; but note that a key only works in the downloaded file or on your own site, because this page cannot reach outside services.
+        </div>
       </div>
 
       <div id="pane-key">
@@ -490,11 +498,8 @@ details.adv summary:hover{color:var(--txt)}
           <div class="api-status"><div class="api-dot off" id="api-dot"></div><span id="api-text">Not connected</span></div>
         </div>
         <div class="s-row">
-          <button class="btn btn-sec btn-sm" id="btn-test-key">Test connection</button>
-          <button class="btn btn-sec btn-sm" id="btn-diagnose">Run diagnostics</button>
           <button class="btn btn-danger btn-sm" id="btn-clear-key">Remove key</button>
         </div>
-        <div class="help hidden" id="diag"></div>
         <div class="help" id="key-help"></div>
         <div class="warn-box" id="key-warn"></div>
       </div>
@@ -517,11 +522,16 @@ details.adv summary:hover{color:var(--txt)}
           </select>
           <div class="hint-txt">Ace formats the request for this provider; your server just adds the key and forwards it.</div>
         </div>
-        <button class="btn btn-sec btn-sm" id="btn-test-proxy">Test connection</button>
         <div class="help">
           <b>Why a proxy?</b> With a key in the browser, the page only ever suits someone running it for themselves. A proxy keeps the key on a server you control, which is the only safe way to let other people use this page. This repo ships a Netlify function at <code>netlify/functions/ace-chat.ts</code> &mdash; set <code>ANTHROPIC_API_KEY</code> or <code>GEMINI_API_KEY</code> in your Netlify environment variables, deploy, and point this field at <code>/api/ace-chat</code>.
         </div>
       </div>
+
+      <div class="s-row" style="margin-top:16px">
+        <button class="btn btn-sec btn-sm" id="btn-test-key">Test connection</button>
+        <button class="btn btn-sec btn-sm" id="btn-diagnose">Run diagnostics</button>
+      </div>
+      <div class="help hidden" id="diag"></div>
     </div>
 
     <div class="s-card">
@@ -608,6 +618,19 @@ const THEMES=[
    free tier, so a key costs nothing to try. Anthropic keys are sk-ant-...,
    Google AI Studio keys are AIza... — pasting one into the other fails. */
 const PROVIDERS={
+  /* Available only inside a Claude artifact viewer, where the page's own
+     network is blocked but it may ask Claude directly on the viewer's
+     account. No API key is involved at all. */
+  claude:{
+    id:'claude', name:'Claude (built in)', keyName:'', noKey:true,
+    placeholder:'', prefix:'', prefixes:[], console:'',
+    models:[
+      {id:'quick',   name:'Quick',        hint:'Fastest replies, answers almost immediately.'},
+      {id:'default', name:'Balanced',     hint:'The everyday model. Thinks briefly before answering.'},
+      {id:'complex', name:'Most capable', hint:'Best reasoning, slowest to start.'}
+    ],
+    effort:false
+  },
   gemini:{
     id:'gemini', name:'Google Gemini', keyName:'Google AI Studio API key',
     /* Google is migrating AI Studio keys from the old "AIza" format to the
@@ -659,7 +682,7 @@ const STEPS=[
   {key:'shoeColor',  title:'Shoes',        sub:'',                                  icon:'▰', type:'color', opts:SHOEC}
 ];
 
-const BUILD='2026-09-24b';
+const BUILD='2026-09-24c';
 let STYLE_COUNT=0;
 const DEF_U={hairStyle:'hair1', skinColor:'#F0D5BE', hairColor:'#4A3728', topColor:'#5B6EF7', bottomColor:'#1A1A1A', shoeColor:'#1A1A1A'};
 const DEF_A={hairStyle:'hair19',skinColor:'#EECEB3', hairColor:'#2C222B', topColor:'#10B981', bottomColor:'#374151', shoeColor:'#FFFFFF'};
@@ -736,6 +759,7 @@ function curModel(){
   return list.length?list[0].id:'';
 }
 
+let sampleFn=null, sampleLimits=null;
 const $=id=>document.getElementById(id);
 function on(id,ev,fn){const e=$(id);if(e)e.addEventListener(ev,fn)}
 function show(id){const e=$(id);if(e)e.classList.remove('hidden')}
@@ -1029,6 +1053,24 @@ function setupDone(){
 /* When this page is served by a site whose server holds an API key, visitors
    should not have to supply one at all. Probe for that, and adopt it unless
    the person has already configured something themselves. */
+/* The artifact runtime hands the page a way to ask Claude. It resolves null
+   anywhere else (a downloaded file, a normal web host), so this is also how we
+   decide whether to offer the option at all. */
+async function initSample(){
+  try{
+    if(!(window.claude&&typeof window.claude.use==='function'))return;
+    sampleFn=await window.claude.use('sample');
+    if(!sampleFn)return;
+    try{sampleLimits=await sampleFn.limits()}catch(e){sampleLimits=null}
+    /* Nothing configured yet? Use it — it needs no key and works here. */
+    if(!apiKey()&&!(S.provider==='proxy'&&S.proxy)){
+      S.provider='claude';store(LS.provider,S.provider);
+    }
+    updateConnUI();
+    if(!$('settings').classList.contains('hidden')){renderConnection();renderModels()}
+  }catch(e){/* not in a Claude viewer */}
+}
+
 async function detectHostedKey(){
   if(location.protocol==='file:')return;
   try{
@@ -1051,6 +1093,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
   document.body.setAttribute('data-theme',S.theme);
   bind();
   detectHostedKey();
+  await initSample();
   const started=Date.now();
   try{
     await loadAvatarPack();
@@ -1281,6 +1324,7 @@ function heroNode(){
   p.textContent=connReady()
     ? "I'm Ace. Ask me anything, or pick one of these to get started."
     : "I'm Ace. Add an API key in Settings and I'll be able to reply.";
+  if(!connReady()&&sampleFn)p.textContent="I'm Ace. Pick Claude in Settings and we can start \u2014 no key needed.";
   wrap.append(av,h,p);
   if(connReady()){
     const q=document.createElement('div');q.className='quick-btns';
@@ -1358,8 +1402,15 @@ function scrollDown(instant){
 /* =========================================================
    Connection
    ========================================================= */
-function connReady(){return S.provider==='proxy'?!!S.proxy:!!apiKey()}
+function connReady(){
+  if(S.provider==='claude')return !!sampleFn;
+  return S.provider==='proxy'?!!S.proxy:!!apiKey();
+}
 function modelName(){
+  if(S.provider==='claude'){
+    const m=modelList().find(x=>x.id===curModel());
+    return 'Claude \u00b7 '+(m?m.name:'Balanced');
+  }
   if(S.provider==='proxy')return 'Served by this site';
   const m=modelList().find(x=>x.id===curModel());
   return m?m.name:(curModel()||'No model');
@@ -1372,7 +1423,7 @@ function setStatus(text,cls){
   $('status-text').textContent=text;
   $('status-dot').className='status-dot'+(cls?' '+cls:'');
 }
-function hostedReady(){return !!(S.hosted&&(S.hosted.gemini||S.hosted.anthropic)&&S.provider==='proxy')}
+function hostedReady(){return S.provider==='claude'?!!sampleFn:!!(S.hosted&&(S.hosted.gemini||S.hosted.anthropic)&&S.provider==='proxy')}
 function updateConnUI(){
   const ready=connReady();
   $('key-notice').classList.toggle('hidden',ready);
@@ -1448,9 +1499,13 @@ const KEY_WARN='<b>Where this key lives.</b> It is saved in this browser\'s <cod
 
 function renderConnection(){
   const p=provider();
+  /* Only offer the built-in option where it actually exists. */
+  $('opt-claude').hidden=!sampleFn;
   $('provider-select').value=S.provider;
-  $('pane-key').classList.toggle('hidden',S.provider==='proxy');
+  $('pane-claude').classList.toggle('hidden',S.provider!=='claude');
+  $('pane-key').classList.toggle('hidden',S.provider==='proxy'||S.provider==='claude');
   $('pane-proxy').classList.toggle('hidden',S.provider!=='proxy');
+  if(S.provider==='claude')return;
   if(p){
     $('key-label').textContent=p.keyName;
     $('api-input').placeholder=apiKey()?'Paste a new key to replace it':p.placeholder;
@@ -1698,7 +1753,7 @@ function readDelta(ev){
   return '';
 }
 
-async function streamReply(list,onDelta,signal){
+async function streamReply(list,setText,signal){
   let res;
   try{
     res=await apiFetch(endpoint(true),{method:'POST',headers:headers(),
@@ -1715,12 +1770,12 @@ async function streamReply(list,onDelta,signal){
     const t=wire()==='gemini'
       ? (((j.candidates||[])[0]||{}).content||{}).parts?.map(x=>x.text||'').join('')||''
       : (j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-    if(t)onDelta(t);
+    if(t)setText(t);
     return;
   }
 
   const reader=res.body.getReader(),dec=new TextDecoder();
-  let buf='',got=false;
+  let buf='',got=false,acc='';
   for(;;){
     const {done,value}=await reader.read();
     if(done)break;
@@ -1736,11 +1791,84 @@ async function streamReply(list,onDelta,signal){
         if(ev.promptFeedback&&ev.promptFeedback.blockReason)
           throw new Error('Gemini blocked that prompt ('+ev.promptFeedback.blockReason+'). Try rewording it.');
         const text=readDelta(ev);
-        if(text){got=true;onDelta(text)}
+        if(text){got=true;acc+=text;setText(acc)}
       }
     }
   }
   if(!got)throw new Error('The model returned an empty response. Try again.');
+}
+
+/* ---------------- asking Claude directly (artifact runtime) ---------------- */
+function dataUrlToBlob(u){
+  const i=u.indexOf(',');
+  const mime=(u.slice(0,i).match(/data:([^;]+)/)||[])[1]||'image/jpeg';
+  const bin=atob(u.slice(i+1));
+  const arr=new Uint8Array(bin.length);
+  for(let j=0;j<bin.length;j++)arr[j]=bin.charCodeAt(j);
+  return new Blob([arr],{type:mime});
+}
+const SAMPLE_MAX=60000;
+/* There is no system role here: standing instructions ride as a leading user
+   turn, and the list must both start and end on a user turn. */
+function sampleTurns(list){
+  const turns=[{role:'user',content:buildSystem()}];
+  list.filter(m=>!m.err).forEach(m=>{
+    const body=(m.text||'').trim()||(m.img?'(I attached an image.)':'');
+    if(!body)return;
+    turns.push({role:m.role==='assistant'?'assistant':'user',content:body});
+  });
+  while(turns.length>1&&turns[turns.length-1].role!=='user')turns.pop();
+  /* Drop the oldest exchanges, never the instructions, to stay under the cap. */
+  const size=()=>turns.reduce((n,t)=>n+t.content.length,0);
+  while(turns.length>2&&size()>SAMPLE_MAX)turns.splice(1,1);
+  return turns;
+}
+const SAMPLE_ERRORS={
+  not_granted:'You declined to let this page use Claude. Reload and allow it to chat.',
+  sampling_disabled:'Claude is not available on this account.',
+  not_declared:'This page is not allowed to use Claude. Reload it.',
+  capability_disabled:'Claude is unavailable in this view.',
+  capability_removed:'This viewer is too old to support Claude here.',
+  rate_limited:'That is a lot of messages at once, or you have hit your Claude usage limit. Wait a moment and try again.',
+  session_expired:'Your Claude session expired. Sign in again and reload.',
+  refused:'Claude declined to answer that one. Try rewording it.',
+  empty_completion:'Claude produced no reply. Try asking differently.',
+  prompt_too_large:'This conversation got too long to send. Start a new chat.',
+  image_rejected:'That image was rejected — try a smaller or different one.',
+  images_unavailable:'Images cannot be sent in this view.',
+  upstream_error:'Something went wrong reaching Claude. Try again.'
+};
+async function sampleReply(list,setText,signal){
+  const opts={cache:false,signal,onText:u=>setText(u.text)};
+  const tier=curModel();
+  if(tier==='quick'||tier==='default'||tier==='complex')opts.modelTier=tier;
+  if(sampleLimits&&sampleLimits.images){
+    const last=[...list].reverse().find(m=>m.role==='user');
+    if(last&&last.img&&last.img.data){
+      try{opts.images=dataUrlToBlob(last.img.data)}catch(e){}
+    }
+  }
+  let res;
+  try{
+    res=await sampleFn(sampleTurns(list),opts);
+  }catch(err){
+    const code=err&&err.code;
+    if(code==='cancelled'){
+      const e=new Error('cancelled');e.name='AbortError';
+      if(err.text)e.partial=err.text;
+      throw e;
+    }
+    const e=new Error(SAMPLE_ERRORS[code]||(err&&err.message)||'Claude could not answer.');
+    if(err&&err.text)e.partial=err.text;
+    throw e;
+  }
+  setText(res.truncated?res.text+'\n\n*(cut short — try asking for less at a time)*':res.text);
+}
+
+/* Route a turn to whichever backend is configured. */
+async function replyStream(list,setText,signal){
+  if(S.provider==='claude')return sampleReply(list,setText,signal);
+  return streamReply(list,setText,signal);
 }
 
 /* =========================================================
@@ -1803,8 +1931,8 @@ async function runTurn(){
   let acc='',stuck=false;
   const paint=()=>{bub.innerHTML=md(acc)+'<span class="cursor"></span>'};
   try{
-    await streamReply(chat.msgs,chunk=>{
-      acc+=chunk;
+    await replyStream(chat.msgs,full=>{
+      acc=full;
       const t=$('transcript');
       const near=t.scrollHeight-t.scrollTop-t.clientHeight<140;
       paint();
@@ -1813,6 +1941,7 @@ async function runTurn(){
     chat.msgs.push({role:'assistant',text:acc});
   }catch(err){
     if(err&&err.name==='AbortError'){
+      if(!acc.trim()&&err.partial)acc=err.partial;
       if(acc.trim())chat.msgs.push({role:'assistant',text:acc});
       else stuck=true;
       toast('Stopped.');
@@ -1905,6 +2034,17 @@ function renderPersonas(){
 }
 function renderModels(){
   const sel=$('model-select');sel.replaceChildren();
+  if(S.provider==='claude'){
+    sel.disabled=false;
+    modelList().forEach(m=>{
+      const o=document.createElement('option');o.value=m.id;o.textContent=m.name;
+      sel.appendChild(o);
+    });
+    sel.value=curModel();
+    $('btn-refresh-models').classList.add('hidden');
+    syncModelHint();
+    return;
+  }
   if(S.provider==='proxy'){
     const o=document.createElement('option');
     o.value='';o.textContent='Chosen by your server';
@@ -1923,7 +2063,8 @@ function renderModels(){
 function syncModelHint(){
   const m=modelList().find(x=>x.id===curModel());
   const hint=$('model-hint');
-  if(S.provider==='proxy')hint.textContent='Your proxy decides which model runs.';
+  if(S.provider==='claude')hint.textContent=(m&&m.hint)||'';
+  else if(S.provider==='proxy')hint.textContent='Your proxy decides which model runs.';
   else hint.textContent=(m&&m.hint)?m.hint.slice(0,220):'';
   const supported=effortSupported();
   $('effort-field').classList.toggle('hidden',!supported);
@@ -1931,6 +2072,17 @@ function syncModelHint(){
 }
 
 async function testConnection(){
+  if(S.provider==='claude'){
+    if(!sampleFn){toast('Claude is not available in this view.','err');return}
+    toast('Sending a test message\u2026');
+    try{
+      const r=await sampleFn([{role:'user',content:'Reply with the single word: ok'}],{modelTier:'quick'});
+      toast('Working \u2014 Claude replied "'+String(r.text).trim().slice(0,20)+'".','ok');
+    }catch(err){
+      toast(SAMPLE_ERRORS[err&&err.code]||'Test failed.','err');
+    }
+    return;
+  }
   if(S.provider==='proxy'&&!S.proxy){toast('Enter a proxy URL first.','err');return}
   if(S.provider!=='proxy'&&!apiKey()){toast('Save a key first.','err');return}
   const dot=S.provider==='proxy'?$('proxy-dot'):$('api-dot');
@@ -1982,6 +2134,17 @@ async function runDiagnostics(){
   box.appendChild(head);
 
   const p=provider();
+  if(S.provider==='claude'){
+    if(!sampleFn){add('\u2717','diag-bad','Claude is not available in this view. Open the downloaded file and use an API key instead.');finishDiag(box,report);return}
+    add('i','diag-wait','Provider: <b>Claude, built in</b> \u2014 no API key involved.');
+    try{
+      const r=await sampleFn([{role:'user',content:'Reply with the single word: ok'}],{modelTier:'quick'});
+      add('\u2713','diag-ok','<b>Claude replied \u2014 everything works.</b> Close this and start chatting.');
+    }catch(err){
+      add('\u2717','diag-bad',esc(SAMPLE_ERRORS[err&&err.code]||'Claude could not answer.'));
+    }
+    finishDiag(box,report);return;
+  }
   if(S.provider==='proxy'){add('i','diag-wait','Provider: your own server at <code>'+esc(S.proxy||'(not set)')+'</code>');}
   else if(!p){add('✗','diag-bad','No provider selected.');return}
   else add('i','diag-wait','Provider: <b>'+p.name+'</b>, model <code>'+esc(curModel()||'(none)')+'</code>');
@@ -2126,7 +2289,6 @@ function bind(){
   on('btn-diagnose','click',runDiagnostics);
   on('modal-yes','click',()=>closeModal(true));
   on('modal-no','click',()=>closeModal(false));
-  on('btn-test-proxy','click',testConnection);
   on('api-input','keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveKey()}});
   on('btn-toggle-key','click',()=>{
     const i=$('api-input'),b=$('btn-toggle-key');

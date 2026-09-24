@@ -16,7 +16,18 @@ Deployed with this repo it is served at `/ace/`.
 
 ## Connecting it
 
-Ace speaks to two providers. Pick one in Settings → Connection.
+### Inside a Claude artifact — nothing to set up
+
+A published artifact's page has **no outbound network access**, so no API key
+can work there. Instead Ace uses the runtime's `sample` capability to ask
+Claude directly on the viewer's account: no key, no billing setup. This is
+selected automatically when the capability is present, and the option is
+hidden everywhere else.
+
+### Elsewhere — your own key
+
+In the downloaded file or on your own site, Ace speaks to two providers.
+Pick one in Settings → Connection.
 
 ### Google Gemini (default) — has a free tier
 
