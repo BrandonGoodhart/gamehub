@@ -1,7 +1,14 @@
 # Ace — standalone AI companion
 
-A single self-contained HTML file. No build step, no dependencies, no server
-required: open `index.html` in a browser and it runs. Everything (your name,
+A single self-contained HTML file (~760 KB). No build step, no dependencies,
+no server required: open `index.html` in a browser and it runs.
+
+The 89 character avatars share most of their markup, so they ship as a gzipped
+table of unique SVG fragments plus one index list per avatar, unpacked in the
+browser at startup via `DecompressionStream`. That is 670 KB rather than the
+4.7 MB the same art costs inline — the file is about 7x smaller with identical
+output. To regenerate the pack after changing the art, see
+`tools/pack-avatars.py`. Everything (your name,
 avatars, chats, API key) is stored in that browser's `localStorage` and never
 leaves your device except for the messages you send to Anthropic.
 
